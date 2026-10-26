@@ -20,6 +20,21 @@ export default defineConfig({
   },
   projects: [
     { name: 'demo-desktop', use: { viewport: { width: 1440, height: 900 }, launchOptions } },
+    ...(process.env.RUN_FIREFOX === 'true'
+      ? [
+          {
+            name: 'demo-firefox-panning',
+            testMatch: /panning\.spec\.ts/,
+            use: {
+              browserName: 'firefox' as const,
+              viewport: { width: 1440, height: 900 },
+              launchOptions: process.env.FIREFOX_PATH
+                ? { executablePath: process.env.FIREFOX_PATH }
+                : {},
+            },
+          },
+        ]
+      : []),
     {
       name: 'demo-mobile',
       grep: /uploads|shared links|pixel/,

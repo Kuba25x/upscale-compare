@@ -20,11 +20,17 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PR #1 is merged into `main`. The frontend-only demo is implemented, verified, and pushed on the separate branch `feat/github-pages-demo`, based on `origin/main` (`f4b3e11`), with [PR #2](https://github.com/Kuba25x/upscale-compare/pull/2) open against `main`. The requested destination is `https://kuba25x.github.io/upscale-compare/`; no deployment has been performed. GitHub Pages is already configured by the owner to use GitHub Actions.
+PRs #1 and #2 are merged into `main`. A release-blocking desktop panning bug is fixed and pushed on the separate branch `fix/reliable-viewer-panning`, based on `origin/main` (`c5d73b6`), with [PR #3](https://github.com/Kuba25x/upscale-compare/pull/3) open for review. A user-supplied community patch was reviewed and its CSS selection fix incorporated with generic community attribution: the patch contains no author identity. See `docs/PANNING_FIX_REVIEW.md` for the review, patch hash, experiments, and test limitations.
 
-The `demo` build disables sharing and rejects public comparison routes/API helpers locally while preserving every local viewer feature. Public `.env.demo` configuration supplies the repository asset base. The existing Cloudflare backend, full production behavior, security controls, and AGPL-3.0 license are preserved. The Pages workflow defaults to `demo`, requires explicit `DEPLOY` confirmation, and retains a separate `production` choice with its original backend/key checks.
+The root cause was reproduced in Chromium: stage/layer selection could start native HTML selection dragging despite `draggable=false` on images, causing pointer cancellation and partial movement. The adapted fix scopes selection/drag prevention to the viewer and adds reliable pointer cleanup. Upload drag-and-drop and all existing comparison functionality are preserved. Testers also confirmed Firefox; local Firefox installation is blocked by the environment's download policy, so the same regressions are enabled on the GitHub CI runner.
+
+No merge or deployment is authorized. Preserve existing demo/production modes and Cloudflare security behavior.
 
 ## Completed features
+
+- Community stage-selection CSS fix, default pointer selection prevention, scoped native drag cancellation, and WebKit image drag suppression.
+- Capture cleanup after completion/cancellation/loss, released mouse buttons, window blur and document hiding; explicit stage focus preserves keyboard use after editing labels.
+- Shared repeated-panning, cross-mode/zoom, pointer recovery and external-file upload regressions for normal and production-demo builds; Firefox projects enabled in CI.
 
 - Frontend-only `build:demo`, `dev:demo`, and production-bundle `test:demo` commands; no backend process or cloud configuration is needed.
 - Disabled Share Comparison with visible accessible demo notices; direct shared links are refused without network requests; demo privacy information is accurate.
@@ -42,19 +48,18 @@ The `demo` build disables sharing and rejects public comparison routes/API helpe
 
 ## Tests executed
 
-Current demo task, 2026-10-26:
+Current panning fix and community review, 2026-10-26:
 
-- `npm run build`: passed, including normal frontend/Worker TypeScript checks and both production bundles.
-- `npm test`: 51 passed (35 unit + 16 local D1/R2 integration tests). Demo guards also preserve configured production sharing and local development behavior.
-- `npm run test:e2e`: all 17 existing Chromium desktop, DPR 1.25/DPR 2, and mobile tests passed, including publishing, direct navigation, refresh and owner deletion.
-- `npm run test:demo`: production frontend-only build and all 10 desktop/mobile browser cases passed at `/upscale-compare/`, without any Worker/API process. Cases cover local uploads, four-image selection, labels/metadata, addition/replacement, split divider, both modes, synchronized navigation, exact source-pixel RGBA, keyboard/fullscreen, privacy, shared-link rejection and static assets.
-- Total automated tests: 78 passed. Demo browser interception rejected/reported unexpected requests; none occurred, and no Turnstile script/frame was present.
-- Generated demo JavaScript contains neither the localhost backend address nor the Turnstile script URL. HTML script, stylesheet, favicon and runtime-license paths use the correct repository subpath.
-- Full dependency audit: zero known vulnerabilities. No dependencies changed.
-- Formatting, whitespace checks and visual inspection of the rendered demo landing page: passed.
-- `worker/` and `LICENSE` are unchanged. No Cloudflare resources were modified, no paid services activated and no Pages deployment dispatched.
-
-The original full application also passed hosted GitHub Actions before PR #1 was merged. Hosted validation for this demo branch is available in the checks on PR #2; its CI includes both the unchanged full-stack tests and the new production demo tests. No deployment workflow is dispatched by that validation.
+- Community patch passes `git apply --check` against `main` at `c5d73b6` in an isolated checkout.
+- The original community test fails before its CSS change and passes after that change. Its start point can hit the divider, and it does not verify image displacement; the replacement tests cover actual panning in both modes.
+- A stronger real multi-click/drag reproduction fails on unmodified code (9 pixels moved for a requested 36) and passes with the adapted fix. Event traces confirm native selection dragging and pointer cancellation before the fix, and none afterward.
+- `npm run build`: passed, including normal frontend/Worker TypeScript checks and production bundles.
+- `npm test`: 51 passed.
+- `npm run test:e2e`: 21 Chromium desktop/HiDPI/mobile cases passed.
+- `npm run test:demo`: production build and 14 desktop/mobile cases passed at `/upscale-compare/`.
+- Total locally executed suite: 86 passed, including all prior functionality, touch pinch/divider, pixel zoom, sharing, labels/metadata, and new panning/file-drop regressions.
+- Local Firefox download failed with a network-policy HTTP 403; no Firefox execution is claimed locally. [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed on code commit `7ccd7a4`, including Firefox with `RUN_FIREFOX=true`: 25 full-stack + 18 demo + 51 unit/API cases, 94 passed total.
+- No dependencies, backend files, license, deployment triggers, or external resources were changed by the fix. No merge or deployment was performed.
 
 ## Known limitations
 
@@ -69,7 +74,7 @@ The original full application also passed hosted GitHub Actions before PR #1 was
 
 ## Exact next steps
 
-1. Review [PR #2](https://github.com/Kuba25x/upscale-compare/pull/2) and its Validate check. Implementation and all 78 local tests are complete. Keep the PR unmerged until owner review.
-2. After review and merge, the owner can deploy manually: Actions → Deploy frontend to GitHub Pages → Run workflow → branch `main` → `deployment_mode=demo` → `confirmation=DEPLOY` → Run workflow. Follow `docs/DEPLOYMENT.md`.
-3. Do not dispatch deployment on the owner's behalf. Demo deployment requires no Cloudflare credentials or resources. Keep full production sharing disabled until its separate provider setup and authorization are complete.
-4. Continue from this branch/PR rather than restarting implementation. Preserve the existing full-stack code and tests for future Cloudflare integration.
+1. Review [PR #3](https://github.com/Kuba25x/upscale-compare/pull/3). The final rapid-drag check, formatting, local suites, community-patch comparison, and attribution are complete and committed.
+2. Hosted CI, including the added Firefox projects, passed all 94 cases. Preserve the community attribution in the commit/PR and review document. The fix is ready for owner code review.
+3. Leave the PR unmerged and do not deploy automatically. The owner will decide when to merge and manually deploy the release-blocking fix.
+4. Continue from this branch rather than restarting. Existing demo and full-stack architecture, tests, AGPL-3.0 license, and Cloudflare safeguards must remain intact.
