@@ -1,0 +1,56 @@
+name: Deploy frontend to GitHub Pages
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type DEPLOY to authorize production frontend deployment'
+        required: true
+        type: string
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: inputs.confirmation == 'DEPLOY'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Select Playwright Chromium
+        run: node scripts/set-playwright-browser.mjs
+      - run: npm test
+      - run: npm run test:e2e
+      - name: Validate production configuration
+        env:
+          API_URL: ${{ vars.VITE_API_URL }}
+          SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+        run: |
+          test -n "$SITE_KEY"
+          node -e 'const u = new URL(process.env.API_URL); if (u.protocol !== "https:") process.exit(1)'
+      - name: Build frontend for repository subpath
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Publish GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

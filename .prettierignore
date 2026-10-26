@@ -1,0 +1,10 @@
+node_modules
+dist
+worker/dist
+.wrangler
+worker/.wrangler
+playwright-report
+test-results
+package-lock.json
+LICENSE
+worker/wrangler.production.json
