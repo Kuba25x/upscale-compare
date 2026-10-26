@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-The complete application is implemented locally on branch `feat/upscale-compare`. No production resources have been created or deployed. Cloudflare credentials are absent. Git remote read access and the GitHub connector work; an initial `gh auth status` reported an invalid injected token, so use ordinary configured Git for pushes and the GitHub connector for PR creation.
+The application is implemented and pushed on branch `feat/upscale-compare`, with [pull request #1](https://github.com/Kuba25x/upscale-compare/pull/1) open for review against `main`. Both implementation checkpoints survived the usage-limit interruption. [GitHub Actions Validate run #1](https://github.com/Kuba25x/upscale-compare/actions/runs/40389516336) passed on commit `fd6655f46c642209f493e2a3f65d8d327541eb71`. No production resources have been created or deployed. Cloudflare credentials remain absent. Ordinary configured Git supports pushes and the GitHub connector supports PR operations; the standalone GitHub CLI did not authenticate in this environment.
 
 ## Completed features
 
@@ -43,11 +43,12 @@ The complete application is implemented locally on branch `feat/upscale-compare`
 - Full production + tooling dependency audit: zero known vulnerabilities. Vitest is 5.0.5, and direct Miniflare is pinned to Wrangler's patched 5.20261023.0-beta using its supported configuration adapter. Runtime MIT/ISC licenses were verified and included in a generated public notice.
 - Found and fixed cursor-anchor rounding, dialog persistence on hash navigation and fractional Side-by-Side rasterization. DOM floating-point expectations use numerical precision tolerances; rendered source-pixel RGBA assertions remain exact.
 - `npm run format:check` and `git diff --check`: passed.
-- Production repository-subpath build, browser smoke, config generation and Worker dry-run packaging: passed; no deployment occurred.
+- Production repository-subpath build, browser smoke, config generation and Worker dry-run packaging: passed; no deployment occurred. The final resumed browser smoke also verified the generated runtime license artifact and reported no browser errors.
+- Hosted GitHub Actions Validate run #1: success (production build, unit/API tests, Chromium E2E, full dependency audit and repository-subpath build).
 
 ## Known limitations
 
-- No production deployment, Cloudflare account permissions, real Turnstile smoke test, provider CPU budget benchmark, or GitHub-hosted Actions run has been performed.
+- No production deployment, Cloudflare account permission check, real Turnstile smoke test, or provider CPU budget benchmark has been performed.
 - JPEG/WebP content is structurally validated, not fully decoded server-side. PNG additionally validates its bounded complete decompressed raster. Animated, interlaced PNG, or rotated/mirrored EXIF uploads are not accepted for publication.
 - Browser color management applies; HDR/raw-color analysis is outside scope. Safari/Firefox and physical devices have not been tested.
 - A crash before a pending row is inserted can conservatively over-count quota; the documented disabled-upload reconciliation procedure handles this.
@@ -56,5 +57,7 @@ The complete application is implemented locally on branch `feat/upscale-compare`
 
 ## Exact next steps
 
-1. Push the verified final checkpoint and create/attach the PR, then record its URL and any hosted CI result. Production subpath browser smoke, config generation and Worker dry-run packaging have passed; no production deployment occurred.
-2. Leave production disabled. After owner approval, configure Cloudflare resources/secrets, GitHub environment variables and hosting, then execute documented production smoke tests before enabling uploads.
+1. Review [PR #1](https://github.com/Kuba25x/upscale-compare/pull/1). The application is ready for code review; do not restart implementation. Keep `main` unchanged until review/merge is authorized.
+2. Leave production disabled. After owner approval, configure a private Cloudflare R2 bucket, D1 database, least-privilege token, Turnstile widget/secrets, operator privacy/abuse contacts and GitHub deployment environment variables. Follow `docs/DEPLOYMENT.md`.
+3. Run the documented real-provider smoke tests and CPU/quota review before enabling public uploads. Deploy only after explicit authorization; do not enable paid resources without approval.
+4. If code changes during review, run the affected tests and update this checkpoint. Local preview can be started with the README commands; no Internet-public preview or production URL exists yet.

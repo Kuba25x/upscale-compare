@@ -35,10 +35,11 @@ Last verified development checkpoint: 2026-10-26.
 - Desktop and mobile rendered screenshots: inspected against the supplied wireframes.
 - Production repository-subpath browser smoke: passed (assets, centered landing, JPEG/WebP upload, 1:1 size and mode switching; no browser errors).
 - Production configuration generation and Worker `deploy --dry-run` packaging: passed with dummy resource IDs and uploads disabled; no resources were created or deployed.
+- [Hosted GitHub Actions Validate run #1](https://github.com/Kuba25x/upscale-compare/actions/runs/40389516336): **success** for commit `fd6655f46c642209f493e2a3f65d8d327541eb71`, including production builds, all unit/API/browser tests and the full dependency audit.
 
 ## Limits of verification
 
-Chromium emulation is not a physical iPhone/Android device or a Safari/Firefox run. The suite does not establish HDR/colorimetric accuracy, large-file performance on every machine, real production CPU/billing limits, real Turnstile account verification, production DNS/TLS, GitHub-hosted workflow execution, or actual R2/D1 account permissions. Cloudflare deployment and social-platform preview caches require approved production smoke tests.
+Chromium emulation is not a physical iPhone/Android device or a Safari/Firefox run. The suite does not establish HDR/colorimetric accuracy, large-file performance on every machine, real production CPU/billing limits, real Turnstile account verification, production DNS/TLS, or actual R2/D1 account permissions. Cloudflare deployment and social-platform preview caches require approved production smoke tests.
 
 Static GitHub Pages subpath output is checked separately during CI. Publishing uses original byte comparisons; no lossy round-trip is introduced by the app. Full JPEG/WebP decoding is delegated to the browser, while the server performs structural validation. See SECURITY.md and deployment docs for operational boundaries.
 
