@@ -35,6 +35,6 @@ The shared browser suite exercises repeated drags on both image regions, both mo
 
 Local production and demo builds passed, as did 51 unit/API tests, 21 Chromium desktop/HiDPI/mobile E2E tests, and 14 production-demo tests. The original community test was separately executed before/after its CSS change in the isolated checkout. The stronger rapid-drag regression was observed failing before the fix and passing after it.
 
-Firefox's browser download is blocked by this managed environment's network policy (HTTP 403 from the official Playwright download hosts). CI installs Firefox on the GitHub runner and enables the same four panning cases against both builds with `RUN_FIREFOX=true`. Its result is recorded on the PR; it must not be claimed as executed locally. Safari and physical-device verification remain outside the executed checks.
+Firefox's browser download is blocked by this managed environment's network policy (HTTP 403 from the official Playwright download hosts). CI installs Firefox on the GitHub runner and enables the same four panning cases against both builds with `RUN_FIREFOX=true`. [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases, including all eight Firefox scenarios across the two builds. This must not be claimed as local Firefox execution. Safari and physical-device verification remain outside the executed checks.
 
 No merge or deployment is performed by this change.

@@ -58,7 +58,7 @@ Current panning fix and community review, 2026-10-26:
 - `npm run test:e2e`: 21 Chromium desktop/HiDPI/mobile cases passed.
 - `npm run test:demo`: production build and 14 desktop/mobile cases passed at `/upscale-compare/`.
 - Total locally executed suite: 86 passed, including all prior functionality, touch pinch/divider, pixel zoom, sharing, labels/metadata, and new panning/file-drop regressions.
-- Local Firefox download failed with a network-policy HTTP 403; no Firefox execution is claimed locally. CI enables the same regressions in Firefox with `RUN_FIREFOX=true` (25 full-stack + 18 demo + 51 unit/API cases when enabled).
+- Local Firefox download failed with a network-policy HTTP 403; no Firefox execution is claimed locally. [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed on code commit `7ccd7a4`, including Firefox with `RUN_FIREFOX=true`: 25 full-stack + 18 demo + 51 unit/API cases, 94 passed total.
 - No dependencies, backend files, license, deployment triggers, or external resources were changed by the fix. No merge or deployment was performed.
 
 ## Known limitations
@@ -75,6 +75,6 @@ Current panning fix and community review, 2026-10-26:
 ## Exact next steps
 
 1. Review [PR #3](https://github.com/Kuba25x/upscale-compare/pull/3). The final rapid-drag check, formatting, local suites, community-patch comparison, and attribution are complete and committed.
-2. Check hosted CI, especially the added Firefox projects, and fix any failures. Preserve the community attribution in the commit/PR and review document.
+2. Hosted CI, including the added Firefox projects, passed all 94 cases. Preserve the community attribution in the commit/PR and review document. The fix is ready for owner code review.
 3. Leave the PR unmerged and do not deploy automatically. The owner will decide when to merge and manually deploy the release-blocking fix.
 4. Continue from this branch rather than restarting. Existing demo and full-stack architecture, tests, AGPL-3.0 license, and Cloudflare safeguards must remain intact.

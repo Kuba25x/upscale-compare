@@ -41,7 +41,7 @@ Last verified development checkpoint: 2026-10-26.
 
 ## Limits of verification
 
-Chromium emulation is not a physical iPhone/Android device or a Safari/Firefox run. The suite does not establish HDR/colorimetric accuracy, large-file performance on every machine, real production CPU/billing limits, real Turnstile account verification, production DNS/TLS, or actual R2/D1 account permissions. Cloudflare deployment and social-platform preview caches require approved production smoke tests.
+Mobile emulation is not a physical iPhone/Android device. Safari has not been tested; Firefox verification covers the panning regressions described below. The suite does not establish HDR/colorimetric accuracy, large-file performance on every machine, real production CPU/billing limits, real Turnstile account verification, production DNS/TLS, or actual R2/D1 account permissions. Cloudflare deployment and social-platform preview caches require approved production smoke tests.
 
 Static GitHub Pages subpath output is checked separately during CI. Publishing uses original byte comparisons; no lossy round-trip is introduced by the app. Full JPEG/WebP decoding is delegated to the browser, while the server performs structural validation. See SECURITY.md and deployment docs for operational boundaries.
 
@@ -68,3 +68,5 @@ RUN_FIREFOX=true npm run test:demo
 ```
 
 CI enables Firefox automatically. With Firefox enabled, the suites contain 25 full-stack browser cases and 18 demo cases, in addition to 51 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+
+[Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
