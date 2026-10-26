@@ -36,12 +36,14 @@ The complete application is implemented locally on branch `feat/upscale-compare`
 ## Tests executed
 
 - `npm run build`: passed, including separate frontend/Worker TypeScript checks.
-- `npm test`: 46 passed (30 unit + 16 Miniflare API integration tests).
-- Chromium desktop, DPR-2 and mobile browser suite: 15 passed at the preceding checkpoint; all 16 tests passed, including owner key recovery/deletion and the friendly deleted-link page.
-- Actual screenshot pixel samples match original RGBA at 100% on DPR 1 and 2.
+- `npm test`: 47 passed (31 unit + 16 Miniflare API integration tests).
+- `npm run test:e2e`: all 17 passed in the final full run, including desktop, DPR 1.25/DPR 2, mobile touch, shared navigation/refresh and owner deletion. Total automated tests: 64 passed.
+- Actual screenshot pixel samples match original RGBA at 100% in both modes on DPR 1, 1.25 and 2. Global physical-pixel snapping and shared full-stage clipping avoid fractional CSS layout rounding in Chromium.
 - Desktop/mobile screenshots visually inspected. Title text and landing-button centering refinements are covered by the passing browser run.
-- Production dependency audit: zero known vulnerabilities. Full tooling audit initially found test-tool advisories; Vitest was upgraded to 5.0.5. The direct stable Miniflare dependency still requires alignment with Wrangler's already-patched 5.20261023.0-beta dependency.
-- Initial test failures (cursor anchor rounding, dialog persistence on hash navigation, ambiguous test selectors and mobile expected percentage) were corrected; the prior 15-test suite passed completely.
+- Full production + tooling dependency audit: zero known vulnerabilities. Vitest is 5.0.5, and direct Miniflare is pinned to Wrangler's patched 5.20261023.0-beta using its supported configuration adapter. Runtime MIT/ISC licenses were verified and included in a generated public notice.
+- Found and fixed cursor-anchor rounding, dialog persistence on hash navigation and fractional Side-by-Side rasterization. DOM floating-point expectations use numerical precision tolerances; rendered source-pixel RGBA assertions remain exact.
+- `npm run format:check` and `git diff --check`: passed.
+- Production repository-subpath build, browser smoke, config generation and Worker dry-run packaging: passed; no deployment occurred.
 
 ## Known limitations
 
@@ -54,7 +56,5 @@ The complete application is implemented locally on branch `feat/upscale-compare`
 
 ## Exact next steps
 
-1. Align the direct Miniflare test dependency with Wrangler's patched Miniflare version, rerun tests and the full dependency audit.
-2. Finish a browser smoke test of the production repository-subpath build, final formatting and documentation. Production config generation and Worker dry-run packaging already passed with dummy IDs; no deployment occurred.
-3. Commit the final tooling/documentation checkpoint, push the feature branch and create/attach a PR.
-4. Leave production disabled. After owner approval, configure Cloudflare resources/secrets, GitHub environment variables and hosting, then execute documented production smoke tests before enabling uploads.
+1. Push the verified final checkpoint and create/attach the PR, then record its URL and any hosted CI result. Production subpath browser smoke, config generation and Worker dry-run packaging have passed; no production deployment occurred.
+2. Leave production disabled. After owner approval, configure Cloudflare resources/secrets, GitHub environment variables and hosting, then execute documented production smoke tests before enabling uploads.

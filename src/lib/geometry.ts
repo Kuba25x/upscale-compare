@@ -15,14 +15,23 @@ export function scaleFor(view: View, panel: Size, image: Size, dpr: number): num
     ? Math.min(panel.width / image.width, panel.height / image.height)
     : view.zoom / dpr;
 }
-export function originFor(view: View, panel: Size, scale: number, dpr: number): Point {
+export function originFor(
+  view: View,
+  panel: Size,
+  scale: number,
+  dpr: number,
+  panelPosition: Point = { x: 0, y: 0 },
+): Point {
   const origin = {
     x: panel.width / 2 - view.center.x * scale,
     y: panel.height / 2 - view.center.y * scale,
   };
   // Snap to physical pixels at integer source-pixel zoom levels.
   if (view.zoom !== null && Number.isInteger(view.zoom)) {
-    return { x: Math.round(origin.x * dpr) / dpr, y: Math.round(origin.y * dpr) / dpr };
+    return {
+      x: Math.round((origin.x + panelPosition.x) * dpr) / dpr - panelPosition.x,
+      y: Math.round((origin.y + panelPosition.y) * dpr) / dpr - panelPosition.y,
+    };
   }
   return origin;
 }
@@ -33,10 +42,11 @@ export function zoomAt(
   offset: Point,
   dpr: number,
   panel?: Size,
+  panelPosition?: Point,
 ): View {
   const zoom = clamp(nextZoom, 0.025, 16);
   const nextScale = zoom / dpr;
-  const origin = panel ? originFor(view, panel, oldScale, dpr) : null;
+  const origin = panel ? originFor(view, panel, oldScale, dpr, panelPosition) : null;
   const center =
     panel && origin
       ? { x: (panel.width / 2 - origin.x) / oldScale, y: (panel.height / 2 - origin.y) / oldScale }

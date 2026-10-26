@@ -75,8 +75,8 @@ test('100% pixel zoom reproduces original pixels at every display density', asyn
   await page.getByRole('button', { name: '100%', exact: true }).click();
   const ratio = await page.evaluate(() => devicePixelRatio);
   const img = await page.getByTestId('image-A').boundingBox();
-  expect(img!.width * ratio).toBe(640);
-  expect(img!.height * ratio).toBe(480);
+  expect(img!.width * ratio).toBeCloseTo(640, 4);
+  expect(img!.height * ratio).toBeCloseTo(480, 4);
   const shot = PNG.sync.read(await page.screenshot());
   for (const [x, y] of [
     [35, 110],
@@ -87,6 +87,19 @@ test('100% pixel zoom reproduces original pixels at every display density', asyn
       screenY = Math.round(img!.y * ratio) + y;
     const index = (screenY * shot.width + screenX) * 4;
     expect([...shot.data.subarray(index, index + 4)]).toEqual([x % 256, y % 256, 80, 255]);
+  }
+  await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
+  const sideShot = PNG.sync.read(await page.screenshot());
+  for (const side of ['A', 'B']) {
+    const bounds = await page.getByTestId(`image-${side}`).boundingBox();
+    const x = 70,
+      y = 132;
+    const index =
+      ((Math.round(bounds!.y * ratio) + y) * sideShot.width + Math.round(bounds!.x * ratio) + x) *
+      4;
+    expect([...sideShot.data.subarray(index, index + 4)]).toEqual(
+      side === 'A' ? [x, y, 80, 255] : [180, y, x, 255],
+    );
   }
 });
 test('zoom at the cursor preserves the inspected source coordinate', async ({ page }) => {
@@ -154,7 +167,7 @@ test('replaces an image and warns about different dimensions without stretching'
   await expect(page.locator('.alignment-warning')).toContainText('Different dimensions');
   const a = await page.getByTestId('image-A').boundingBox(),
     b = await page.getByTestId('image-B').boundingBox();
-  expect(b!.width / a!.width).toBe(2);
+  expect(b!.width / a!.width).toBeCloseTo(2, 5);
   expect(a!.x).toBe(b!.x);
   expect(a!.y).toBe(b!.y);
 });

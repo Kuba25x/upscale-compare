@@ -385,10 +385,12 @@ input[type='checkbox'] {
 }
 .side-panels {
   height: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1px;
+  position: relative;
   background: #555a65;
+}
+.side-layer {
+  position: absolute;
+  inset: 0;
 }
 .divider {
   position: absolute;

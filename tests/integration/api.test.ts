@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { Miniflare } from 'miniflare';
+import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { PNG } from 'pngjs';
 import { emptyMetadata, emptyImageMetadata } from '../../shared/model';
 let mf: Miniflare;
@@ -49,25 +49,27 @@ async function sendForm(form: FormData, extra: Record<string, string> = {}) {
   });
 }
 beforeAll(async () => {
-  mf = new Miniflare({
-    modules: true,
-    scriptPath: 'worker/dist/index.js',
-    compatibilityDate: '2026-07-01',
-    d1Databases: ['DB'],
-    r2Buckets: ['IMAGES'],
-    bindings: {
-      ENVIRONMENT: 'development',
-      UPLOADS_ENABLED: 'true',
-      ALLOWED_ORIGINS: origin,
-      FRONTEND_URL: `${origin}/upscale-compare/`,
-      PUBLISHES_PER_HOUR: '10',
-      READS_PER_MINUTE: '240',
-      MAX_TOTAL_BYTES: '2048',
-      MAX_STORAGE_BYTES: '1048576',
-      MAX_COMPARISONS: '10',
-      ADMIN_TOKEN: 'test-admin-secret-only',
-    },
-  });
+  mf = new Miniflare(
+    convertV4MiniflareOptions({
+      modules: true,
+      scriptPath: 'worker/dist/index.js',
+      compatibilityDate: '2026-07-01',
+      d1Databases: ['DB'],
+      r2Buckets: ['IMAGES'],
+      bindings: {
+        ENVIRONMENT: 'development',
+        UPLOADS_ENABLED: 'true',
+        ALLOWED_ORIGINS: origin,
+        FRONTEND_URL: `${origin}/upscale-compare/`,
+        PUBLISHES_PER_HOUR: '10',
+        READS_PER_MINUTE: '240',
+        MAX_TOTAL_BYTES: '2048',
+        MAX_STORAGE_BYTES: '1048576',
+        MAX_COMPARISONS: '10',
+        ADMIN_TOKEN: 'test-admin-secret-only',
+      },
+    }),
+  );
   await (
     await mf.getD1Database('DB')
   ).exec((await readFile('worker/migrations/0001_initial.sql', 'utf8')).replace(/\n/g, ' '));
@@ -273,12 +275,14 @@ describe('Cloudflare Worker with real local D1 and R2', () => {
     ).toEqual({ used_bytes: 0, comparisons: 0 });
   });
   it('fails closed for production uploads without Turnstile configuration', async () => {
-    const production = new Miniflare({
-      modules: true,
-      scriptPath: 'worker/dist/index.js',
-      compatibilityDate: '2026-07-01',
-      bindings: { ENVIRONMENT: 'production', UPLOADS_ENABLED: 'true', ALLOWED_ORIGINS: origin },
-    });
+    const production = new Miniflare(
+      convertV4MiniflareOptions({
+        modules: true,
+        scriptPath: 'worker/dist/index.js',
+        compatibilityDate: '2026-07-01',
+        bindings: { ENVIRONMENT: 'production', UPLOADS_ENABLED: 'true', ALLOWED_ORIGINS: origin },
+      }),
+    );
     try {
       expect(
         (

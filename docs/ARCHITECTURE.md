@@ -26,6 +26,8 @@ CSS image position = panel center - source center × CSS scale
 
 At 100%, a source pixel occupies one physical display pixel. At integer magnifications the image origin is rounded to a physical pixel. At Fit, both selected images share a scale computed from their union dimensions and the available panel rectangle. No resolution normalization is performed. Side-by-Side uses equal panel sizes; split mode uses two fully overlapping panels clipped at the same divider position. The divider never changes the image transform.
 
+The position is applied using a translation, with image dimensions set separately. This avoids Chromium rounding fractional CSS layout positions before physical-pixel rasterization, particularly in Side-by-Side mode on HiDPI displays. Both panels snap against the global physical screen grid, including fractional display densities such as 125%.
+
 Wheel zoom preserves the source coordinate under the cursor, including any rounding used for the rendered origin. Pan deltas are divided by the current CSS scale. Both panels use the same view. Switching modes preserves the source center and explicit magnification; Fit recalculates the scale for the new panel geometry.
 
 Touch pointers are tracked through pointer capture. One pointer pans; two pointers change magnification around their midpoint. The divider has its own pointer capture and keyboard slider semantics. Native HTML selects and dialogs provide image selection and focus trapping without a third-party UI framework.

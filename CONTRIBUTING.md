@@ -3,7 +3,7 @@
 Contributions are welcome. Discuss substantial product or architecture changes in an issue before implementation. Bug fixes, accessibility improvements, image alignment improvements, and security tests are especially useful.
 
 1. Fork the repository and create a descriptive feature branch.
-2. Follow the README local setup. Use Node.js 22+ and `npm ci`.
+2. Follow the README local setup. Use Node.js 22.12+ and `npm ci`.
 3. Keep code, comments, documentation, UI strings, and commit messages in English.
 4. Preserve the deliberately minimal two-state layout and the large comparison surface. Put advanced options in dialogs rather than sidebars.
 5. Keep original image bytes intact. Never silently normalize resolutions or encode new JPEG/WebP copies.

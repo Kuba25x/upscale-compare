@@ -12,7 +12,7 @@ interface Props {
 }
 export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) {
   const stage = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 1, height: 1 });
+  const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
   const [fullscreen, setFullscreen] = useState(false);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -24,14 +24,13 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
     height: size.height,
   };
   const scale = scaleFor(config.view, panel, bounds, dpr);
-  const origin = originFor(config.view, panel, scale, dpr);
   const latest = useRef({ config, panel, bounds, dpr });
   latest.current = { config, panel, bounds, dpr };
   useEffect(() => {
     const resize = () => {
       if (stage.current) {
         const rect = stage.current.getBoundingClientRect();
-        setSize({ width: rect.width, height: rect.height });
+        setSize({ width: rect.width, height: rect.height, x: rect.left, y: rect.top });
         setDpr(window.devicePixelRatio || 1);
       }
     };
@@ -73,7 +72,8 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
       } = latest.current;
       const rect = stage.current!.getBoundingClientRect();
       let x = event.clientX - rect.left;
-      if (current.mode === 'side' && x > currentPanel.width) x -= currentPanel.width + 1;
+      const rightPanel = current.mode === 'side' && x > currentPanel.width;
+      if (rightPanel) x -= currentPanel.width + 1;
       const offset = {
         x: x - currentPanel.width / 2,
         y: event.clientY - rect.top - currentPanel.height / 2,
@@ -89,6 +89,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
             offset,
             ratio,
             currentPanel,
+            { x: rect.left + (rightPanel ? currentPanel.width + 1 : 0), y: rect.top },
           ),
         };
       });
@@ -201,24 +202,32 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
       divider: clamp((clientX - rect.left) / rect.width, 0, 1),
     }));
   };
-  const layer = (image: LocalImage, side: 'A' | 'B') => (
-    <img
-      className="comparison-image"
-      data-testid={`image-${side}`}
-      src={image.url}
-      alt={image.label}
-      draggable={false}
-      width={image.width}
-      height={image.height}
-      style={{
-        left: origin.x,
-        top: origin.y,
-        width: image.width * scale,
-        height: image.height * scale,
-        imageRendering: config.view.zoom !== null && config.view.zoom >= 1 ? 'pixelated' : 'auto',
-      }}
-    />
-  );
+  const layer = (image: LocalImage, side: 'A' | 'B') => {
+    const panelOffset = config.mode === 'side' && side === 'B' ? panel.width + 1 : 0;
+    const origin = originFor(config.view, panel, scale, dpr, {
+      x: size.x + panelOffset,
+      y: size.y,
+    });
+    return (
+      <img
+        className="comparison-image"
+        data-testid={`image-${side}`}
+        src={image.url}
+        alt={image.label}
+        draggable={false}
+        width={image.width}
+        height={image.height}
+        style={{
+          left: 0,
+          top: 0,
+          transform: `translate(${origin.x + panelOffset}px, ${origin.y}px)`,
+          width: image.width * scale,
+          height: image.height * scale,
+          imageRendering: config.view.zoom !== null && config.view.zoom >= 1 ? 'pixelated' : 'auto',
+        }}
+      />
+    );
+  };
   return (
     <div className="viewer-content">
       <div
@@ -254,7 +263,8 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
             };
             const rect = stage.current!.getBoundingClientRect();
             let localX = midpoint.x - rect.left;
-            if (config.mode === 'side' && localX > panel.width) localX -= panel.width + 1;
+            const rightPanel = config.mode === 'side' && localX > panel.width;
+            if (rightPanel) localX -= panel.width + 1;
             updateView((view) => {
               const oldScale = scaleFor(view, panel, bounds, dpr);
               const moved = panBy(
@@ -269,6 +279,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
                 { x: localX - panel.width / 2, y: midpoint.y - rect.top - panel.height / 2 },
                 dpr,
                 panel,
+                { x: rect.left + (rightPanel ? panel.width + 1 : 0), y: rect.top },
               );
             });
           } else
@@ -354,8 +365,18 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
           </>
         ) : (
           <div className="side-panels">
-            <div className="image-panel">{layer(a, 'A')}</div>
-            <div className="image-panel">{layer(b, 'B')}</div>
+            <div
+              className="image-panel side-layer"
+              style={{ clipPath: `inset(0 ${((panel.width + 1) / size.width) * 100}% 0 0)` }}
+            >
+              {layer(a, 'A')}
+            </div>
+            <div
+              className="image-panel side-layer"
+              style={{ clipPath: `inset(0 0 0 ${((panel.width + 1) / size.width) * 100}%)` }}
+            >
+              {layer(b, 'B')}
+            </div>
           </div>
         )}
         <span className="image-badge badge-a">

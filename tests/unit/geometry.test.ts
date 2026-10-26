@@ -57,3 +57,16 @@ describe('publication manifest', () => {
     expect(manifestSchema.safeParse(data).success).toBe(false);
   });
 });
+
+it('snaps to the global display grid when a panel has a fractional physical offset', () => {
+  const position = { x: 9, y: 77 };
+  const result = originFor(
+    { zoom: 1, center: { x: 320, y: 240 } },
+    { width: 631, height: 651 },
+    0.8,
+    1.25,
+    position,
+  );
+  expect(((result.x + position.x) * 1.25) % 1).toBeCloseTo(0);
+  expect(((result.y + position.y) * 1.25) % 1).toBeCloseTo(0);
+});

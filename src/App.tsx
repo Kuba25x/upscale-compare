@@ -415,7 +415,7 @@ export default function App() {
           {route ? 'Opening comparison…' : 'Loading original images…'}
         </div>
       )}
-      {error && (
+      {error && modal !== 'upload' && (
         <div className="toast" role="alert">
           <span>{error}</span>
           <button className="icon-button" aria-label="Dismiss error" onClick={() => setError('')}>
@@ -466,6 +466,11 @@ export default function App() {
           <p className="muted small">
             PNG, JPEG, WebP · 20 MB per image · 40 MB total when sharing · 36 MP per image
           </p>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
           <div className="modal-actions">
             {!readOnly && images.length < 4 && (
               <button disabled={loading} onClick={() => requestFiles({ kind: 'add' })}>
@@ -546,6 +551,15 @@ export default function App() {
             high-density displays. Fit adapts to your window. Different image sizes share one scale
             and the same top-left origin; they are never stretched to match. Browser color
             management may affect displayed colors; HDR inspection is not supported.
+          </p>
+          <p className="muted small">
+            <a
+              href={`${import.meta.env.BASE_URL}third-party-licenses.txt`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Third-party licenses ↗
+            </a>
           </p>
           <div className="modal-actions">
             <a className="text-link" href={SOURCE} target="_blank" rel="noreferrer">

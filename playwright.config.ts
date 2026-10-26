@@ -38,6 +38,19 @@ export default defineConfig({
       },
     },
     {
+      name: 'fractional-dpi',
+      testMatch: /viewer/,
+      grep: /pixel/,
+      use: {
+        viewport: { width: 1280, height: 800 },
+        deviceScaleFactor: 1.25,
+        launchOptions: {
+          executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium',
+          args: ['--no-sandbox'],
+        },
+      },
+    },
+    {
       name: 'mobile',
       testMatch: /mobile/,
       use: {
