@@ -5,6 +5,7 @@ worker/dist/
 .env
 .env.*
 !.env.example
+!.env.demo
 .dev.vars
 worker/.dev.vars
 test-results/

@@ -20,9 +20,16 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-The application is implemented and pushed on branch `feat/upscale-compare`, with [pull request #1](https://github.com/Kuba25x/upscale-compare/pull/1) open for review against `main`. Both implementation checkpoints survived the usage-limit interruption. [GitHub Actions Validate run #1](https://github.com/Kuba25x/upscale-compare/actions/runs/40389516336) passed on commit `fd6655f46c642209f493e2a3f65d8d327541eb71`. No production resources have been created or deployed. Cloudflare credentials remain absent. Ordinary configured Git supports pushes and the GitHub connector supports PR operations; the standalone GitHub CLI did not authenticate in this environment.
+PR #1 is merged into `main`. The frontend-only demo is implemented, verified, and pushed on the separate branch `feat/github-pages-demo`, based on `origin/main` (`f4b3e11`), with [PR #2](https://github.com/Kuba25x/upscale-compare/pull/2) open against `main`. The requested destination is `https://kuba25x.github.io/upscale-compare/`; no deployment has been performed. GitHub Pages is already configured by the owner to use GitHub Actions.
+
+The `demo` build disables sharing and rejects public comparison routes/API helpers locally while preserving every local viewer feature. Public `.env.demo` configuration supplies the repository asset base. The existing Cloudflare backend, full production behavior, security controls, and AGPL-3.0 license are preserved. The Pages workflow defaults to `demo`, requires explicit `DEPLOY` confirmation, and retains a separate `production` choice with its original backend/key checks.
 
 ## Completed features
+
+- Frontend-only `build:demo`, `dev:demo`, and production-bundle `test:demo` commands; no backend process or cloud configuration is needed.
+- Disabled Share Comparison with visible accessible demo notices; direct shared links are refused without network requests; demo privacy information is accurate.
+- Manual demo/production Pages workflow options; demo tests run before publishing the static artifact. No deployment is triggered by pushes or PRs.
+- Four new configuration/API-guard unit tests and ten production demo browser cases, including no unintended API or third-party requests.
 
 - Minimal dark landing and viewer layouts following both supplied wireframes, with a viewport-centered title, adjacent share/upload buttons, and bottom A/B controls.
 - Local upload/drop of 2–4 PNG/JPEG/WebP files, replacement/addition, custom labels, dimensions/file information, original byte preservation and mismatch warnings.
@@ -35,18 +42,23 @@ The application is implemented and pushed on branch `feat/upscale-compare`, with
 
 ## Tests executed
 
-- `npm run build`: passed, including separate frontend/Worker TypeScript checks.
-- `npm test`: 47 passed (31 unit + 16 Miniflare API integration tests).
-- `npm run test:e2e`: all 17 passed in the final full run, including desktop, DPR 1.25/DPR 2, mobile touch, shared navigation/refresh and owner deletion. Total automated tests: 64 passed.
-- Actual screenshot pixel samples match original RGBA at 100% in both modes on DPR 1, 1.25 and 2. Global physical-pixel snapping and shared full-stage clipping avoid fractional CSS layout rounding in Chromium.
-- Desktop/mobile screenshots visually inspected. Title text and landing-button centering refinements are covered by the passing browser run.
-- Full production + tooling dependency audit: zero known vulnerabilities. Vitest is 5.0.5, and direct Miniflare is pinned to Wrangler's patched 5.20261023.0-beta using its supported configuration adapter. Runtime MIT/ISC licenses were verified and included in a generated public notice.
-- Found and fixed cursor-anchor rounding, dialog persistence on hash navigation and fractional Side-by-Side rasterization. DOM floating-point expectations use numerical precision tolerances; rendered source-pixel RGBA assertions remain exact.
-- `npm run format:check` and `git diff --check`: passed.
-- Production repository-subpath build, browser smoke, config generation and Worker dry-run packaging: passed; no deployment occurred. The final resumed browser smoke also verified the generated runtime license artifact and reported no browser errors.
-- Hosted GitHub Actions Validate run #1: success (production build, unit/API tests, Chromium E2E, full dependency audit and repository-subpath build).
+Current demo task, 2026-10-26:
+
+- `npm run build`: passed, including normal frontend/Worker TypeScript checks and both production bundles.
+- `npm test`: 51 passed (35 unit + 16 local D1/R2 integration tests). Demo guards also preserve configured production sharing and local development behavior.
+- `npm run test:e2e`: all 17 existing Chromium desktop, DPR 1.25/DPR 2, and mobile tests passed, including publishing, direct navigation, refresh and owner deletion.
+- `npm run test:demo`: production frontend-only build and all 10 desktop/mobile browser cases passed at `/upscale-compare/`, without any Worker/API process. Cases cover local uploads, four-image selection, labels/metadata, addition/replacement, split divider, both modes, synchronized navigation, exact source-pixel RGBA, keyboard/fullscreen, privacy, shared-link rejection and static assets.
+- Total automated tests: 78 passed. Demo browser interception rejected/reported unexpected requests; none occurred, and no Turnstile script/frame was present.
+- Generated demo JavaScript contains neither the localhost backend address nor the Turnstile script URL. HTML script, stylesheet, favicon and runtime-license paths use the correct repository subpath.
+- Full dependency audit: zero known vulnerabilities. No dependencies changed.
+- Formatting, whitespace checks and visual inspection of the rendered demo landing page: passed.
+- `worker/` and `LICENSE` are unchanged. No Cloudflare resources were modified, no paid services activated and no Pages deployment dispatched.
+
+The original full application also passed hosted GitHub Actions before PR #1 was merged. Hosted validation for this demo branch is available in the checks on PR #2; its CI includes both the unchanged full-stack tests and the new production demo tests. No deployment workflow is dispatched by that validation.
 
 ## Known limitations
+
+- Demo publishing and remote comparison viewing are intentionally disabled. The real Pages URL has not been deployed or live-tested; production-bundle subpath tests run locally.
 
 - No production deployment, Cloudflare account permission check, real Turnstile smoke test, or provider CPU budget benchmark has been performed.
 - JPEG/WebP content is structurally validated, not fully decoded server-side. PNG additionally validates its bounded complete decompressed raster. Animated, interlaced PNG, or rotated/mirrored EXIF uploads are not accepted for publication.
@@ -57,7 +69,7 @@ The application is implemented and pushed on branch `feat/upscale-compare`, with
 
 ## Exact next steps
 
-1. Review [PR #1](https://github.com/Kuba25x/upscale-compare/pull/1). The application is ready for code review; do not restart implementation. Keep `main` unchanged until review/merge is authorized.
-2. Leave production disabled. After owner approval, configure a private Cloudflare R2 bucket, D1 database, least-privilege token, Turnstile widget/secrets, operator privacy/abuse contacts and GitHub deployment environment variables. Follow `docs/DEPLOYMENT.md`.
-3. Run the documented real-provider smoke tests and CPU/quota review before enabling public uploads. Deploy only after explicit authorization; do not enable paid resources without approval.
-4. If code changes during review, run the affected tests and update this checkpoint. Local preview can be started with the README commands; no Internet-public preview or production URL exists yet.
+1. Review [PR #2](https://github.com/Kuba25x/upscale-compare/pull/2) and its Validate check. Implementation and all 78 local tests are complete. Keep the PR unmerged until owner review.
+2. After review and merge, the owner can deploy manually: Actions → Deploy frontend to GitHub Pages → Run workflow → branch `main` → `deployment_mode=demo` → `confirmation=DEPLOY` → Run workflow. Follow `docs/DEPLOYMENT.md`.
+3. Do not dispatch deployment on the owner's behalf. Demo deployment requires no Cloudflare credentials or resources. Keep full production sharing disabled until its separate provider setup and authorization are complete.
+4. Continue from this branch/PR rather than restarting implementation. Preserve the existing full-stack code and tests for future Cloudflare integration.

@@ -56,3 +56,9 @@ Deletion first makes a record inaccessible, then deletes its objects, then relea
 The canonical public link is `https://api-host/s/<16-hex-id>`. Its server-generated HTML includes escaped Open Graph metadata and redirects to `FRONTEND_URL#c/<id>`. GitHub Pages serves the same static entry point for every hash route, including repository subpaths. Social services receive an original selected image, not a generated composite; provider caching and preview support vary.
 
 Published manifests are immutable. Visitors may change navigation or selection in memory but cannot change stored files, labels, or metadata. Uploading from a shared page creates a fresh local comparison. Deletion capabilities are stored in browser localStorage under API origin + comparison ID and can be downloaded privately. They are never part of public manifests, URLs, or logs.
+
+## Demo build boundary
+
+`src/lib/config.ts` identifies Vite mode `demo` or an explicit `VITE_DEMO_MODE=true` flag. The Pages workflow defaults to `demo` and builds with `npm run build:demo`. A separate production-bundle browser suite requires no backend process. The default full-stack scripts and Worker implementation are preserved.
+
+In demo mode, the header keeps Share Comparison in its existing position, disabled and described by a visible notice. The sharing dialog never mounts. Direct hash routes explain that sharing is unavailable before fetching metadata or constructing image URLs. API helpers additionally reject requests/remote URL construction and expose no localhost fallback. A configured API URL or Turnstile key cannot enable networking in a demo build.

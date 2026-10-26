@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { emptyMetadata, type Config, type LocalImage, type Metadata } from '../shared/model';
 import { API_URL, fetchComparison, publicImageUrl } from './lib/api';
+import { DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/config';
 import { formatBytes, loadImage } from './lib/images';
 import { Viewer } from './components/Viewer';
 import { Modal } from './components/Modal';
@@ -63,6 +64,10 @@ export default function App() {
     let active = true;
     if (!route) return;
     setModal(null);
+    if (DEMO_MODE) {
+      setError(SHARING_UNAVAILABLE_MESSAGE);
+      return;
+    }
     const match = route.match(/^#c\/([a-f0-9]{16})$/);
     if (!match) {
       setError('This comparison link is invalid.');
@@ -279,11 +284,14 @@ export default function App() {
             <button
               className="share-button"
               onClick={() => setModal('share')}
-              disabled={loading || images.some((image) => !image.label.trim())}
+              disabled={DEMO_MODE || loading || images.some((image) => !image.label.trim())}
+              aria-describedby={DEMO_MODE ? 'demo-sharing-note' : undefined}
               title={
-                images.some((image) => !image.label.trim())
-                  ? 'Give each image a label before sharing.'
-                  : 'Create or copy a public comparison link'
+                DEMO_MODE
+                  ? SHARING_UNAVAILABLE_MESSAGE
+                  : images.some((image) => !image.label.trim())
+                    ? 'Give each image a label before sharing.'
+                    : 'Create or copy a public comparison link'
               }
             >
               <Share2 size={16} />
@@ -381,6 +389,11 @@ export default function App() {
               <span>Your zoom and image selection are local to this view.</span>
             </div>
           )}
+          {DEMO_MODE && (
+            <p id="demo-sharing-note" className="demo-notice">
+              Demo · Public sharing is not available yet. Images stay in this browser.
+            </p>
+          )}
         </main>
       ) : (
         <main className="landing">
@@ -395,12 +408,18 @@ export default function App() {
             </button>
             <p>Drop 2–4 screenshots here to compare</p>
             <span className="landing-hint">
-              PNG recommended · Original quality · Private until shared
+              PNG recommended · Original quality ·{' '}
+              {DEMO_MODE ? 'Images stay on this device' : 'Private until shared'}
             </span>
+            {DEMO_MODE && (
+              <p id="demo-sharing-note" className="demo-notice">
+                Demo · Public sharing is not available yet.
+              </p>
+            )}
           </div>
           <footer className="landing-footer">
             <button className="text-button" onClick={() => setModal('privacy')}>
-              Local first. Yours to share.
+              {DEMO_MODE ? 'Your images stay in this browser.' : 'Local first. Yours to share.'}
             </button>
             <a href={SOURCE} target="_blank" rel="noreferrer">
               <Github size={14} />
@@ -502,7 +521,7 @@ export default function App() {
           }}
         />
       )}
-      {modal === 'share' && (
+      {modal === 'share' && !DEMO_MODE && (
         <ShareDialog
           images={images}
           manifest={manifest}
@@ -580,28 +599,41 @@ export default function App() {
               Local images are decoded in your browser. They are not sent to a server until you
               explicitly publish. Closing or refreshing the page clears an unpublished comparison.
             </p>
-            <h3>Share publicly</h3>
-            <p>
-              Publishing sends the unmodified files and comparison metadata to the configured
-              sharing service. Anyone with the link can view or download them. Files may include
-              embedded EXIF or other metadata.
-            </p>
-            <h3>Stay in control</h3>
-            <p>
-              A private deletion key is saved in this browser and can be downloaded after
-              publishing. Keep it private. Deleted links stop working, but copies already saved by
-              other people cannot be removed.
-            </p>
-            <h3>Service protection</h3>
-            <p>
-              The sharing service temporarily stores hashed network identifiers to enforce rate
-              limits. Production publishing uses Cloudflare Turnstile. Hosting providers may process
-              connection logs under their own policies.
-            </p>
-            <p>
-              For abuse reports, contact the operator of your sharing service with the comparison
-              URL. This open-source project does not operate a hosted upload service.
-            </p>
+            {DEMO_MODE ? (
+              <>
+                <h3>Frontend-only demo</h3>
+                <p>
+                  Public sharing is not available in this demo. Images, labels, and metadata stay in
+                  this browser and are cleared on refresh. No sharing service or verification widget
+                  is contacted.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3>Share publicly</h3>
+                <p>
+                  Publishing sends the unmodified files and comparison metadata to the configured
+                  sharing service. Anyone with the link can view or download them. Files may include
+                  embedded EXIF or other metadata.
+                </p>
+                <h3>Stay in control</h3>
+                <p>
+                  A private deletion key is saved in this browser and can be downloaded after
+                  publishing. Keep it private. Deleted links stop working, but copies already saved
+                  by other people cannot be removed.
+                </p>
+                <h3>Service protection</h3>
+                <p>
+                  The sharing service temporarily stores hashed network identifiers to enforce rate
+                  limits. Production publishing uses Cloudflare Turnstile. Hosting providers may
+                  process connection logs under their own policies.
+                </p>
+                <p>
+                  For abuse reports, contact the operator of your sharing service with the
+                  comparison URL. This open-source project does not operate a hosted upload service.
+                </p>
+              </>
+            )}
           </div>
           <div className="modal-actions">
             <a
