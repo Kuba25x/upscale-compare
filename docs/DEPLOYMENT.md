@@ -2,6 +2,48 @@
 
 Production is deliberately not deployed by default. Do not create resources, enable billable services, expose the development Worker, or enable public uploads without the project owner's approval.
 
+## Frontend-only GitHub Pages demo
+
+This option publishes the local comparison application without any Cloudflare integration. It does not need Workers, R2, D1, an API URL, a Turnstile site key, or cloud secrets. Public sharing is visibly disabled; API helpers also reject calls in demo mode, including direct shared-link navigation. All local upload, metadata, inspection, labeling, and image-selection features remain available.
+
+The owner has already selected **GitHub Actions** under **Settings → Pages → Build and deployment → Source**. After reviewing and merging the demo PR into `main`:
+
+1. Open the repository's **Actions** tab.
+2. Select **Deploy frontend to GitHub Pages**.
+3. Click **Run workflow** and select branch **main**.
+4. Set **deployment_mode** to **demo** (the default).
+5. Enter **DEPLOY** exactly in **confirmation**, then click **Run workflow**.
+6. If the `github-pages` environment requires approval, approve that deployment in GitHub.
+7. Wait for the deployment job to finish. The expected URL is [https://kuba25x.github.io/upscale-compare/](https://kuba25x.github.io/upscale-compare/).
+
+The workflow only publishes after that explicit manual dispatch. A push, merge, or PR does not deploy the site. An incorrect confirmation skips publishing. The demo branch of the workflow runs `npm run test:demo`, which creates a production Vite bundle and exercises it in Chromium before uploading `dist/`. It does not start a Worker or initialize D1/R2. The existing full-stack CI continues to verify backend regressions separately.
+
+`.env.demo` is committed public build configuration:
+
+```dotenv
+VITE_DEMO_MODE=true
+VITE_API_URL=
+VITE_TURNSTILE_SITE_KEY=
+VITE_BASE_PATH=/upscale-compare/
+```
+
+`npm run build:demo` selects Vite mode `demo`; that mode always disables sharing, even if an environment override mistakenly sets `VITE_DEMO_MODE=false` or provides backend credentials. The generated frontend contains no secrets. The workflow sets `VITE_BASE_PATH=/<repository-name>/`, so asset paths match GitHub Pages. A custom root domain requires an intentional base-path override.
+
+For a local preview and tests:
+
+```bash
+npm run build:demo
+npm run preview -- --mode demo
+# In another terminal, or after stopping the preview:
+npm run test:demo
+```
+
+The preview is served at `http://localhost:4173/upscale-compare/`. Tests use a separate preview server on port 4174, desktop and mobile viewports, and reject unexpected API/external requests. No Cloudflare account or local API server is necessary.
+
+## Full production sharing
+
+The following existing Cloudflare setup is only needed when enabling public sharing. Select **production** in the same manual Pages workflow once this configuration is ready. Demo deployment does not depend on it.
+
 ## 1. Provision approved Cloudflare resources
 
 After approval, create a private R2 bucket and a D1 database named `upscale-compare`. R2 activation may require billing details even when expected usage is within the free allowance. Do not turn on R2 public bucket access, r2.dev access, or unrestricted client uploads.
@@ -41,7 +83,7 @@ GitHub repository variables:
 | `VITE_API_URL`            | `https://upscale-compare-api.your-subdomain.workers.dev` |
 | `VITE_TURNSTILE_SITE_KEY` | Public Turnstile site key                                |
 
-Select GitHub Actions as the Pages source in repository settings. The manual **Deploy frontend to GitHub Pages** workflow builds with `VITE_BASE_PATH=/<repository-name>/`. Run it only when deployment is approved and type `DEPLOY`. It runs unit, API and browser tests before publishing. A custom domain hosted at `/` needs `VITE_BASE_PATH=/` instead; adjust the workflow intentionally.
+Select GitHub Actions as the Pages source in repository settings. The manual **Deploy frontend to GitHub Pages** workflow builds with `VITE_BASE_PATH=/<repository-name>/`. Choose `deployment_mode=production`, run it only when deployment is approved, and type `DEPLOY`. It runs unit, API and browser tests before publishing. A custom domain hosted at `/` needs `VITE_BASE_PATH=/` instead; adjust the workflow intentionally.
 
 For a manual build:
 

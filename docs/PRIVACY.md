@@ -2,6 +2,10 @@
 
 This repository is software, not a hosted upload service. Each deployment operator is responsible for publishing their own legal identity, contact details, applicable legal basis, provider policies, and retention information before enabling public uploads.
 
+## Frontend-only demo
+
+The demo build does not connect to the sharing API, load Turnstile, or upload images or comparison metadata. Local file inspection remains available, but publication and remote comparison viewing are disabled with a visible explanation. Refreshing or closing the page clears local images, labels, and metadata. GitHub Pages still receives ordinary requests for public application files and may process hosting access logs; this is separate from screenshot handling.
+
 ## Local comparisons
 
 Screenshots selected on your device are read into browser memory and displayed using object URLs. The application does not upload them during selection, comparison, renaming, metadata editing, zooming, or panning. There is no advertising, analytics SDK, tracking cookie, remote font, or automatic image sync. Reloading or closing the page loses unpublished images.

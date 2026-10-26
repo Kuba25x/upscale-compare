@@ -6,6 +6,7 @@
 npm run build
 npm test
 npm run test:e2e
+npm run test:demo
 npm run format:check
 npm audit --audit-level=high
 ```
@@ -29,8 +30,9 @@ Last verified development checkpoint: 2026-10-26.
 
 - Frontend and Worker TypeScript checks: passed.
 - Vite production build and Worker bundle: passed.
-- Unit + Miniflare integration suite: **47 passed**.
+- Unit + Miniflare integration suite: **51 passed** (including four demo configuration/API guard tests).
 - Chromium desktop/HiDPI/mobile suite: **17 passed**, including exact RGBA checks in both modes at DPR 1, 1.25 and 2, owner deletion and the deleted-link page.
+- Production demo browser suite: **10 passed** on desktop/mobile, with all unexpected API/external requests monitored and none observed. Total automated tests: **78 passed**.
 - Full runtime and development dependency audit: **0 known vulnerabilities**.
 - Desktop and mobile rendered screenshots: inspected against the supplied wireframes.
 - Production repository-subpath browser smoke: passed (assets, centered landing, JPEG/WebP upload, 1:1 size and mode switching; no browser errors).
@@ -44,3 +46,11 @@ Chromium emulation is not a physical iPhone/Android device or a Safari/Firefox r
 Static GitHub Pages subpath output is checked separately during CI. Publishing uses original byte comparisons; no lossy round-trip is introduced by the app. Full JPEG/WebP decoding is delegated to the browser, while the server performs structural validation. See SECURITY.md and deployment docs for operational boundaries.
 
 The test suite pins Miniflare to the same patched version bundled with Wrangler (`5.20261023.0-beta`) and uses its supported v4-options adapter. This avoids outdated image/network dependencies in the older stable Miniflare package; the lockfile records the exact tooling.
+
+## Frontend-only demo verification
+
+`npm run test:demo` builds with Vite mode `demo` and runs `playwright.demo.config.ts` against the static production preview at `/upscale-compare/`. It starts no Worker, D1, or R2 process. Each browser case intercepts requests, permits only the demo's own asset subpath (plus local object URLs), and fails if it attempts an API, short-link backend, or third-party verification request. Shared-link navigation and refresh are explicitly exercised.
+
+The suite also verifies accessible sharing explanations, metadata/labels, four-image selection, addition/replacement, synchronized zoom/pan, divider interaction, physical source pixels, shortcuts/fullscreen, mobile overflow, and static favicon/license assets. Unit tests prove that both demo-mode activation mechanisms reject API helpers even if a backend URL is supplied, while normal production and local-development behavior are retained.
+
+The generated demo bundle was additionally inspected: Vite asset paths include `/upscale-compare/`; runtime JavaScript includes no `http://localhost:8787` address or Turnstile script URL. The real GitHub Pages deployment is intentionally not dispatched during implementation.

@@ -1,7 +1,11 @@
 import type { LocalImage, Manifest, PublicComparison } from '../../shared/model';
+import { DEMO_MODE, requireSharing } from './config';
 
-export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8787').replace(/\/$/, '');
+export const API_URL = DEMO_MODE
+  ? ''
+  : (import.meta.env.VITE_API_URL || 'http://localhost:8787').replace(/\/$/, '');
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  requireSharing();
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, init);
@@ -17,6 +21,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   return response;
 }
 export async function publish(images: LocalImage[], manifest: Manifest, challenge: string) {
+  requireSharing();
   const body = new FormData();
   body.append('manifest', JSON.stringify(manifest));
   body.append('challenge', challenge);
@@ -30,6 +35,11 @@ export async function publish(images: LocalImage[], manifest: Manifest, challeng
 export async function fetchComparison(id: string): Promise<PublicComparison> {
   return (await apiFetch(`/api/comparisons/${encodeURIComponent(id)}`)).json();
 }
-export const publicImageUrl = (id: string, index: number) =>
-  `${API_URL}/api/comparisons/${id}/images/${index}`;
-export const shareHashUrl = (id: string) => `${location.origin}${import.meta.env.BASE_URL}#c/${id}`;
+export const publicImageUrl = (id: string, index: number) => {
+  requireSharing();
+  return `${API_URL}/api/comparisons/${id}/images/${index}`;
+};
+export const shareHashUrl = (id: string) => {
+  requireSharing();
+  return `${location.origin}${import.meta.env.BASE_URL}#c/${id}`;
+};

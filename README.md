@@ -13,6 +13,22 @@ A focused, open-source image quality comparison tool for game screenshots. Compa
 - Explicit public publishing, immutable comparison snapshots, short share links, social preview metadata, private deletion keys, and operator moderation.
 - Original file bytes are stored and served without re-encoding. Different dimensions use the same scale and top-left origin; images are never stretched to match.
 
+## Frontend-only demo
+
+The GitHub Pages demo works without Cloudflare or any backend configuration. All local comparison tools remain available. **Share Comparison is disabled**, and published comparison links show an explanation instead of contacting a server. Images, labels, and metadata remain in browser memory and are lost on refresh. No Turnstile widget is loaded.
+
+```bash
+npm ci
+npm run build:demo
+npm run preview -- --mode demo
+```
+
+Open [http://localhost:4173/upscale-compare/](http://localhost:4173/upscale-compare/). For development, use `npm run dev:demo`. Public `.env.demo` configuration sets the `/upscale-compare/` asset base automatically; it contains no secrets. `npm run test:demo` builds and tests this production bundle with no Worker, D1, or R2 process.
+
+For the approved GitHub Pages destination, follow [manual demo deployment](docs/DEPLOYMENT.md#frontend-only-github-pages-demo). Choose **demo** and explicitly confirm **DEPLOY** in the workflow. No API URL, Turnstile key, or Cloudflare credentials are needed. The source is prepared for [https://kuba25x.github.io/upscale-compare/](https://kuba25x.github.io/upscale-compare/); this documentation does not indicate that deployment has been performed.
+
+The original full-stack build and backend remain available. Use the existing commands below, or select **production** in the Pages workflow after configuring the sharing service.
+
 ## Quick start
 
 Requires Node.js 22.12 or later (Node.js 24 is used in CI) and npm. No Cloudflare account is required for local development.
@@ -60,6 +76,7 @@ npm run typecheck
 npm run build
 npm test
 npm run test:e2e
+npm run test:demo
 ```
 
 Playwright uses `/usr/bin/chromium` by default. On other systems:
@@ -67,6 +84,7 @@ Playwright uses `/usr/bin/chromium` by default. On other systems:
 ```bash
 npx playwright install chromium
 CHROMIUM_PATH=/path/to/chromium npm run test:e2e
+npm run test:demo
 ```
 
 Use `node -e "console.log(require('playwright').chromium.executablePath())"` to locate the downloaded browser. End-to-end tests launch Vite and local Wrangler automatically. Unit and API tests use isolated Miniflare D1/R2 instances. See [testing](docs/TESTING.md) for coverage and executed results.
@@ -89,7 +107,7 @@ Hash routes make direct links and browser refreshes work on GitHub Pages without
 
 Defaults: 2–4 images, 20 MiB per file, 40 MiB total per publication, 36 megapixels per image, and 16,384 pixels per side. The server also enforces configurable request, storage, comparison-count, and IP rate limits. Public PNG publishing accepts non-interlaced still images. Rotated/mirrored EXIF images must be exported with normalized orientation before publishing. JPEG/WebP validation checks container structure and dimensions; PNG validation additionally checks chunk CRCs and the complete bounded decompressed raster. See [security](SECURITY.md) for scope and limitations.
 
-Production requires an allowed HTTPS frontend origin, private R2, initialized D1, a Turnstile challenge, and operator-configured moderation. Deployment workflows are manual and require a `DEPLOY` confirmation. The API workflow deploys with public uploads **disabled**. No paid resources are created automatically. See [deployment and free-tier limitations](docs/DEPLOYMENT.md) before enabling uploads.
+Production sharing requires an allowed HTTPS frontend origin, private R2, initialized D1, a Turnstile challenge, and operator-configured moderation. Deployment workflows are manual and require a `DEPLOY` confirmation. The API workflow deploys with public uploads **disabled**. No paid resources are created automatically. See [deployment and free-tier limitations](docs/DEPLOYMENT.md) before enabling uploads.
 
 ## Privacy and deletion
 

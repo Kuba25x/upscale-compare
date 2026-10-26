@@ -31,3 +31,7 @@ Rate limiting trusts Cloudflare's `CF-Connecting-IP` at the public edge. Local d
 A D1/R2 operation interrupted between services can leave a pending reservation. The scheduled janitor retries records older than one hour. A failure before the initial pending record is inserted can leave conservative quota over-accounting; see the documented reconciliation procedure. Storage reservations fail closed. HTTP request concurrency and provider billing limits are not replaced by this application's storage quota.
 
 No production endpoint has been deployed or penetration-tested as part of local development. Enabling public uploads requires operator review, real Turnstile verification, restricted secrets, a deletion/moderation smoke test, provider quota/budget review, and explicit deployment authorization.
+
+## Frontend-only demo
+
+The demo build does not expose an upload endpoint and never invokes the sharing API or Turnstile. Public route loading and API helpers fail locally with an explanation. Existing Cloudflare security controls remain part of the full deployment. The manual Pages workflow defaults to demo mode and still requires explicit `DEPLOY` confirmation; no Cloudflare resources are created or changed by demo deployment.

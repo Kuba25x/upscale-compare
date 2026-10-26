@@ -20,7 +20,11 @@
     "check": "npm run build && npm test && npm run test:e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "notices": "node scripts/generate-notices.mjs"
+    "notices": "node scripts/generate-notices.mjs",
+    "typecheck:frontend": "tsc --noEmit",
+    "build:demo": "npm run notices && npm run typecheck:frontend && vite build --mode demo",
+    "dev:demo": "vite --host 0.0.0.0 --mode demo",
+    "test:demo": "npm run build:demo && playwright test --config playwright.demo.config.ts"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
