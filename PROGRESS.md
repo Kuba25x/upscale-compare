@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PR #1 is merged into `main`. The frontend-only demo is implemented and verified on the separate branch `feat/github-pages-demo`, based on `origin/main` (`f4b3e11`). The requested destination is `https://kuba25x.github.io/upscale-compare/`; no deployment has been performed. GitHub Pages is already configured by the owner to use GitHub Actions.
+PR #1 is merged into `main`. The frontend-only demo is implemented, verified, and pushed on the separate branch `feat/github-pages-demo`, based on `origin/main` (`f4b3e11`), with [PR #2](https://github.com/Kuba25x/upscale-compare/pull/2) open against `main`. The requested destination is `https://kuba25x.github.io/upscale-compare/`; no deployment has been performed. GitHub Pages is already configured by the owner to use GitHub Actions.
 
 The `demo` build disables sharing and rejects public comparison routes/API helpers locally while preserving every local viewer feature. Public `.env.demo` configuration supplies the repository asset base. The existing Cloudflare backend, full production behavior, security controls, and AGPL-3.0 license are preserved. The Pages workflow defaults to `demo`, requires explicit `DEPLOY` confirmation, and retains a separate `production` choice with its original backend/key checks.
 
@@ -54,7 +54,7 @@ Current demo task, 2026-10-26:
 - Formatting, whitespace checks and visual inspection of the rendered demo landing page: passed.
 - `worker/` and `LICENSE` are unchanged. No Cloudflare resources were modified, no paid services activated and no Pages deployment dispatched.
 
-The original full application also passed hosted GitHub Actions before PR #1 was merged. Hosted validation for this separate demo branch will be recorded after its PR is created.
+The original full application also passed hosted GitHub Actions before PR #1 was merged. Hosted validation for this demo branch is available in the checks on PR #2; its CI includes both the unchanged full-stack tests and the new production demo tests. No deployment workflow is dispatched by that validation.
 
 ## Known limitations
 
@@ -69,7 +69,7 @@ The original full application also passed hosted GitHub Actions before PR #1 was
 
 ## Exact next steps
 
-1. Commit and push the verified demo changes, open a new PR targeting `main`, and record the PR/hosted CI result here.
+1. Review [PR #2](https://github.com/Kuba25x/upscale-compare/pull/2) and its Validate check. Implementation and all 78 local tests are complete. Keep the PR unmerged until owner review.
 2. After review and merge, the owner can deploy manually: Actions → Deploy frontend to GitHub Pages → Run workflow → branch `main` → `deployment_mode=demo` → `confirmation=DEPLOY` → Run workflow. Follow `docs/DEPLOYMENT.md`.
 3. Do not dispatch deployment on the owner's behalf. Demo deployment requires no Cloudflare credentials or resources. Keep full production sharing disabled until its separate provider setup and authorization are complete.
 4. Continue from this branch/PR rather than restarting implementation. Preserve the existing full-stack code and tests for future Cloudflare integration.
