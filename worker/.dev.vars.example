@@ -1,0 +1,4 @@
+# Local development only. Never commit real credentials.
+# Production secrets are set using wrangler secret put.
+TURNSTILE_SECRET=
+ADMIN_TOKEN=

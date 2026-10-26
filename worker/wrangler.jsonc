@@ -1,0 +1,31 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "upscale-compare-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "workers_dev": true,
+  "vars": {
+    "ENVIRONMENT": "development",
+    "UPLOADS_ENABLED": "true",
+    "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173",
+    "FRONTEND_URL": "http://localhost:5173/",
+    "MAX_FILE_BYTES": "20971520",
+    "MAX_TOTAL_BYTES": "41943040",
+    "MAX_DIMENSION": "16384",
+    "MAX_PIXELS": "36000000",
+    "MAX_STORAGE_BYTES": "5368709120",
+    "MAX_COMPARISONS": "1000",
+    "PUBLISHES_PER_HOUR": "10",
+    "READS_PER_MINUTE": "240",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "upscale-compare",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "upscale-compare-images" }],
+  "triggers": { "crons": ["17 * * * *"] },
+}
