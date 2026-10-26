@@ -361,6 +361,8 @@ input[type='checkbox'] {
   overflow: hidden;
   background: #17191e;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   cursor: grab;
   isolation: isolate;
 }
@@ -381,6 +383,7 @@ input[type='checkbox'] {
   position: absolute;
   max-width: none;
   user-select: none;
+  -webkit-user-drag: none;
   pointer-events: none;
 }
 .side-panels {

@@ -31,8 +31,8 @@ Last verified development checkpoint: 2026-10-26.
 - Frontend and Worker TypeScript checks: passed.
 - Vite production build and Worker bundle: passed.
 - Unit + Miniflare integration suite: **51 passed** (including four demo configuration/API guard tests).
-- Chromium desktop/HiDPI/mobile suite: **17 passed**, including exact RGBA checks in both modes at DPR 1, 1.25 and 2, owner deletion and the deleted-link page.
-- Production demo browser suite: **10 passed** on desktop/mobile, with all unexpected API/external requests monitored and none observed. Total automated tests: **78 passed**.
+- Chromium desktop/HiDPI/mobile suite: **21 passed**, including exact RGBA checks in both modes at DPR 1, 1.25 and 2, owner deletion and the deleted-link page.
+- Production demo browser suite: **14 passed** on desktop/mobile, with all unexpected API/external requests monitored and none observed. Total automated tests: **86 passed locally**.
 - Full runtime and development dependency audit: **0 known vulnerabilities**.
 - Desktop and mobile rendered screenshots: inspected against the supplied wireframes.
 - Production repository-subpath browser smoke: passed (assets, centered landing, JPEG/WebP upload, 1:1 size and mode switching; no browser errors).
@@ -54,3 +54,17 @@ The test suite pins Miniflare to the same patched version bundled with Wrangler 
 The suite also verifies accessible sharing explanations, metadata/labels, four-image selection, addition/replacement, synchronized zoom/pan, divider interaction, physical source pixels, shortcuts/fullscreen, mobile overflow, and static favicon/license assets. Unit tests prove that both demo-mode activation mechanisms reject API helpers even if a backend URL is supplied, while normal production and local-development behavior are retained.
 
 The generated demo bundle was additionally inspected: Vite asset paths include `/upscale-compare/`; runtime JavaScript includes no `http://localhost:8787` address or Turnstile script URL. The real GitHub Pages deployment is intentionally not dispatched during implementation.
+
+## Native dragging and panning regressions
+
+See [community patch review](PANNING_FIX_REVIEW.md) for attribution, reproduction evidence, and the limitations of the submitted two-drag test. `tests/shared/panning.ts` is run against both the regular viewer and the built demo. It checks repeated mouse panning after real multi-clicks, both image regions/modes and zoom changes, synchronized displacement, existing document selection, capture/blur/button cleanup, native `dragstart` cancellation, file-drop uploading, and focus recovery after editing a label.
+
+Chromium runs these regressions by default. To add the Firefox projects on a machine with download access:
+
+```bash
+npx playwright install --with-deps firefox
+RUN_FIREFOX=true npm run test:e2e
+RUN_FIREFOX=true npm run test:demo
+```
+
+CI enables Firefox automatically. With Firefox enabled, the suites contain 25 full-stack browser cases and 18 demo cases, in addition to 51 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.

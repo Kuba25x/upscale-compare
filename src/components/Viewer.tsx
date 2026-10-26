@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Expand, Info, Keyboard, Minus, Plus, Shrink } from 'lucide-react';
 import type { Config, LocalImage, View } from '../../shared/model';
 import { clamp, originFor, panBy, scaleFor, zoomAt } from '../lib/geometry';
@@ -17,6 +17,36 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
   const [fullscreen, setFullscreen] = useState(false);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const [panning, setPanning] = useState(false);
+  const endPointer = useCallback((pointerId: number) => {
+    pointers.current.delete(pointerId);
+    const element = stage.current;
+    if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+    setPanning(pointers.current.size > 0);
+  }, []);
+  const cancelPanning = useCallback(() => {
+    const element = stage.current;
+    for (const pointerId of pointers.current.keys()) {
+      if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+    }
+    pointers.current.clear();
+    setPanning(false);
+  }, []);
+  useEffect(() => {
+    const visibilityChange = () => {
+      if (document.hidden) cancelPanning();
+    };
+    window.addEventListener('blur', cancelPanning);
+    document.addEventListener('visibilitychange', visibilityChange);
+    const element = stage.current;
+    return () => {
+      window.removeEventListener('blur', cancelPanning);
+      document.removeEventListener('visibilitychange', visibilityChange);
+      for (const pointerId of pointers.current.keys()) {
+        if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+      }
+      pointers.current.clear();
+    };
+  }, [cancelPanning]);
   const [a, b] = config.selected.map((index) => images[index]);
   const bounds = { width: Math.max(a.width, b.width), height: Math.max(a.height, b.height) };
   const panel = {
@@ -236,11 +266,16 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
         data-testid="stage"
         data-scale={scale}
         data-zoom={config.view.zoom ?? 'fit'}
+        tabIndex={0}
         aria-label="Image comparison. Drag to pan, scroll to zoom."
+        onDragStartCapture={(event) => event.preventDefault()}
         onDoubleClick={() => setZoom(config.view.zoom === 1 ? null : 1)}
         onPointerDown={(event) => {
           if (event.button !== 0 || (event.target as HTMLElement).closest('button,[role=slider]'))
             return;
+          // Pointer capture does not suppress native selection or selection dragging.
+          event.preventDefault();
+          event.currentTarget.focus({ preventScroll: true });
           stage.current!.setPointerCapture(event.pointerId);
           pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
           setPanning(true);
@@ -248,6 +283,13 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
         onPointerMove={(event) => {
           const old = pointers.current.get(event.pointerId);
           if (!old) return;
+          if (
+            !event.currentTarget.hasPointerCapture(event.pointerId) ||
+            (event.pointerType === 'mouse' && (event.buttons & 1) === 0)
+          ) {
+            endPointer(event.pointerId);
+            return;
+          }
           const before = [...pointers.current.values()];
           const next = { x: event.clientX, y: event.clientY };
           pointers.current.set(event.pointerId, next);
@@ -291,17 +333,10 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
               ),
             );
         }}
-        onPointerUp={(event) => {
-          pointers.current.delete(event.pointerId);
-          setPanning(pointers.current.size > 0);
-        }}
-        onPointerCancel={(event) => {
-          pointers.current.delete(event.pointerId);
-          setPanning(pointers.current.size > 0);
-        }}
+        onPointerUp={(event) => endPointer(event.pointerId)}
+        onPointerCancel={(event) => endPointer(event.pointerId)}
         onLostPointerCapture={(event) => {
-          pointers.current.delete(event.pointerId);
-          setPanning(pointers.current.size > 0);
+          if (event.target === event.currentTarget) endPointer(event.pointerId);
         }}
       >
         {config.mode === 'split' ? (
@@ -328,11 +363,19 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
               tabIndex={0}
               style={{ left: `clamp(18px, ${config.divider * 100}%, calc(100% - 18px))` }}
               onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.preventDefault();
                 event.stopPropagation();
+                event.currentTarget.focus({ preventScroll: true });
                 event.currentTarget.setPointerCapture(event.pointerId);
                 setDivider(event.clientX);
               }}
               onPointerMove={(event) => {
+                if (event.pointerType === 'mouse' && (event.buttons & 1) === 0) {
+                  if (event.currentTarget.hasPointerCapture(event.pointerId))
+                    event.currentTarget.releasePointerCapture(event.pointerId);
+                  return;
+                }
                 if (event.currentTarget.hasPointerCapture(event.pointerId))
                   setDivider(event.clientX);
               }}
