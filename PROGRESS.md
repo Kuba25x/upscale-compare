@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1 and #2 are merged into `main`. A release-blocking desktop panning bug is fixed on the separate branch `fix/reliable-viewer-panning`, based on current `origin/main` (`c5d73b6`). A user-supplied community patch was reviewed and its CSS selection fix incorporated with generic community attribution: the patch contains no author identity. See `docs/PANNING_FIX_REVIEW.md` for the review, patch hash, experiments, and test limitations.
+PRs #1 and #2 are merged into `main`. A release-blocking desktop panning bug is fixed and pushed on the separate branch `fix/reliable-viewer-panning`, based on `origin/main` (`c5d73b6`), with [PR #3](https://github.com/Kuba25x/upscale-compare/pull/3) open for review. A user-supplied community patch was reviewed and its CSS selection fix incorporated with generic community attribution: the patch contains no author identity. See `docs/PANNING_FIX_REVIEW.md` for the review, patch hash, experiments, and test limitations.
 
 The root cause was reproduced in Chromium: stage/layer selection could start native HTML selection dragging despite `draggable=false` on images, causing pointer cancellation and partial movement. The adapted fix scopes selection/drag prevention to the viewer and adds reliable pointer cleanup. Upload drag-and-drop and all existing comparison functionality are preserved. Testers also confirmed Firefox; local Firefox installation is blocked by the environment's download policy, so the same regressions are enabled on the GitHub CI runner.
 
@@ -74,7 +74,7 @@ Current panning fix and community review, 2026-10-26:
 
 ## Exact next steps
 
-1. Finish the final rapid-drag check and formatting checks, commit/push this fix, create a new PR targeting `main`, and record its URL.
+1. Review [PR #3](https://github.com/Kuba25x/upscale-compare/pull/3). The final rapid-drag check, formatting, local suites, community-patch comparison, and attribution are complete and committed.
 2. Check hosted CI, especially the added Firefox projects, and fix any failures. Preserve the community attribution in the commit/PR and review document.
 3. Leave the PR unmerged and do not deploy automatically. The owner will decide when to merge and manually deploy the release-blocking fix.
 4. Continue from this branch rather than restarting. Existing demo and full-stack architecture, tests, AGPL-3.0 license, and Cloudflare safeguards must remain intact.
