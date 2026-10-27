@@ -64,7 +64,7 @@ Current divider focus fix, 2026-10-27:
 - `npm run test:e2e`: 23 Chromium desktop/HiDPI/mobile cases passed, including touch divider/pinch, pixel zoom, sharing, panning and file drops.
 - `npm run test:demo`: demo build and 16 desktop/mobile cases passed at `/upscale-compare/`.
 - 90 local suite cases passed. Formatting and `git diff --check` passed; `npm audit --audit-level=high` reports zero vulnerabilities.
-- Firefox regressions await hosted CI execution; there is no compatible local Firefox binary and its download domains are blocked by the current environment policy.
+- Initial hosted Firefox validation passed keyboard adjustment and all panning cases, but exposed a test assumption: letter input after pointer focus does not necessarily enable `:focus-visible` in Firefox. The regression now accepts that browser modality difference, still checks zero full-height accent lines, and requires a visible handle ring after actual Tab/Shift+Tab re-entry. The revised targeted Chromium tests passed; a new hosted Firefox run is required. Local Firefox download remains blocked by environment policy.
 
 Previous panning fix and community review, 2026-10-26:
 
