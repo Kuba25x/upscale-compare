@@ -54,7 +54,7 @@ export default defineConfig({
       ? [
           {
             name: 'firefox-viewer',
-            testMatch: /(panning|divider-focus)\.spec\.ts/,
+            testMatch: /(panning|divider-focus|pinch)\.spec\.ts/,
             use: {
               browserName: 'firefox' as const,
               viewport: { width: 1440, height: 900 },

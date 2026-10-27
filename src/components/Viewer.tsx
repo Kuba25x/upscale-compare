@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Expand, Info, Keyboard, Minus, Plus, Shrink } from 'lucide-react';
 import type { Config, LocalImage, View } from '../../shared/model';
-import { clamp, originFor, panBy, scaleFor, zoomAt } from '../lib/geometry';
+import { clamp, originFor, panBy, pinchAt, scaleFor, zoomAt } from '../lib/geometry';
 
 interface Props {
   images: LocalImage[];
@@ -16,9 +16,12 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
   const [fullscreen, setFullscreen] = useState(false);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRightPanel = useRef<boolean | null>(null);
+  const touchPinch = useRef(false);
   const [panning, setPanning] = useState(false);
   const endPointer = useCallback((pointerId: number) => {
     pointers.current.delete(pointerId);
+    if (pointers.current.size < 2) pinchRightPanel.current = null;
     const element = stage.current;
     if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
     setPanning(pointers.current.size > 0);
@@ -29,6 +32,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
       if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
     }
     pointers.current.clear();
+    pinchRightPanel.current = null;
     setPanning(false);
   }, []);
   useEffect(() => {
@@ -92,8 +96,11 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
     }
   };
   useEffect(() => {
+    const element = stage.current!;
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
+      // A touch pinch owns zoom until its contacts end; do not apply a second stream.
+      if (touchPinch.current && pointers.current.size > 0) return;
       const {
         config: current,
         panel: currentPanel,
@@ -124,8 +131,8 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
         };
       });
     };
-    stage.current!.addEventListener('wheel', wheel, { passive: false });
-    return () => stage.current?.removeEventListener('wheel', wheel);
+    element.addEventListener('wheel', wheel, { passive: false });
+    return () => element.removeEventListener('wheel', wheel);
   }, [onChange]);
   useEffect(() => {
     const keyboard = (event: KeyboardEvent) => {
@@ -269,7 +276,10 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
         tabIndex={0}
         aria-label="Image comparison. Drag to pan, scroll to zoom."
         onDragStartCapture={(event) => event.preventDefault()}
-        onDoubleClick={() => setZoom(config.view.zoom === 1 ? null : 1)}
+        onDoubleClick={() => {
+          // Some input sequences can emit a compatibility double-click after touch-up.
+          if (!touchPinch.current) setZoom(config.view.zoom === 1 ? null : 1);
+        }}
         onPointerDown={(event) => {
           if (event.button !== 0 || (event.target as HTMLElement).closest('button,[role=slider]'))
             return;
@@ -277,7 +287,15 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
           event.preventDefault();
           event.currentTarget.focus({ preventScroll: true });
           stage.current!.setPointerCapture(event.pointerId);
+          if (pointers.current.size === 0) touchPinch.current = false;
           pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+          if (pointers.current.size === 2) {
+            touchPinch.current = true;
+            const [first, second] = [...pointers.current.values()];
+            const rect = event.currentTarget.getBoundingClientRect();
+            pinchRightPanel.current =
+              config.mode === 'side' && (first.x + second.x) / 2 - rect.left > panel.width;
+          }
           setPanning(true);
         }}
         onPointerMove={(event) => {
@@ -304,24 +322,24 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
               y: (before[0].y + before[1].y) / 2,
             };
             const rect = stage.current!.getBoundingClientRect();
-            let localX = midpoint.x - rect.left;
-            const rightPanel = config.mode === 'side' && localX > panel.width;
-            if (rightPanel) localX -= panel.width + 1;
+            // Keep the panel selected when the second contact joined, even across the seam.
+            const panelOffset =
+              config.mode === 'side' && pinchRightPanel.current ? panel.width + 1 : 0;
+            const localX = midpoint.x - rect.left - panelOffset;
             updateView((view) => {
               const oldScale = scaleFor(view, panel, bounds, dpr);
-              const moved = panBy(
+              return pinchAt(
                 view,
-                { x: midpoint.x - oldMidpoint.x, y: midpoint.y - oldMidpoint.y },
-                oldScale,
-              );
-              return zoomAt(
-                moved,
                 oldScale,
                 (oldScale * dpr * distance) / oldDistance,
+                {
+                  x: oldMidpoint.x - rect.left - panelOffset - panel.width / 2,
+                  y: oldMidpoint.y - rect.top - panel.height / 2,
+                },
                 { x: localX - panel.width / 2, y: midpoint.y - rect.top - panel.height / 2 },
                 dpr,
                 panel,
-                { x: rect.left + (rightPanel ? panel.width + 1 : 0), y: rect.top },
+                { x: rect.left + panelOffset, y: rect.top },
               );
             });
           } else

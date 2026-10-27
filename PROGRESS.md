@@ -20,11 +20,11 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1, #2, #3 and #5 are merged into `main`. Work continues from `origin/main` at `be6c936` on the separate branch `fix/divider-pointer-focus` for [Issue #6](https://github.com/Kuba25x/upscale-compare/issues/6), with [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7) open against `main`, following up the clarified input behavior after Issue #4 and PR #5.
+PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8).
 
-The remaining cause is explicit slider focus in `onPointerDown`: Chromium can later activate `:focus-visible` when any key is pressed. Pointer gestures now focus the existing viewer stage instead, keeping shortcuts available after label editing and removing old slider keyboard focus when switching to the mouse. Real Tab/Shift+Tab navigation still reaches the slider and reveals its existing accessible handle ring. No CSS or global modality tracking is introduced. Pointer capture, touch handling, geometry, slider keys and image navigation remain unchanged.
+The supplied Firefox Android recording was received and inspected. A candidate fix addresses reproduced handler interference from compatibility double-click/wheel events, Side-by-Side reference-panel switching, intermediate snapped-pan drift, and development wheel-listener cleanup. See `docs/PINCH_INVESTIGATION.md` for exact evidence and boundaries. The recording does not establish the Android event sequence, and no physical Android Firefox browser is available. Keep the PR in draft, use `Refs #8` rather than automatic closure, and do not claim the reported device issue fully resolved until actual-device verification.
 
-Shared regressions now verify actual focus ownership, the absence of both handle rings and full-height lines after pointer use, shortcuts/fullscreen/mode switches, label-input exit, repeated keyboard-to-mouse-to-Tab transitions, and the distinction between image-pan arrows and focused-slider arrows. The mobile touch/pinch case also checks focus ownership after touch input. Chromium and Firefox run the shared cases in both regular and demo builds.
+Seven shared synthetic-handler tests extend desktop Firefox/Chromium coverage in both builds. They explicitly shim capture only for synthetic contacts. Two native Chromium CDP touch tests per build exercise slow/fast repeated gestures and contact end/cancellation; four geometry unit cases check source anchoring across DPR values. Existing focus, panning, divider, upload, pixel and backend tests remain intact.
 
 The previous community panning fix remains intact, including its attribution and review in `docs/PANNING_FIX_REVIEW.md`.
 
@@ -33,6 +33,8 @@ Development organization: search existing GitHub Issues before creating a substa
 No merge or deployment is authorized. Preserve existing demo/production modes and Cloudflare security behavior.
 
 ## Completed features
+
+- Candidate pinch isolation, fixed reference panel, direct rendered-source anchoring and reliable wheel-listener cleanup, with detailed investigation/device-verification documentation. Android Firefox remains unverified.
 
 - Pointer divider gestures retain viewer-stage focus; Tab/Shift+Tab give the slider keyboard focus. Regression coverage checks both directions of input switching, real shortcuts, fullscreen and prior input-field focus.
 
@@ -58,7 +60,17 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 
 ## Tests executed
 
-Current pointer/keyboard focus follow-up, 2026-10-27:
+Current pinch investigation, 2026-10-27:
+
+- Recording inspected; baseline compatibility-event and seam regressions fail before the fix. Seven targeted synthetic Chromium cases and two native Chromium CDP mobile cases passed after the candidate changes.
+- `npm run build`: passed (frontend/Worker typechecks and production bundles).
+- `npm test`: 55 passed, including four new geometry anchor cases.
+- `npm run test:e2e`: 33 Chromium desktop/HiDPI/mobile cases passed.
+- `npm run test:demo`: production demo build and 26 desktop/mobile cases passed at `/upscale-compare/`.
+- 114 local suite cases passed; formatting and `git diff --check` passed. Hosted desktop Firefox validation is configured (47 regular browser + 40 demo browser + 55 unit/API = 142 cases).
+- No actual Android Firefox test was performed. Hosted desktop Firefox execution is required but cannot establish device resolution.
+
+Previous pointer/keyboard focus follow-up, 2026-10-27:
 
 - The new regression failed against unmodified main at `be6c936`: after a mouse click and letter key, the divider incorrectly remained `document.activeElement`.
 - After the focus-ownership fix, all three targeted Chromium focus cases passed.
@@ -107,7 +119,7 @@ Previous panning fix and community review, 2026-10-26:
 
 ## Exact next steps
 
-1. Review [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7), pushed on `fix/divider-pointer-focus` with `Fixes #6`. Local validation is complete (92 passing suite cases).
-2. Inspect the latest Validate checks and the PR Validation section for hosted Chromium/Firefox results, including pointer/keyboard transitions in normal and demo builds. The combined configured suite contains 106 cases (51 unit/API + 31 regular browser + 24 demo browser).
-3. Leave the PR unmerged, Issue #6 open, and do not deploy. The owner decides when to merge and publish after verification.
-4. Continue from the existing branch; preserve demo/production separation, community panning attribution, AGPL-3.0 and all Cloudflare safeguards. Do not start unrelated Issues without the owner's prioritization.
+1. Local validation is complete (114 passing suite cases). Commit/push `fix/stable-pinch-gestures` and prepare the draft PR.
+2. Create a draft PR against `main` referencing Issue #8 without an automatic closing keyword. Verify hosted Chromium/desktop Firefox results and link them from the PR.
+3. Obtain actual Firefox for Android verification using `docs/PINCH_INVESTIGATION.md`. Keep Issue #8 open and the fix provisional until that check succeeds. If it fails, collect native event traces; do not assume the synthetic compatibility sequence is the device cause.
+4. Do not merge or deploy automatically. Preserve demo/production separation, community attribution, AGPL-3.0 and backend safeguards; do not start unrelated Issues.

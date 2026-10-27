@@ -67,7 +67,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 31 full-stack browser cases and 24 demo cases, in addition to 51 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 47 full-stack browser cases and 40 demo cases, in addition to 55 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -89,3 +89,11 @@ CI enables Firefox automatically. With Firefox enabled, the suites contain 31 fu
 The Firefox projects are named `firefox-viewer` and `demo-firefox-viewer`; both include panning and divider-focus regressions. Firefox and Chromium differ in their pointer-to-keyboard focus-visible heuristics; the new tests require the slider to remain unfocused after pointer use in both engines. Windows Chrome/DuckDuckGo and physical Windows devices are not available in this environment. No local Firefox execution is claimed; its official download domains are blocked by network policy.
 
 Current pointer-focus validation on 2026-10-27: `npm run build`, `npm test` (51), `npm run test:e2e` (24) and `npm run test:demo` (17) passed: **92 local suite cases**. Formatting and `git diff --check` passed. The focus-ownership regression failed on unmodified main and passed with the fix. Exact hosted Chromium/Firefox execution results are linked in the Validation section of [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7). The configured combined suite includes 51 unit/API, 31 regular browser and 24 demo browser cases.
+
+## Pinch regression and device limits
+
+See [pinch investigation](PINCH_INVESTIGATION.md) for baseline failures, the inspected user recording, candidate changes and the required actual-device checklist. `tests/shared/pinch.ts` uses synthetic contacts and a capture shim in desktop Chromium/Firefox; `tests/shared/touch-gestures.ts` uses native Chromium CDP touch dispatch in the mobile projects. Both run against regular and production demo builds. Neither executes Firefox for Android.
+
+The tests cover repeated slow/fast/batched input, proportional zoom, midpoint anchoring, either side and panel-seam crossing, contact replacement/cancellation, capture loss, compatibility-event interference, wheel recovery and mouse double-click recovery. Four new geometry cases check source anchors at different DPR values. Do not treat a green desktop Firefox job as proof that Issue #8 is resolved on Android. Exact final results will be linked in the draft PR.
+
+Pinch candidate local validation on 2026-10-27: `npm run build`, `npm test` (55), `npm run test:e2e` (33) and `npm run test:demo` (26) passed: **114 local suite cases**. Formatting and `git diff --check` passed. The hosted configuration contains 142 cases including desktop Firefox; exact hosted execution evidence will be linked from the draft PR. Actual Firefox for Android remains untested.
