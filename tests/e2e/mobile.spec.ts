@@ -32,6 +32,10 @@ test('touch divider and synchronized pinch navigation respond to touch input', a
     'aria-valuenow',
     String(Math.round(((280 - stage!.x) / stage!.width) * 100)),
   );
+  await page.keyboard.press('q');
+  await expect(page.getByTestId('stage')).toBeFocused();
+  await expect(page.getByRole('slider')).not.toBeFocused();
+  await expect(page.locator('.divider-handle')).toHaveCSS('outline-style', 'none');
   await page.getByRole('button', { name: '100%', exact: true }).tap();
   await client.send('Input.dispatchTouchEvent', {
     type: 'touchStart',

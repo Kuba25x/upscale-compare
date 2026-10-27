@@ -20,9 +20,11 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1, #2 and #3 are merged into `main`. Work continues from `origin/main` at `8d2e5d4` on the separate branch `fix/divider-focus-indicator` for [Issue #4](https://github.com/Kuba25x/upscale-compare/issues/4), with [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5) open against `main`.
+PRs #1, #2, #3 and #5 are merged into `main`. Work continues from `origin/main` at `be6c936` on the separate branch `fix/divider-pointer-focus` for [Issue #6](https://github.com/Kuba25x/upscale-compare/issues/6), with [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7) open against `main`, following up the clarified input behavior after Issue #4 and PR #5.
 
-The divider visual bug was reproduced in Chromium, including the actual F fullscreen shortcut: the global `[tabindex]:focus-visible` style outlines the full-height slider. Clipping hides its top/bottom edges, leaving two green vertical lines. A CSS-only fix confines the focus outline to the circular handle while preserving the full pointer target, slider semantics, Tab access and keyboard handling. Regression tests sample rendered pixels, check the visible handle outline, exercise shortcuts/fullscreen/mode switches, and verify mouse and keyboard movement. Existing touch and panning/upload tests remain in place. Firefox coverage is enabled in both regular and demo CI projects.
+The remaining cause is explicit slider focus in `onPointerDown`: Chromium can later activate `:focus-visible` when any key is pressed. Pointer gestures now focus the existing viewer stage instead, keeping shortcuts available after label editing and removing old slider keyboard focus when switching to the mouse. Real Tab/Shift+Tab navigation still reaches the slider and reveals its existing accessible handle ring. No CSS or global modality tracking is introduced. Pointer capture, touch handling, geometry, slider keys and image navigation remain unchanged.
+
+Shared regressions now verify actual focus ownership, the absence of both handle rings and full-height lines after pointer use, shortcuts/fullscreen/mode switches, label-input exit, repeated keyboard-to-mouse-to-Tab transitions, and the distinction between image-pan arrows and focused-slider arrows. The mobile touch/pinch case also checks focus ownership after touch input. Chromium and Firefox run the shared cases in both regular and demo builds.
 
 The previous community panning fix remains intact, including its attribution and review in `docs/PANNING_FIX_REVIEW.md`.
 
@@ -31,6 +33,8 @@ Development organization: search existing GitHub Issues before creating a substa
 No merge or deployment is authorized. Preserve existing demo/production modes and Cloudflare security behavior.
 
 ## Completed features
+
+- Pointer divider gestures retain viewer-stage focus; Tab/Shift+Tab give the slider keyboard focus. Regression coverage checks both directions of input switching, real shortcuts, fullscreen and prior input-field focus.
 
 - Handle-only divider focus styling, with rendered-pixel and keyboard/fullscreen/mode-switch regressions shared by regular and demo browser suites.
 
@@ -54,7 +58,18 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 
 ## Tests executed
 
-Current divider focus fix, 2026-10-27:
+Current pointer/keyboard focus follow-up, 2026-10-27:
+
+- The new regression failed against unmodified main at `be6c936`: after a mouse click and letter key, the divider incorrectly remained `document.activeElement`.
+- After the focus-ownership fix, all three targeted Chromium focus cases passed.
+- `npm run build`: passed (frontend/Worker typechecks and production bundles).
+- `npm test`: 51 passed.
+- `npm run test:e2e`: 24 Chromium desktop/HiDPI/mobile cases passed, including touch/pinch, panning, file drops, pixel alignment and sharing.
+- `npm run test:demo`: production demo build and 17 desktop/mobile cases passed at `/upscale-compare/`.
+- 92 local suite cases passed. `npm run format:check` and `git diff --check` passed.
+- Firefox runs in hosted CI because no compatible local Firefox is installed and the official download domains are blocked by the environment policy. Exact hosted Chromium/Firefox results are recorded in the Validate checks and Validation section of [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7).
+
+Previous divider outline fix, 2026-10-27:
 
 - Baseline Chromium reproduction confirms the reported green-line geometry.
 - New regression failed on unmodified main: 32 unwanted accent pixels in a strip above the handle; the same test passes after the CSS change.
@@ -92,7 +107,7 @@ Previous panning fix and community review, 2026-10-26:
 
 ## Exact next steps
 
-1. Review [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5), pushed on `fix/divider-focus-indicator` with `Fixes #4`. Local build, unit/API, Chromium/mobile and production-demo validation is complete (90 passing suite cases).
-2. Inspect the latest Validate checks and the PR's Validation section for hosted Chromium/Firefox execution results. The initial Firefox run exposed only a focus-modality assumption in the test, now corrected; actual Tab/Shift+Tab focus visibility remains mandatory in every browser.
-3. Leave the PR unmerged, Issue #4 open, and do not deploy. The owner decides when to merge and publish after verification. Optional manual Windows Chrome/DuckDuckGo confirmation can use the reporter's original reproduction.
-4. Continue from the existing branch and preserve demo/production separation, the community panning attribution, AGPL-3.0 and all Cloudflare safeguards. Do not start unrelated Issues without the owner's prioritization.
+1. Review [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7), pushed on `fix/divider-pointer-focus` with `Fixes #6`. Local validation is complete (92 passing suite cases).
+2. Inspect the latest Validate checks and the PR Validation section for hosted Chromium/Firefox results, including pointer/keyboard transitions in normal and demo builds. The combined configured suite contains 106 cases (51 unit/API + 31 regular browser + 24 demo browser).
+3. Leave the PR unmerged, Issue #6 open, and do not deploy. The owner decides when to merge and publish after verification.
+4. Continue from the existing branch; preserve demo/production separation, community panning attribution, AGPL-3.0 and all Cloudflare safeguards. Do not start unrelated Issues without the owner's prioritization.
