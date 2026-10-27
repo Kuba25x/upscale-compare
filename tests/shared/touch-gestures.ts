@@ -60,6 +60,23 @@ export function touchGestureTests() {
         const ratio = await page.evaluate(() => devicePixelRatio);
         expect(a.width * ratio).toBeCloseTo(640, 4);
       }
+      if (mode === 'Split Screen') {
+        const divider = page.getByRole('slider');
+        const position = (await divider.boundingBox())!;
+        const lineY = Math.round(box.y + box.height * 0.3);
+        const before = await page.getByTestId('image-A').boundingBox();
+        await client.send('Input.dispatchTouchEvent', {
+          type: 'touchStart',
+          touchPoints: [{ x: Math.round(position.x + position.width / 2), y: lineY, id: 1 }],
+        });
+        await client.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x: Math.round(box.x + box.width * 0.65), y: lineY, id: 1 }],
+        });
+        await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await expect(divider).toHaveAttribute('aria-valuenow', '65');
+        expect(await page.getByTestId('image-A').boundingBox()).toEqual(before);
+      }
       await client.detach();
     });
   }

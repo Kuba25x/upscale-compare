@@ -22,11 +22,11 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), with [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) open against `main`.
 
-The reporter retested PR #9 on Xiaomi 15T / Android 16 / Firefox 158.0.2 using the local demo. **The main issue persists in both modes; Chrome on that phone remains stable.** PR #9 stays draft and Issue #8 stays open. The previous controlled-test fixes do not establish the actual native Android cause.
+Four actual-device logs now confirm the cause of Issue #8: Firefox's secondary Pointer Event coordinates remain stale while Touch Events already expose both current contacts. A late pointer refresh produces a false large distance/midpoint change. Chrome's cache matches the full touch snapshots. See `docs/PINCH_LOG_ANALYSIS.md` for counts, precise event/commit sequences and log hashes.
 
-Current work adds opt-in `?diagnostics=1` only to development demo mode. The phone panel records passive pointer/touch/capture/wheel/double-click/viewport events, pointer-cache state, calculations and committed geometry; bounded memory-only JSON can be downloaded or copied over local HTTP without ADB. It excludes image contents/URLs/names, labels, metadata, page URLs and storage contents. There are no gesture-algorithm changes in this diagnostic stage. See `docs/GESTURE_DIAGNOSTICS.md` for operation, schema, privacy and measurement limits.
+The current fix drives native touch navigation from complete copied Touch Event snapshots, without matching Touch IDs to Pointer IDs. Pointer Events still track capture/lifecycle, mouse/pen and pointer-only fallback; they cannot double-apply native touch motion. Stable-identity snapshots rebase on contact changes, preserve one-finger/divider controls, and clear on cancellation. Existing geometry and diagnostics are retained.
 
-Tests cover enable guards, memory bounds, frozen stop snapshots, non-finite evidence, phone download/copy fallback, privacy/no log requests, native touch capture, event-to-calculation correlation and identical gesture results with recording enabled/disabled. Existing regular/demo/source-pixel/navigation/security checks remain enabled. Hosted desktop Firefox must verify the diagnostic UI, but native device logs are still needed for root-cause analysis.
+The new representative device-pattern regression fails before this fix and passes in both modes afterward. A private Chromium replay of all four supplied streams checks 2,465 touch frames against full-snapshot scale ratios, with maximum error 1.11e-16. This is coordinate/order replay with placeholder images, not a new actual-device test. PR #9 must remain draft and Issue #8 open until the user confirms the patched Xiaomi/Firefox behavior. Raw logs are not committed publicly.
 
 The previous community panning fix remains intact, including its attribution and review in `docs/PANNING_FIX_REVIEW.md`.
 
@@ -62,7 +62,17 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 
 ## Tests executed
 
-Current local diagnostics, 2026-10-27:
+Current device-log fix, 2026-10-27:
+
+- Four complete native logs analyzed; no dropped/truncated data. Firefox cache errors reach 90.450 / 177.980 CSS px; Chrome errors are zero.
+- Device-pattern regression executed red before the fix and green afterward in both modes; native Chromium repeated gestures/divider and touch lifecycle cases pass.
+- Four-stream Chromium replay: 2,465 touch frames passed proportional-zoom checks.
+- Full build passed, including frontend/Worker typechecks and production bundles.
+- `npm test`: 68 passed; `npm run test:e2e`: 37 passed; `npm run test:demo`: 31 passed; `npm run test:diagnostics`: 5 passed (**141 local cases**).
+- Formatting and `git diff --check` passed. Hosted configuration contains 179 cases including desktop Firefox (68 + 55 + 49 + 7); exact CI evidence is linked from PR #9.
+- Physical retest of the patched app is still required.
+
+Previous local diagnostics, 2026-10-27:
 
 - Initial `npm test`: 65 unit/API cases passed.
 - Initial diagnostic browser suite: five desktop/mobile Chromium cases passed, including export, copy fallback, privacy, no requests and gesture-result parity.
@@ -130,7 +140,7 @@ Previous panning fix and community review, 2026-10-26:
 
 ## Exact next steps
 
-1. Local diagnostic validation is complete (130 passing cases). Review the changes on existing `fix/stable-pinch-gestures` / draft PR #9 and inspect its latest Validate checks; do not create another issue or PR.
-2. Provide the user with Polish instructions in the conversation (project documentation stays English): update the branch, run `npm run dev:demo`, append `?diagnostics=1` to the existing LAN URL, collect separate Firefox/Chrome logs for both modes using Start/Stop/Download.
-3. After the user attaches logs, compare native contacts/capture/viewport with cached positions, calculations and committed views. Identify the actual device cause before another gesture fix.
-4. Keep Issue #8 open and PR #9 in draft. Do not merge or deploy. Preserve source-image quality, demo/production separation, previous attribution, AGPL-3.0 and backend safeguards.
+1. Local validation is complete (141 passing cases) and all four input streams passed replay. Commit/push the input fix on existing `fix/stable-pinch-gestures` / draft PR #9 and inspect its hosted checks. Do not create another issue or PR.
+2. Read `docs/PINCH_LOG_ANALYSIS.md` for the confirmed native cause and evidence. The previous compatibility-event hypotheses do not explain these logs.
+3. Ask for an actual-device retest of this updated branch on Xiaomi 15T / Android 16 / Firefox 158.0.2, preferably in ordinary local demo mode without diagnostics. Check both modes against Chrome. If anything persists, collect new diagnostics; authoritative `touchContacts`/`touchDistance` and calculation `input` now distinguish the sources.
+4. Keep Issue #8 open and PR #9 in draft until real-device confirmation. Do not merge/deploy automatically. Preserve image quality, existing attribution, AGPL-3.0 and backend safeguards.

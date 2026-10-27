@@ -68,7 +68,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 47 full-stack browser cases and 40 demo cases, in addition to 55 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 55 full-stack browser cases and 49 demo cases, in addition to 68 unit/API tests and 7 diagnostic browser cases. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -106,3 +106,11 @@ Pinch candidate local validation on 2026-10-27: `npm run build`, `npm test` (55)
 CI also runs the diagnostic UI in desktop Firefox. This is recording verification only: the reporter's actual Android retest failed, and Issue #8 remains unresolved. See [diagnostic operation and schema](GESTURE_DIAGNOSTICS.md) before interpreting updater evaluations as applied commits. No new gesture formula is introduced by this phase.
 
 Diagnostic-stage local verification on 2026-10-27: production frontend/Worker build passed; 65 unit/API + 33 regular browser + 27 production-demo + 5 diagnostic browser cases passed (**130 total**). Formatting and `git diff --check` passed. The configured CI total is 160 cases including desktop Firefox diagnostics; exact hosted results are linked from PR #9's Validation section. This diagnostic stage does not claim to fix the reporter's Android issue.
+
+## Native-log input coherence regression
+
+[Device-log analysis](PINCH_LOG_ANALYSIS.md) documents the confirmed stale-secondary-pointer cause. `tests/shared/atomic-pinch.ts` replays its reduced delivery pattern with complete Touch snapshots and sparse secondary Pointer Events; it was executed red before the fix and green afterward. The shared cases also cover independent Touch/Pointer IDs, TouchList reordering, Chrome-style dual pointer delivery without double processing, contact replacement/third contacts, cancellation, one-finger pan and mouse recovery. They run in regular/demo Chromium and desktop Firefox projects. Unit cases check immutable, stable-identity snapshot replacement. Native Chromium touch tests additionally verify divider dragging after pinch.
+
+A private workspace replay of all four supplied streams checked 2,465 touch frames, with largest absolute scale error 1.11e-16. This is handler replay with a synthetic capture shim and placeholder images, not an actual Firefox Android run. Patched-device confirmation is outstanding. Exact final automated counts are recorded in PR #9's Validation section.
+
+Native-log fix validation on 2026-10-27: build passed; 68 unit/API + 37 regular Chromium/HiDPI/mobile + 31 production-demo + 5 diagnostic browser cases passed (**141 local cases**). Formatting and `git diff --check` passed. The configured hosted total is 179 including desktop Firefox. Full actual-device log replay and reduced red/green reproduction are described in the analysis; the patched phone still needs a confirmation run.

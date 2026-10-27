@@ -55,6 +55,10 @@ Non-finite values are encoded as strings (`NaN`, `Infinity`, `-Infinity`) so num
 - Observation adds bounded in-memory work and can affect timing slightly. It preserves the gesture formulas, event cancellation/capture policy and update order, but cannot promise zero measurement overhead. Report if the problem disappears only while recording; do not treat that as a fix.
 - Only the browser's event stream is visible. Hardware/OS processing before dispatch is not observable. Desktop Firefox and Chromium CDP tests verify recording behavior, not the Android-specific root cause.
 
-## Next analysis
+## Input-source update after native-log analysis
+
+The four collected logs established the cause; see [device-log analysis](PINCH_LOG_ANALYSIS.md). The patched viewer uses complete native Touch snapshots for touch motion. Diagnostic `touchContacts` and `touchDistance` describe that authoritative cache; `activePointers` and `cachedDistance` still describe individual Pointer Event observations for capture/fallback. Calculation `input` distinguishes `touch` from `pointer`, while `source` remains `pinch`, `pan` or `wheel`. Touch and Pointer identifier spaces are independent.
+
+## Further analysis if needed
 
 Compare matching Firefox/Chrome logs before another gesture patch. Start with native contact IDs/coordinates versus the application cache, capture loss/cancellation and rejected moves, viewport/DPR changes, compatibility streams, distance/ratio discontinuities and the transition from calculations to committed views. Keep Issue #8 open and PR #9 in draft until the native cause is established and a subsequent fix is verified on the actual device.

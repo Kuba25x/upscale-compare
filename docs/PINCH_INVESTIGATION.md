@@ -2,6 +2,10 @@
 
 Status: [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8) remains unresolved; the candidate in [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) failed the reporter's actual-device retest. **The current phase collects native diagnostics before another gesture fix.** Do not interpret desktop Firefox handler tests or Chromium mobile emulation as proof that the reported device issue is resolved.
 
+## Native logs establish the cause
+
+The four subsequent Xiaomi Firefox/Chrome logs identify mixed-age secondary Pointer Event positions as the source of the jumps. See [device-log analysis](PINCH_LOG_ANALYSIS.md) for direct evidence and the complete-touch-snapshot input fix. The earlier injected-event defects below are real but do not explain the supplied native recordings. Patched-device confirmation is still pending.
+
 ## Actual-device retest failed
 
 The reporter tested the candidate in a locally served demo on **Xiaomi 15T / Android 16 / Firefox 158.0.2**. The main scale/position instability persists in both modes; Chrome on that phone remains stable. The mechanisms below were reproduced in controlled tests, but they do not explain the complete native-device failure. Issue #8 is unresolved and PR #9 remains a draft.
