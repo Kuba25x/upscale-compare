@@ -20,13 +20,19 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1 and #2 are merged into `main`. A release-blocking desktop panning bug is fixed and pushed on the separate branch `fix/reliable-viewer-panning`, based on `origin/main` (`c5d73b6`), with [PR #3](https://github.com/Kuba25x/upscale-compare/pull/3) open for review. A user-supplied community patch was reviewed and its CSS selection fix incorporated with generic community attribution: the patch contains no author identity. See `docs/PANNING_FIX_REVIEW.md` for the review, patch hash, experiments, and test limitations.
+PRs #1, #2 and #3 are merged into `main`. Work continues from `origin/main` at `8d2e5d4` on the separate branch `fix/divider-focus-indicator` for [Issue #4](https://github.com/Kuba25x/upscale-compare/issues/4), with [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5) open against `main`.
 
-The root cause was reproduced in Chromium: stage/layer selection could start native HTML selection dragging despite `draggable=false` on images, causing pointer cancellation and partial movement. The adapted fix scopes selection/drag prevention to the viewer and adds reliable pointer cleanup. Upload drag-and-drop and all existing comparison functionality are preserved. Testers also confirmed Firefox; local Firefox installation is blocked by the environment's download policy, so the same regressions are enabled on the GitHub CI runner.
+The divider visual bug was reproduced in Chromium, including the actual F fullscreen shortcut: the global `[tabindex]:focus-visible` style outlines the full-height slider. Clipping hides its top/bottom edges, leaving two green vertical lines. A CSS-only fix confines the focus outline to the circular handle while preserving the full pointer target, slider semantics, Tab access and keyboard handling. Regression tests sample rendered pixels, check the visible handle outline, exercise shortcuts/fullscreen/mode switches, and verify mouse and keyboard movement. Existing touch and panning/upload tests remain in place. Firefox coverage is enabled in both regular and demo CI projects.
+
+The previous community panning fix remains intact, including its attribution and review in `docs/PANNING_FIX_REVIEW.md`.
+
+Development organization: search existing GitHub Issues before creating a substantive bug/feature report; use existing labels, keep unrelated problems separate, and link resolving PRs. Do not close an issue before verification and merge, create retroactive issues for finished work, or start other issues without the owner's prioritization.
 
 No merge or deployment is authorized. Preserve existing demo/production modes and Cloudflare security behavior.
 
 ## Completed features
+
+- Handle-only divider focus styling, with rendered-pixel and keyboard/fullscreen/mode-switch regressions shared by regular and demo browser suites.
 
 - Community stage-selection CSS fix, default pointer selection prevention, scoped native drag cancellation, and WebKit image drag suppression.
 - Capture cleanup after completion/cancellation/loss, released mouse buttons, window blur and document hiding; explicit stage focus preserves keyboard use after editing labels.
@@ -48,7 +54,19 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 
 ## Tests executed
 
-Current panning fix and community review, 2026-10-26:
+Current divider focus fix, 2026-10-27:
+
+- Baseline Chromium reproduction confirms the reported green-line geometry.
+- New regression failed on unmodified main: 32 unwanted accent pixels in a strip above the handle; the same test passes after the CSS change.
+- Targeted divider regression: 2 Chromium tests passed, including real fullscreen, focus visibility, mode changes, keyboard and mouse movement.
+- `npm run build`: passed (frontend/Worker typechecks and production bundles).
+- `npm test`: 51 passed.
+- `npm run test:e2e`: 23 Chromium desktop/HiDPI/mobile cases passed, including touch divider/pinch, pixel zoom, sharing, panning and file drops.
+- `npm run test:demo`: demo build and 16 desktop/mobile cases passed at `/upscale-compare/`.
+- 90 local suite cases passed. Formatting and `git diff --check` passed; `npm audit --audit-level=high` reports zero vulnerabilities.
+- Initial hosted Firefox validation passed keyboard adjustment and all panning cases, but exposed a test assumption: letter input after pointer focus does not necessarily enable `:focus-visible` in Firefox. The regression now accepts that browser modality difference, still checks zero full-height accent lines, and requires a visible handle ring after actual Tab/Shift+Tab re-entry. The revised targeted Chromium tests and rebuilt 16-case demo suite passed. Final hosted Firefox results are tracked in the Validate checks and Validation section of [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5). Local Firefox download remains blocked by environment policy.
+
+Previous panning fix and community review, 2026-10-26:
 
 - Community patch passes `git apply --check` against `main` at `c5d73b6` in an isolated checkout.
 - The original community test fails before its CSS change and passes after that change. Its start point can hit the divider, and it does not verify image displacement; the replacement tests cover actual panning in both modes.
@@ -63,18 +81,18 @@ Current panning fix and community review, 2026-10-26:
 
 ## Known limitations
 
-- Demo publishing and remote comparison viewing are intentionally disabled. The real Pages URL has not been deployed or live-tested; production-bundle subpath tests run locally.
+- Demo publishing and remote comparison viewing are intentionally disabled. This fix has not been deployed or live-tested on Pages; production-bundle subpath tests run locally.
 
 - No production deployment, Cloudflare account permission check, real Turnstile smoke test, or provider CPU budget benchmark has been performed.
 - JPEG/WebP content is structurally validated, not fully decoded server-side. PNG additionally validates its bounded complete decompressed raster. Animated, interlaced PNG, or rotated/mirrored EXIF uploads are not accepted for publication.
-- Browser color management applies; HDR/raw-color analysis is outside scope. Safari/Firefox and physical devices have not been tested.
+- Browser color management applies; HDR/raw-color analysis is outside scope. Safari and physical devices have not been tested. Firefox CI verification covers the targeted viewer regressions.
 - A crash before a pending row is inserted can conservatively over-count quota; the documented disabled-upload reconciliation procedure handles this.
 - Per-IP limits do not stop distributed attacks or cap provider request costs. Large PNG validation may exceed Workers Free CPU allowance. Production requires operator contacts, monitoring, provider quota review and approval.
 - No automatic expiration: active links persist until owner/operator deletion. Local unpublished state is intentionally lost on refresh.
 
 ## Exact next steps
 
-1. Review [PR #3](https://github.com/Kuba25x/upscale-compare/pull/3). The final rapid-drag check, formatting, local suites, community-patch comparison, and attribution are complete and committed.
-2. Hosted CI, including the added Firefox projects, passed all 94 cases. Preserve the community attribution in the commit/PR and review document. The fix is ready for owner code review.
-3. Leave the PR unmerged and do not deploy automatically. The owner will decide when to merge and manually deploy the release-blocking fix.
-4. Continue from this branch rather than restarting. Existing demo and full-stack architecture, tests, AGPL-3.0 license, and Cloudflare safeguards must remain intact.
+1. Review [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5), pushed on `fix/divider-focus-indicator` with `Fixes #4`. Local build, unit/API, Chromium/mobile and production-demo validation is complete (90 passing suite cases).
+2. Inspect the latest Validate checks and the PR's Validation section for hosted Chromium/Firefox execution results. The initial Firefox run exposed only a focus-modality assumption in the test, now corrected; actual Tab/Shift+Tab focus visibility remains mandatory in every browser.
+3. Leave the PR unmerged, Issue #4 open, and do not deploy. The owner decides when to merge and publish after verification. Optional manual Windows Chrome/DuckDuckGo confirmation can use the reporter's original reproduction.
+4. Continue from the existing branch and preserve demo/production separation, the community panning attribution, AGPL-3.0 and all Cloudflare safeguards. Do not start unrelated Issues without the owner's prioritization.
