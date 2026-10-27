@@ -27,6 +27,8 @@ jobs:
       - run: npm run test:e2e
       - name: Build and test frontend-only Pages demo
         run: npm run test:demo
+      - name: Test opt-in local diagnostics
+        run: npm run test:diagnostics
       - run: npm audit --audit-level=high
       - name: Verify GitHub Pages repository subpath
         run: VITE_BASE_PATH=/upscale-compare/ npm run build

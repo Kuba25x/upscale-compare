@@ -2,8 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 type Point = { x: number; y: number };
 
-async function openViewer(page: Page, mode: string) {
-  await page.goto('./');
+export async function openViewer(page: Page, mode: string, search = '') {
+  await page.goto(`./${search}`);
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('FSR.png', 1)]);
   await page.getByRole('button', { name: mode, exact: true }).click();
   await page.getByRole('button', { name: '100%', exact: true }).click();
@@ -24,7 +24,7 @@ async function openViewer(page: Page, mode: string) {
   });
   return (await page.getByTestId('stage').boundingBox())!;
 }
-async function points(page: Page, type: string, contacts: Array<[number, Point]>) {
+export async function points(page: Page, type: string, contacts: Array<[number, Point]>) {
   await page.getByTestId('stage').evaluate(
     (stage, { type, contacts }) => {
       for (const [pointerId, point] of contacts)

@@ -22,9 +22,11 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), with [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) open against `main`.
 
-The supplied Firefox Android recording was received and inspected. A candidate fix addresses reproduced handler interference from compatibility double-click/wheel events, Side-by-Side reference-panel switching, intermediate snapped-pan drift, and development wheel-listener cleanup. See `docs/PINCH_INVESTIGATION.md` for exact evidence and boundaries. The recording does not establish the Android event sequence, and no physical Android Firefox browser is available. Keep the PR in draft, use `Refs #8` rather than automatic closure, and do not claim the reported device issue fully resolved until actual-device verification.
+The reporter retested PR #9 on Xiaomi 15T / Android 16 / Firefox 158.0.2 using the local demo. **The main issue persists in both modes; Chrome on that phone remains stable.** PR #9 stays draft and Issue #8 stays open. The previous controlled-test fixes do not establish the actual native Android cause.
 
-Seven shared synthetic-handler tests extend desktop Firefox/Chromium coverage in both builds. They explicitly shim capture only for synthetic contacts. Two native Chromium CDP touch tests per build exercise slow/fast repeated gestures and contact end/cancellation; four geometry unit cases check source anchoring across DPR values. Existing focus, panning, divider, upload, pixel and backend tests remain intact.
+Current work adds opt-in `?diagnostics=1` only to development demo mode. The phone panel records passive pointer/touch/capture/wheel/double-click/viewport events, pointer-cache state, calculations and committed geometry; bounded memory-only JSON can be downloaded or copied over local HTTP without ADB. It excludes image contents/URLs/names, labels, metadata, page URLs and storage contents. There are no gesture-algorithm changes in this diagnostic stage. See `docs/GESTURE_DIAGNOSTICS.md` for operation, schema, privacy and measurement limits.
+
+Tests cover enable guards, memory bounds, frozen stop snapshots, non-finite evidence, phone download/copy fallback, privacy/no log requests, native touch capture, event-to-calculation correlation and identical gesture results with recording enabled/disabled. Existing regular/demo/source-pixel/navigation/security checks remain enabled. Hosted desktop Firefox must verify the diagnostic UI, but native device logs are still needed for root-cause analysis.
 
 The previous community panning fix remains intact, including its attribution and review in `docs/PANNING_FIX_REVIEW.md`.
 
@@ -60,7 +62,16 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 
 ## Tests executed
 
-Current pinch investigation, 2026-10-27:
+Current local diagnostics, 2026-10-27:
+
+- Initial `npm test`: 65 unit/API cases passed.
+- Initial diagnostic browser suite: five desktop/mobile Chromium cases passed, including export, copy fallback, privacy, no requests and gesture-result parity.
+- Full `npm run build` passed, including frontend/Worker typechecks and bundles.
+- `npm test`: 65 passed; `npm run test:e2e`: 33 passed; `npm run test:demo`: 27 passed; `npm run test:diagnostics`: 5 passed (130 local cases total).
+- Formatting and `git diff --check` passed. Hosted configuration includes 160 cases (65 unit/API + 47 regular browser + 41 demo browser + 7 diagnostics). Exact hosted results are recorded in PR #9's Validation section.
+- The actual-device failure is user-confirmed. Do not mark the original problem solved based on these tests.
+
+Previous pinch candidate investigation, 2026-10-27:
 
 - Recording inspected; baseline compatibility-event and seam regressions fail before the fix. Seven targeted synthetic Chromium cases and two native Chromium CDP mobile cases passed after the candidate changes.
 - `npm run build`: passed (frontend/Worker typechecks and production bundles).
@@ -68,7 +79,7 @@ Current pinch investigation, 2026-10-27:
 - `npm run test:e2e`: 33 Chromium desktop/HiDPI/mobile cases passed.
 - `npm run test:demo`: production demo build and 26 desktop/mobile cases passed at `/upscale-compare/`.
 - 114 local suite cases passed; formatting and `git diff --check` passed. Hosted desktop Firefox validation is configured (47 regular browser + 40 demo browser + 55 unit/API = 142 cases).
-- No actual Android Firefox test was performed. Hosted desktop Firefox execution is required but cannot establish device resolution.
+- At the earlier candidate checkpoint, no actual-device test had been performed. The subsequent reporter retest failed; hosted desktop Firefox checks cannot establish device resolution.
 
 Previous pointer/keyboard focus follow-up, 2026-10-27:
 
@@ -119,7 +130,7 @@ Previous panning fix and community review, 2026-10-26:
 
 ## Exact next steps
 
-1. Review [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) on `fix/stable-pinch-gestures`. Local validation is complete (114 passing suite cases).
-2. Inspect the latest Validate checks and PR Validation section for exact hosted Chromium/desktop Firefox evidence. The configured total is 142 cases. PR #9 uses `Refs #8` and must remain in draft pending real-device verification.
-3. Obtain actual Firefox for Android verification using `docs/PINCH_INVESTIGATION.md`. Keep Issue #8 open and the fix provisional until that check succeeds. If it fails, collect native event traces; do not assume the synthetic compatibility sequence is the device cause.
-4. Do not merge or deploy automatically. Preserve demo/production separation, community attribution, AGPL-3.0 and backend safeguards; do not start unrelated Issues.
+1. Local diagnostic validation is complete (130 passing cases). Review the changes on existing `fix/stable-pinch-gestures` / draft PR #9 and inspect its latest Validate checks; do not create another issue or PR.
+2. Provide the user with Polish instructions in the conversation (project documentation stays English): update the branch, run `npm run dev:demo`, append `?diagnostics=1` to the existing LAN URL, collect separate Firefox/Chrome logs for both modes using Start/Stop/Download.
+3. After the user attaches logs, compare native contacts/capture/viewport with cached positions, calculations and committed views. Identify the actual device cause before another gesture fix.
+4. Keep Issue #8 open and PR #9 in draft. Do not merge or deploy. Preserve source-image quality, demo/production separation, previous attribution, AGPL-3.0 and backend safeguards.

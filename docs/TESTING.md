@@ -7,6 +7,7 @@ npm run build
 npm test
 npm run test:e2e
 npm run test:demo
+npm run test:diagnostics
 npm run format:check
 npm audit --audit-level=high
 ```
@@ -96,4 +97,12 @@ See [pinch investigation](PINCH_INVESTIGATION.md) for baseline failures, the ins
 
 The tests cover repeated slow/fast/batched input, proportional zoom, midpoint anchoring, either side and panel-seam crossing, contact replacement/cancellation, capture loss, compatibility-event interference, wheel recovery and mouse double-click recovery. Four new geometry cases check source anchors at different DPR values. Do not treat a green desktop Firefox job as proof that Issue #8 is resolved on Android. Exact final results will be linked in the draft PR.
 
-Pinch candidate local validation on 2026-10-27: `npm run build`, `npm test` (55), `npm run test:e2e` (33) and `npm run test:demo` (26) passed: **114 local suite cases**. Formatting and `git diff --check` passed. The hosted configuration contains 142 cases including desktop Firefox; exact hosted execution evidence is linked from [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9). Actual Firefox for Android remains untested.
+Pinch candidate local validation on 2026-10-27: `npm run build`, `npm test` (55), `npm run test:e2e` (33) and `npm run test:demo` (26) passed: **114 local suite cases**. Formatting and `git diff --check` passed. The hosted configuration contains 142 cases including desktop Firefox; exact hosted execution evidence is linked from [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9). At that candidate checkpoint, actual Firefox for Android had not been tested; the subsequent reporter retest failed, as described below.
+
+## Local diagnostic recording
+
+`npm run test:diagnostics` starts a dedicated development demo on port 5175. It verifies explicit activation, phone downloads, local-HTTP copy fallback, exclusion of image/naming/metadata/URL/storage markers, absence of log requests, native touch/capture/cancel traces, and exact gesture-result parity with recording disabled. The production-demo suite separately proves that `?diagnostics=1` cannot enable the recorder in a built demo. Unit cases cover guard combinations, browser identity minimization, bounded memory, reset/stop semantics, frozen final state and non-finite numeric evidence.
+
+CI also runs the diagnostic UI in desktop Firefox. This is recording verification only: the reporter's actual Android retest failed, and Issue #8 remains unresolved. See [diagnostic operation and schema](GESTURE_DIAGNOSTICS.md) before interpreting updater evaluations as applied commits. No new gesture formula is introduced by this phase.
+
+Diagnostic-stage local verification on 2026-10-27: production frontend/Worker build passed; 65 unit/API + 33 regular browser + 27 production-demo + 5 diagnostic browser cases passed (**130 total**). Formatting and `git diff --check` passed. The configured CI total is 160 cases including desktop Firefox diagnostics; exact hosted results are linked from PR #9's Validation section. This diagnostic stage does not claim to fix the reporter's Android issue.

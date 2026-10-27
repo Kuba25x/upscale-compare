@@ -183,3 +183,9 @@ test('serves built assets and license notices at the GitHub Pages subpath', asyn
   }
   await page.screenshot({ path: 'test-results/demo/landing.png' });
 });
+
+test('production demo refuses the development diagnostics flag', async ({ page }) => {
+  await page.goto('./?diagnostics=1');
+  await expect(page.getByRole('button', { name: 'Diagnostics', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeVisible();
+});

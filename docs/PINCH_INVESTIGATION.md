@@ -1,6 +1,12 @@
 # Pinch gesture investigation
 
-Status: candidate fix for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), tracked in [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9). **Physical Firefox for Android verification is still required.** Do not interpret desktop Firefox handler tests or Chromium mobile emulation as proof that the reported device issue is resolved.
+Status: [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8) remains unresolved; the candidate in [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) failed the reporter's actual-device retest. **The current phase collects native diagnostics before another gesture fix.** Do not interpret desktop Firefox handler tests or Chromium mobile emulation as proof that the reported device issue is resolved.
+
+## Actual-device retest failed
+
+The reporter tested the candidate in a locally served demo on **Xiaomi 15T / Android 16 / Firefox 158.0.2**. The main scale/position instability persists in both modes; Chrome on that phone remains stable. The mechanisms below were reproduced in controlled tests, but they do not explain the complete native-device failure. Issue #8 is unresolved and PR #9 remains a draft.
+
+The next step is [opt-in local diagnostics](GESTURE_DIAGNOSTICS.md), not another speculative gesture change. Collect matched Firefox/Chrome logs before proposing a further algorithm fix.
 
 ## Evidence and scope
 
