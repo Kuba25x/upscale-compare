@@ -64,7 +64,7 @@ Current divider focus fix, 2026-10-27:
 - `npm run test:e2e`: 23 Chromium desktop/HiDPI/mobile cases passed, including touch divider/pinch, pixel zoom, sharing, panning and file drops.
 - `npm run test:demo`: demo build and 16 desktop/mobile cases passed at `/upscale-compare/`.
 - 90 local suite cases passed. Formatting and `git diff --check` passed; `npm audit --audit-level=high` reports zero vulnerabilities.
-- Initial hosted Firefox validation passed keyboard adjustment and all panning cases, but exposed a test assumption: letter input after pointer focus does not necessarily enable `:focus-visible` in Firefox. The regression now accepts that browser modality difference, still checks zero full-height accent lines, and requires a visible handle ring after actual Tab/Shift+Tab re-entry. The revised targeted Chromium tests passed; a new hosted Firefox run is required. Local Firefox download remains blocked by environment policy.
+- Initial hosted Firefox validation passed keyboard adjustment and all panning cases, but exposed a test assumption: letter input after pointer focus does not necessarily enable `:focus-visible` in Firefox. The regression now accepts that browser modality difference, still checks zero full-height accent lines, and requires a visible handle ring after actual Tab/Shift+Tab re-entry. The revised targeted Chromium tests and rebuilt 16-case demo suite passed. Final hosted Firefox results are tracked in the Validate checks and Validation section of [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5). Local Firefox download remains blocked by environment policy.
 
 Previous panning fix and community review, 2026-10-26:
 
@@ -92,8 +92,7 @@ Previous panning fix and community review, 2026-10-26:
 
 ## Exact next steps
 
-1. Local build, unit/API, Chromium/mobile and production-demo validation for Issue #4 is complete (90 passing suite cases).
-2. Review [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5), pushed on `fix/divider-focus-indicator` with `Fixes #4`; the issue remains open until merge.
-3. Verify hosted CI, especially the Firefox divider-focus cases; local Firefox installation is unavailable under the current download policy.
-4. Leave the PR unmerged, the issue open, and do not deploy. The owner decides when to merge and publish.
-5. Preserve demo/production separation, the community panning attribution, AGPL-3.0 and all Cloudflare safeguards.
+1. Review [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5), pushed on `fix/divider-focus-indicator` with `Fixes #4`. Local build, unit/API, Chromium/mobile and production-demo validation is complete (90 passing suite cases).
+2. Inspect the latest Validate checks and the PR's Validation section for hosted Chromium/Firefox execution results. The initial Firefox run exposed only a focus-modality assumption in the test, now corrected; actual Tab/Shift+Tab focus visibility remains mandatory in every browser.
+3. Leave the PR unmerged, Issue #4 open, and do not deploy. The owner decides when to merge and publish after verification. Optional manual Windows Chrome/DuckDuckGo confirmation can use the reporter's original reproduction.
+4. Continue from the existing branch and preserve demo/production separation, the community panning attribution, AGPL-3.0 and all Cloudflare safeguards. Do not start unrelated Issues without the owner's prioritization.
