@@ -20,13 +20,13 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), with [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) open against `main`.
+PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), with [PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) open against `main`.
 
 Four actual-device logs now confirm the cause of Issue #8: Firefox's secondary Pointer Event coordinates remain stale while Touch Events already expose both current contacts. A late pointer refresh produces a false large distance/midpoint change. Chrome's cache matches the full touch snapshots. See `docs/PINCH_LOG_ANALYSIS.md` for counts, precise event/commit sequences and log hashes.
 
 The current fix drives native touch navigation from complete copied Touch Event snapshots, without matching Touch IDs to Pointer IDs. Pointer Events still track capture/lifecycle, mouse/pen and pointer-only fallback; they cannot double-apply native touch motion. Stable-identity snapshots rebase on contact changes, preserve one-finger/divider controls, and clear on cancellation. Existing geometry and diagnostics are retained.
 
-The new representative device-pattern regression fails before this fix and passes in both modes afterward. A private Chromium replay of all four supplied streams checks 2,465 touch frames against full-snapshot scale ratios, with maximum error 1.11e-16. This is coordinate/order replay with placeholder images, not a new actual-device test. PR #9 must remain draft and Issue #8 open until the user confirms the patched Xiaomi/Firefox behavior. Raw logs are not committed publicly.
+The new representative device-pattern regression fails before this fix and passes in both modes afterward. A private Chromium replay of all four supplied streams checks 2,465 touch frames against full-snapshot scale ratios, with maximum error 1.11e-16. This is coordinate/order replay with placeholder images, not a new actual-device test. On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay. PR #9 is ready for review after final checks; Issue #8 stays open until merge. Raw logs are not committed publicly.
 
 The previous community panning fix remains intact, including its attribution and review in `docs/PANNING_FIX_REVIEW.md`.
 
@@ -36,7 +36,7 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 
 ## Completed features
 
-- Candidate pinch isolation, fixed reference panel, direct rendered-source anchoring and reliable wheel-listener cleanup, with detailed investigation/device-verification documentation. Android Firefox remains unverified.
+- Candidate pinch isolation, fixed reference panel, direct rendered-source anchoring and reliable wheel-listener cleanup, with detailed investigation/device-verification documentation. The later full-touch-snapshot fix is verified by the reporter on actual Android Firefox in both modes.
 
 - Pointer divider gestures retain viewer-stage focus; Tab/Shift+Tab give the slider keyboard focus. Regression coverage checks both directions of input switching, real shortcuts, fullscreen and prior input-field focus.
 
@@ -70,7 +70,7 @@ Current device-log fix, 2026-10-27:
 - Full build passed, including frontend/Worker typechecks and production bundles.
 - `npm test`: 68 passed; `npm run test:e2e`: 37 passed; `npm run test:demo`: 31 passed; `npm run test:diagnostics`: 5 passed (**141 local cases**).
 - Formatting and `git diff --check` passed. Hosted configuration contains 179 cases including desktop Firefox (68 + 55 + 49 + 7); exact CI evidence is linked from PR #9.
-- Physical retest of the patched app is still required.
+- Reporter physical retest passed on Xiaomi 15T / Android 16 / Firefox 158.0.2 in both modes; Chrome on the same phone also passed.
 
 Previous local diagnostics, 2026-10-27:
 
@@ -133,14 +133,19 @@ Previous panning fix and community review, 2026-10-26:
 
 - No production deployment, Cloudflare account permission check, real Turnstile smoke test, or provider CPU budget benchmark has been performed.
 - JPEG/WebP content is structurally validated, not fully decoded server-side. PNG additionally validates its bounded complete decompressed raster. Animated, interlaced PNG, or rotated/mirrored EXIF uploads are not accepted for publication.
-- Browser color management applies; HDR/raw-color analysis is outside scope. Safari and physical devices have not been tested. Firefox CI verification covers the targeted viewer regressions.
+- Browser color management applies; HDR/raw-color analysis is outside scope. Safari has not been tested. The reporter verified pinch on the physical Xiaomi/Firefox and Chrome configuration described above. Firefox CI verification covers the targeted viewer regressions.
 - A crash before a pending row is inserted can conservatively over-count quota; the documented disabled-upload reconciliation procedure handles this.
 - Per-IP limits do not stop distributed attacks or cap provider request costs. Large PNG validation may exceed Workers Free CPU allowance. Production requires operator contacts, monitoring, provider quota review and approval.
 - No automatic expiration: active links persist until owner/operator deletion. Local unpublished state is intentionally lost on refresh.
 
+## Final review, 2026-10-27
+
+On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay.
+
+Final review found no new blocker in input ownership, stable touch snapshots, contact lifecycle/cancel, pointer capture/fallback, divider input or geometry. Production diagnostics are disabled by the development + demo + query guard: no recorder, diagnostic observers or UI. The production-demo regression now checks observer absence after upload and mode switches. Backend, dependencies, license and deployment triggers are unchanged.
+
 ## Exact next steps
 
-1. Local validation is complete (141 passing cases) and all four input streams passed replay. Commit/push the input fix on existing `fix/stable-pinch-gestures` / draft PR #9 and inspect its hosted checks. Do not create another issue or PR.
-2. Read `docs/PINCH_LOG_ANALYSIS.md` for the confirmed native cause and evidence. The previous compatibility-event hypotheses do not explain these logs.
-3. Ask for an actual-device retest of this updated branch on Xiaomi 15T / Android 16 / Firefox 158.0.2, preferably in ordinary local demo mode without diagnostics. Check both modes against Chrome. If anything persists, collect new diagnostics; authoritative `touchContacts`/`touchDistance` and calculation `input` now distinguish the sources.
-4. Keep Issue #8 open and PR #9 in draft until real-device confirmation. Do not merge/deploy automatically. Preserve image quality, existing attribution, AGPL-3.0 and backend safeguards.
+1. PR #9 is ready for owner review; see its Validation section for final local and hosted results. Keep Issue #8 open until the verified solution is merged.
+2. Merge and deployment are owner actions. Do not merge, deploy, activate cloud resources or create another issue/PR automatically.
+3. Preserve the analysis, opt-in development diagnostics, image quality, attribution, AGPL-3.0 and backend safeguards. Raw user logs remain outside the public repository.

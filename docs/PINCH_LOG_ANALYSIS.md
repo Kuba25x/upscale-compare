@@ -1,6 +1,6 @@
 # Device-log root cause: stale secondary pointer coordinates
 
-[Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9). Device: Xiaomi 15T, Android 16; reported Firefox 158.0.2 (UA reports 158.0) and Chrome 154.0.0.0. All four supplied logs were parsed as data, not instructions. None is truncated or has dropped entries.
+[Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), [PR #9](https://github.com/Kuba25x/upscale-compare/pull/9). Device: Xiaomi 15T, Android 16; reported Firefox 158.0.2 (UA reports 158.0) and Chrome 154.0.0.0. All four supplied logs were parsed as data, not instructions. None is truncated or has dropped entries.
 
 ## Confirmed mechanism
 
@@ -62,7 +62,13 @@ All **2,465 frames** passed. This validates captured input order/coordinates and
 
 Local production builds and 141 automated cases passed (68 unit/API, 37 regular browser, 31 production-demo, 5 diagnostics), plus formatting and `git diff --check`. Hosted results are linked from PR #9.
 
-The cause is evidenced by real-device logs. **The patched app still needs confirmation on the actual Xiaomi/Firefox configuration** before calling the device issue fully resolved. Keep PR #9 draft and Issue #8 open pending that confirmation. Do not merge or deploy automatically.
+## Actual-device confirmation and final review
+
+On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay.
+
+Final review found no new blocker in touch snapshot ownership, identity/order, lifecycle rebasing/cancellation, pointer fallback, divider control or source-pixel geometry. Diagnostics require development mode, demo mode and explicit `?diagnostics=1`; production builds create no recorder or diagnostic observers/UI, even with that query. Logs remain bounded, local and opt-in. The production-demo regression verifies absence of diagnostic document/visual-viewport listeners after upload and mode switching.
+
+PR #9 is ready for review. Keep Issue #8 open until the owner merges the verified solution. No merge or deployment is performed automatically.
 
 ## Source log fingerprints
 

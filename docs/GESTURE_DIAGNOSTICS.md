@@ -1,10 +1,10 @@
 # Local gesture diagnostics
 
-Issue #8 remains unresolved after the reporter's real-device retest of PR #9 on Xiaomi 15T / Android 16 / Firefox 158.0.2. Chrome on the same phone remains stable. Earlier synthetic regressions exposed real code defects, but did not establish the native Android event sequence. This phase collects evidence; it does not change the pinch algorithm.
+The initial candidate failed the reporter's actual-device retest, so this optional tool collected four Firefox/Chrome logs. Their analysis led to the complete-touch-snapshot fix, now confirmed by the reporter on Xiaomi 15T / Android 16 / Firefox 158.0.2 in both modes; Chrome remains correct. See [analysis and device acceptance](PINCH_LOG_ANALYSIS.md). Retain this development-only tool for future investigations. It is inactive in production builds.
 
 ## Enable and collect
 
-Use branch `fix/stable-pinch-gestures` (draft PR #9):
+Use branch `fix/stable-pinch-gestures` (PR #9):
 
 ```bash
 git switch fix/stable-pinch-gestures

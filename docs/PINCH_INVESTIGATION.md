@@ -1,16 +1,16 @@
 # Pinch gesture investigation
 
-Status: [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8) remains unresolved; the candidate in [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) failed the reporter's actual-device retest. **The current phase collects native diagnostics before another gesture fix.** Do not interpret desktop Firefox handler tests or Chromium mobile emulation as proof that the reported device issue is resolved.
+Status: the reporter has confirmed the complete-touch-snapshot fix in [PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) on the actual Xiaomi/Firefox device in both modes, with Chrome also working. See [final analysis and confirmation](PINCH_LOG_ANALYSIS.md). [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8) stays open until merge. The failed initial candidate and diagnostic collection below are investigation history.
 
 ## Native logs establish the cause
 
-The four subsequent Xiaomi Firefox/Chrome logs identify mixed-age secondary Pointer Event positions as the source of the jumps. See [device-log analysis](PINCH_LOG_ANALYSIS.md) for direct evidence and the complete-touch-snapshot input fix. The earlier injected-event defects below are real but do not explain the supplied native recordings. Patched-device confirmation is still pending.
+The four subsequent Xiaomi Firefox/Chrome logs identify mixed-age secondary Pointer Event positions as the source of the jumps. See [device-log analysis](PINCH_LOG_ANALYSIS.md) for direct evidence and the complete-touch-snapshot input fix. The earlier injected-event defects below are real but do not explain the supplied native recordings. The reporter subsequently confirmed the patched device behavior; see the linked analysis.
 
-## Actual-device retest failed
+## Historical retest: initial candidate failed
 
-The reporter tested the candidate in a locally served demo on **Xiaomi 15T / Android 16 / Firefox 158.0.2**. The main scale/position instability persists in both modes; Chrome on that phone remains stable. The mechanisms below were reproduced in controlled tests, but they do not explain the complete native-device failure. Issue #8 is unresolved and PR #9 remains a draft.
+The reporter tested the candidate in a locally served demo on **Xiaomi 15T / Android 16 / Firefox 158.0.2**. The main scale/position instability persists in both modes; Chrome on that phone remains stable. The mechanisms below were reproduced in controlled tests, but they do not explain the complete native-device failure. At that checkpoint Issue #8 was unresolved and PR #9 remained a draft.
 
-The next step is [opt-in local diagnostics](GESTURE_DIAGNOSTICS.md), not another speculative gesture change. Collect matched Firefox/Chrome logs before proposing a further algorithm fix.
+The next step at that checkpoint was [opt-in local diagnostics](GESTURE_DIAGNOSTICS.md). Four matched logs were subsequently collected, analyzed and used to prepare the verified fix.
 
 ## Evidence and scope
 
@@ -38,9 +38,11 @@ The existing distance-ratio calculation and copied pointer positions were inspec
 - Two additional Chromium CDP touch cases per build use native touch dispatch at a mobile viewport, repeat slow/rapid gestures in both modes, cancel/end contacts, assert synchronized geometry/source-pixel sizes and verify that browser viewport scale stays unchanged.
 - Four unit cases check rendered source-point anchoring at DPR 1, 1.25, 2 and 3. All existing pixel, divider, panning, focus, upload, share/API and demo-network tests remain enabled.
 
-## Required device verification
+## Device verification checklist
 
-Keep the PR in draft and Issue #8 open until the reporter or another tester verifies the candidate on actual Firefox for Android. The recording alone does not identify the complete device-specific root cause.
+On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay.
+
+Retain the following checklist for future gesture changes. Automated desktop coverage alone cannot establish Android behavior.
 
 For a local demo on a computer and phone on the same network, check out the PR branch, run `npm ci` and `npm run dev:demo`, then open `http://<computer-LAN-IP>:5173/upscale-compare/` on the phone. No backend is needed. No public deployment is required for this check.
 
@@ -54,4 +56,4 @@ Do not close the issue merely because automated checks pass. Merge and deploymen
 
 ## Executed local checks
 
-On 2026-10-27, the frontend/Worker production build and all 114 local suite cases passed (55 unit/API, 33 regular Chromium/HiDPI/mobile, 26 production-demo desktop/mobile). Formatting and `git diff --check` passed. Baseline injected-event and panel-seam cases were executed and failed before the fix. Hosted desktop Firefox evidence is linked from the PR; actual Android Firefox verification is outstanding.
+On 2026-10-27, the frontend/Worker production build and all 114 local suite cases passed (55 unit/API, 33 regular Chromium/HiDPI/mobile, 26 production-demo desktop/mobile). Formatting and `git diff --check` passed. Baseline injected-event and panel-seam cases were executed and failed before the fix. At that initial checkpoint Android Firefox verification was outstanding. The later full-touch-snapshot fix is now confirmed by the reporter, as described above.
