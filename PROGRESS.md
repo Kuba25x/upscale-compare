@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1, #2, #3 and #5 are merged into `main`. Work continues from `origin/main` at `be6c936` on the separate branch `fix/divider-pointer-focus` for [Issue #6](https://github.com/Kuba25x/upscale-compare/issues/6), following up the clarified input behavior after Issue #4 and PR #5.
+PRs #1, #2, #3 and #5 are merged into `main`. Work continues from `origin/main` at `be6c936` on the separate branch `fix/divider-pointer-focus` for [Issue #6](https://github.com/Kuba25x/upscale-compare/issues/6), with [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7) open against `main`, following up the clarified input behavior after Issue #4 and PR #5.
 
 The remaining cause is explicit slider focus in `onPointerDown`: Chromium can later activate `:focus-visible` when any key is pressed. Pointer gestures now focus the existing viewer stage instead, keeping shortcuts available after label editing and removing old slider keyboard focus when switching to the mouse. Real Tab/Shift+Tab navigation still reaches the slider and reveals its existing accessible handle ring. No CSS or global modality tracking is introduced. Pointer capture, touch handling, geometry, slider keys and image navigation remain unchanged.
 
@@ -67,7 +67,7 @@ Current pointer/keyboard focus follow-up, 2026-10-27:
 - `npm run test:e2e`: 24 Chromium desktop/HiDPI/mobile cases passed, including touch/pinch, panning, file drops, pixel alignment and sharing.
 - `npm run test:demo`: production demo build and 17 desktop/mobile cases passed at `/upscale-compare/`.
 - 92 local suite cases passed. `npm run format:check` and `git diff --check` passed.
-- Firefox runs in hosted CI because no compatible local Firefox is installed and the official download domains are blocked by the environment policy.
+- Firefox runs in hosted CI because no compatible local Firefox is installed and the official download domains are blocked by the environment policy. Exact hosted Chromium/Firefox results are recorded in the Validate checks and Validation section of [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7).
 
 Previous divider outline fix, 2026-10-27:
 
@@ -107,7 +107,7 @@ Previous panning fix and community review, 2026-10-26:
 
 ## Exact next steps
 
-1. Local validation is complete (92 passing suite cases). Commit/push `fix/divider-pointer-focus` and open the separate PR against `main`.
-2. Open a separate PR against `main` with `Fixes #6`, referencing the clarified follow-up to Issue #4 and merged PR #5. Verify hosted Chromium/Firefox checks, including the new input transitions in normal and demo builds.
+1. Review [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7), pushed on `fix/divider-pointer-focus` with `Fixes #6`. Local validation is complete (92 passing suite cases).
+2. Inspect the latest Validate checks and the PR Validation section for hosted Chromium/Firefox results, including pointer/keyboard transitions in normal and demo builds. The combined configured suite contains 106 cases (51 unit/API + 31 regular browser + 24 demo browser).
 3. Leave the PR unmerged, Issue #6 open, and do not deploy. The owner decides when to merge and publish after verification.
 4. Continue from the existing branch; preserve demo/production separation, community panning attribution, AGPL-3.0 and all Cloudflare safeguards. Do not start unrelated Issues without the owner's prioritization.
