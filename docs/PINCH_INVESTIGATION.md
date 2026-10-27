@@ -1,6 +1,6 @@
 # Pinch gesture investigation
 
-Status: candidate fix for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8). **Physical Firefox for Android verification is still required.** Do not interpret desktop Firefox handler tests or Chromium mobile emulation as proof that the reported device issue is resolved.
+Status: candidate fix for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), tracked in [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9). **Physical Firefox for Android verification is still required.** Do not interpret desktop Firefox handler tests or Chromium mobile emulation as proof that the reported device issue is resolved.
 
 ## Evidence and scope
 

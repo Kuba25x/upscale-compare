@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8).
+PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), with [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) open against `main`.
 
 The supplied Firefox Android recording was received and inspected. A candidate fix addresses reproduced handler interference from compatibility double-click/wheel events, Side-by-Side reference-panel switching, intermediate snapped-pan drift, and development wheel-listener cleanup. See `docs/PINCH_INVESTIGATION.md` for exact evidence and boundaries. The recording does not establish the Android event sequence, and no physical Android Firefox browser is available. Keep the PR in draft, use `Refs #8` rather than automatic closure, and do not claim the reported device issue fully resolved until actual-device verification.
 
@@ -119,7 +119,7 @@ Previous panning fix and community review, 2026-10-26:
 
 ## Exact next steps
 
-1. Local validation is complete (114 passing suite cases). Commit/push `fix/stable-pinch-gestures` and prepare the draft PR.
-2. Create a draft PR against `main` referencing Issue #8 without an automatic closing keyword. Verify hosted Chromium/desktop Firefox results and link them from the PR.
+1. Review [draft PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) on `fix/stable-pinch-gestures`. Local validation is complete (114 passing suite cases).
+2. Inspect the latest Validate checks and PR Validation section for exact hosted Chromium/desktop Firefox evidence. The configured total is 142 cases. PR #9 uses `Refs #8` and must remain in draft pending real-device verification.
 3. Obtain actual Firefox for Android verification using `docs/PINCH_INVESTIGATION.md`. Keep Issue #8 open and the fix provisional until that check succeeds. If it fails, collect native event traces; do not assume the synthetic compatibility sequence is the device cause.
 4. Do not merge or deploy automatically. Preserve demo/production separation, community attribution, AGPL-3.0 and backend safeguards; do not start unrelated Issues.
