@@ -12,6 +12,7 @@
 | `shared/model.ts`                   | Shared TypeScript models, Zod schemas and default limits                                      |
 | `worker/src/index.ts`               | Worker routing, validation pipeline, quota/rate control, persistence, deletion and share HTML |
 | `worker/src/image-validation.ts`    | Bounded image-content validation without file re-encoding                                     |
+| `worker/src/upload.ts`              | Bounded multipart buffer, field parsing and per-isolate publication admission                 |
 | `worker/migrations`                 | D1 schema migrations                                                                          |
 | `tests`                             | Geometry/schema, image-content, real local Worker integration, browser/pixel/touch coverage   |
 
@@ -39,6 +40,12 @@ Selected files become browser object URLs and are decoded locally. Failed batche
 The publish dialog snapshots labels, metadata, mode, selection, divider, source center and zoom. Original file data is sent as multipart form data. The Worker ignores original filenames and serves generated safe filenames. It does not transcode image data.
 
 ## Persistence and failure behavior
+
+Upload parsing and validation use bounded resources: one multipart buffer per
+isolate, at most two waiting publications, limited headers/parts and container
+structure, and pull-based PNG decompression. Original image entries reference
+buffer slices through sequential R2 writes. See [resource limits](RESOURCE_LIMITS.md)
+for ceilings, overload behavior and production verification boundaries.
 
 1. Require uploads enabled, allowed origin, request rate limit, bounded multipart, valid manifest, production verification, and valid file content.
 2. Atomically reserve byte/count capacity in D1.

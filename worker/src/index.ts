@@ -1,7 +1,16 @@
 import type { D1Database, R2Bucket, ScheduledEvent } from '@cloudflare/workers-types';
-import { manifestSchema, type PublicComparison } from '../../shared/model';
+import {
+  MAX_DIMENSION,
+  MAX_FILE_BYTES,
+  MAX_PIXELS,
+  manifestSchema,
+  type PublicComparison,
+} from '../../shared/model';
 import { validateImage } from './image-validation';
 import { comparisonErrorPage } from './error-page';
+import { MAX_UPLOAD_BYTES, readUpload, UploadError, UploadGate } from './upload';
+
+const uploadGate = new UploadGate();
 
 export interface Env {
   DB: D1Database;
@@ -83,32 +92,6 @@ async function throttle(
     .first<{ hits: number }>();
   if (!result || result.hits > limit) fail(429, 'Too many requests. Please try again later.');
 }
-async function boundedForm(request: Request, maxBytes: number) {
-  if (!request.headers.get('content-type')?.startsWith('multipart/form-data;'))
-    fail(415, 'Use a multipart image upload.');
-  const declared = Number(request.headers.get('content-length'));
-  if (declared > maxBytes) fail(413, 'The comparison exceeds the total upload size limit.');
-  if (!request.body) fail(400, 'No upload was provided.');
-  let count = 0;
-  const bounded = request.body!.pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        count += chunk.byteLength;
-        if (count > maxBytes)
-          throw new HttpError(413, 'The comparison exceeds the total upload size limit.');
-        controller.enqueue(chunk);
-      },
-    }),
-  );
-  try {
-    return await new Response(bounded, {
-      headers: { 'Content-Type': request.headers.get('content-type')! },
-    }).formData();
-  } catch (error) {
-    if (error instanceof HttpError) throw error;
-    return fail(400, 'Malformed multipart upload.');
-  }
-}
 async function challenge(env: Env, request: Request, token: string) {
   if (env.ENVIRONMENT === 'development') return;
   if (!env.TURNSTILE_SECRET)
@@ -144,16 +127,10 @@ async function publish(request: Request, env: Env) {
   if (env.ENVIRONMENT !== 'development' && !env.TURNSTILE_SECRET)
     fail(503, 'Publishing is not configured.');
   await throttle(env, request, 'publish', numeric(env.PUBLISHES_PER_HOUR, 10), 3600);
-  const totalLimit = numeric(env.MAX_TOTAL_BYTES, 40 * 1024 * 1024);
-  const form = await boundedForm(request, totalLimit + 65536);
-  if (
-    [...form.keys()].some((key) => !['manifest', 'challenge', 'images'].includes(key)) ||
-    form.getAll('manifest').length !== 1 ||
-    form.getAll('challenge').length > 1
-  )
-    fail(400, 'Unexpected upload fields.');
-  const raw = form.get('manifest');
-  if (typeof raw !== 'string' || raw.length > 16000) fail(400, 'Invalid comparison metadata.');
+  const totalLimit = Math.min(numeric(env.MAX_TOTAL_BYTES, MAX_UPLOAD_BYTES), MAX_UPLOAD_BYTES);
+  const fileLimit = Math.min(numeric(env.MAX_FILE_BYTES, MAX_FILE_BYTES), MAX_FILE_BYTES);
+  const form = await readUpload(request, { maxFileBytes: fileLimit, maxTotalBytes: totalLimit });
+  const raw = form.manifest;
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw as string);
@@ -163,25 +140,21 @@ async function publish(request: Request, env: Env) {
   const result = manifestSchema.safeParse(parsed);
   if (!result.success) fail(400, 'Invalid comparison configuration or metadata.');
   const manifest = result.data!;
-  const files = form.getAll('images');
-  if (files.length !== manifest.images.length || files.some((file) => typeof file === 'string'))
+  const uploads = form.images;
+  if (uploads.length !== manifest.images.length)
     fail(400, 'Upload between two and four matching image files.');
-  const uploads = files as File[];
-  const bytes = uploads.reduce((sum, file) => sum + file.size, 0);
-  if (bytes > totalLimit) fail(413, 'The comparison exceeds the total upload size limit.');
-  await challenge(env, request, String(form.get('challenge') || ''));
+  const bytes = uploads.reduce((sum, file) => sum + file.bytes.byteLength, 0);
+  await challenge(env, request, form.challenge);
   const stored: PublicComparison['images'] = [];
   // Validate sequentially to bound memory usage. Original bytes are never re-encoded.
   for (let i = 0; i < uploads.length; i++) {
     const file = uploads[i];
-    if (file.size > numeric(env.MAX_FILE_BYTES, 20 * 1024 * 1024))
-      fail(413, 'An image exceeds the file size limit.');
     let info;
     try {
-      info = await validateImage(new Uint8Array(await file.arrayBuffer()), {
-        maxFileBytes: numeric(env.MAX_FILE_BYTES, 20 * 1024 * 1024),
-        maxDimension: numeric(env.MAX_DIMENSION, 16384),
-        maxPixels: numeric(env.MAX_PIXELS, 36000000),
+      info = await validateImage(file.bytes, {
+        maxFileBytes: fileLimit,
+        maxDimension: Math.min(numeric(env.MAX_DIMENSION, MAX_DIMENSION), MAX_DIMENSION),
+        maxPixels: Math.min(numeric(env.MAX_PIXELS, MAX_PIXELS), MAX_PIXELS),
       });
     } catch (error) {
       return fail(415, error instanceof Error ? error.message : 'Image validation failed.');
@@ -192,7 +165,7 @@ async function publish(request: Request, env: Env) {
     stored.push({
       ...manifest.images[i],
       ...info,
-      size: file.size,
+      size: file.bytes.byteLength,
       name: `screenshot-${i + 1}.${extension}`,
     });
   }
@@ -222,7 +195,7 @@ async function publish(request: Request, env: Env) {
       .bind(id, JSON.stringify(payload), await hash(deleteToken), bytes, createdAt)
       .run();
     for (let i = 0; i < uploads.length; i++)
-      await env.IMAGES.put(imageKey(id, i), uploads[i].stream(), {
+      await env.IMAGES.put(imageKey(id, i), uploads[i].bytes, {
         httpMetadata: { contentType: stored[i].type },
         customMetadata: { comparison: id },
       });
@@ -273,7 +246,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (url.pathname === '/api/comparisons' && request.method === 'POST') {
     if (!origin || !origins.includes(origin))
       fail(403, 'Publishing requires an allowed website origin.');
-    return publish(request, env);
+    return uploadGate.run(() => publish(request, env), request.signal);
   }
   const match = url.pathname.match(
     /^\/(api\/comparisons|s)\/([a-f0-9]{16})(?:\/images\/([0-3]))?$/,
@@ -345,14 +318,18 @@ export default {
     try {
       response = await route(request, env);
     } catch (error) {
-      const status = error instanceof HttpError ? error.status : 503;
-      const message =
-        error instanceof HttpError
-          ? error.message
-          : 'The sharing service is temporarily unavailable. Please try again later.';
+      const expected = error instanceof HttpError || error instanceof UploadError;
+      const status = expected ? error.status : 503;
+      const message = expected
+        ? error.message
+        : 'The sharing service is temporarily unavailable. Please try again later.';
       response = new URL(request.url).pathname.startsWith('/s/')
         ? comparisonErrorPage(status, message, env.FRONTEND_URL)
         : json({ error: message }, status);
+    } finally {
+      // Includes refused admission and malformed headers rejected before reading.
+      if (request.method === 'POST' && request.body && !request.body.locked)
+        void request.body.cancel().catch(() => undefined);
     }
     const headers = new Headers(response.headers);
     headers.set('X-Content-Type-Options', 'nosniff');

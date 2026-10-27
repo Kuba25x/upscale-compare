@@ -20,13 +20,15 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), with [PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) open against `main`.
+Share Comparison stage 1, **Bound image validation resource usage**, is implemented locally on `fix/bound-image-validation` from `origin/main` at `b6eda8c`. Scope is limited to upload/image resource bounds and regression coverage. No later sharing stages, production resources, deployments, merges, Issues or PRs have been started. See [resource limits](docs/RESOURCE_LIMITS.md) for the design, hard ceilings, local measurements and production boundaries.
+
+The following viewer verification is historical; PR #9 has merged into main.
 
 Four actual-device logs now confirm the cause of Issue #8: Firefox's secondary Pointer Event coordinates remain stale while Touch Events already expose both current contacts. A late pointer refresh produces a false large distance/midpoint change. Chrome's cache matches the full touch snapshots. See `docs/PINCH_LOG_ANALYSIS.md` for counts, precise event/commit sequences and log hashes.
 
 The current fix drives native touch navigation from complete copied Touch Event snapshots, without matching Touch IDs to Pointer IDs. Pointer Events still track capture/lifecycle, mouse/pen and pointer-only fallback; they cannot double-apply native touch motion. Stable-identity snapshots rebase on contact changes, preserve one-finger/divider controls, and clear on cancellation. Existing geometry and diagnostics are retained.
 
-The new representative device-pattern regression fails before this fix and passes in both modes afterward. A private Chromium replay of all four supplied streams checks 2,465 touch frames against full-snapshot scale ratios, with maximum error 1.11e-16. This is coordinate/order replay with placeholder images, not a new actual-device test. On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay. PR #9 is ready for review after final checks; Issue #8 stays open until merge. Raw logs are not committed publicly.
+The new representative device-pattern regression fails before this fix and passes in both modes afterward. A private Chromium replay of all four supplied streams checks 2,465 touch frames against full-snapshot scale ratios, with maximum error 1.11e-16. This is coordinate/order replay with placeholder images, not a new actual-device test. On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay. PR #9 is now merged; its device verification remains historical evidence. Raw logs are not committed publicly.
 
 The previous community panning fix remains intact, including its attribution and review in `docs/PANNING_FIX_REVIEW.md`.
 
@@ -61,6 +63,16 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Share Comparison stage 1, 2026-10-27:
+
+- Added container structure ceilings and pull-based, 8 KiB PNG decompressor input.
+- Replaced native multipart buffering with one bounded body buffer and original-byte slices; added bounded publication admission, receive deadlines and cancellation handling.
+- Operator settings may lower the existing 20 MiB / 40 MiB / 36 MP / 16,384-pixel ceilings, but cannot raise them.
+- Full build and frontend/Worker typechecks passed; 121 unit/API tests, 37 Chromium/HiDPI/mobile E2E cases and 31 production-demo cases passed (189 cases, including 53 new unit/API cases).
+- The many-empty-IDAT regression failed against the baseline validator (it accepted the file) and passed after the change. Local workerd accepted a complete 40 MiB publication and returned both 20 MiB originals byte-for-byte.
+- Both publication/restoration and owner-deletion browser smoke cases passed again against the final Worker. No production CPU/memory margin, Firefox execution or hosted CI run is claimed for this stage.
+- See docs/RESOURCE_LIMITS.md for local diagnostic measurements and remaining production verification requirements.
 
 Current device-log fix, 2026-10-27:
 

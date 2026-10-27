@@ -68,7 +68,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 55 full-stack browser cases and 49 demo cases, in addition to 68 unit/API tests and 7 diagnostic browser cases. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 55 full-stack browser cases and 49 demo cases, in addition to 121 unit/API tests and 7 diagnostic browser cases (232 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -120,3 +120,9 @@ Native-log fix validation on 2026-10-27: build passed; 68 unit/API + 37 regular 
 On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay.
 
 Hosted Validate run #22 passed all 179 cases on the verified code. The strengthened production-demo guard also checks that the diagnostic query cannot install document input or visual-viewport observers after image upload and mode switching. The development-only diagnostic tool is retained for optional future investigations; it is inactive in public production builds. Issue #8 remains open until merge; the owner controls merge and deployment.
+
+## Upload and image resource bounds (Share Comparison stage 1)
+
+See [resource limits](RESOURCE_LIMITS.md) for the design, ceilings, overload behavior and local diagnostic measurements. New coverage exercises container item limits, bounded decompressor input, a complete 8K raster, exact byte limits, fragmented/ambiguous multipart bodies, receive timeout/cancellation and per-isolate admission. Local workerd integration includes two 20 MiB originals in one complete 40 MiB publication, four-image uploads, concurrent publications and rejection before quota or R2 writes.
+
+Validation on 2026-10-27: full build and typechecks passed; 121 unit/API, 37 Chromium/HiDPI/mobile E2E and 31 production-demo cases passed (189 cases). The many-empty-IDAT regression failed against the baseline implementation because it accepted the file; the same test passed after the fix. Both publication/restoration and owner-deletion browser smoke cases passed again against the final Worker. Formatting and diff whitespace checks passed. Firefox, diagnostic browser cases, hosted CI and production resource limits were not revalidated in this stage.
