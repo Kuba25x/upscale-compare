@@ -433,6 +433,14 @@ input[type='checkbox'] {
   font-size: 19px;
   backdrop-filter: blur(6px);
 }
+/* Keep the full-height pointer target, but draw keyboard focus around its handle. */
+.divider:focus-visible {
+  outline: none;
+}
+.divider:focus-visible .divider-handle {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
 .divider-handle span {
   height: 13px;
   width: 1px;

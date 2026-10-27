@@ -23,8 +23,8 @@ export default defineConfig({
     ...(process.env.RUN_FIREFOX === 'true'
       ? [
           {
-            name: 'demo-firefox-panning',
-            testMatch: /panning\.spec\.ts/,
+            name: 'demo-firefox-viewer',
+            testMatch: /(panning|divider-focus)\.spec\.ts/,
             use: {
               browserName: 'firefox' as const,
               viewport: { width: 1440, height: 900 },

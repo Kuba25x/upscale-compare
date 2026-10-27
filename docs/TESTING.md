@@ -41,7 +41,7 @@ Last verified development checkpoint: 2026-10-26.
 
 ## Limits of verification
 
-Mobile emulation is not a physical iPhone/Android device. Safari has not been tested; Firefox verification covers the panning regressions described below. The suite does not establish HDR/colorimetric accuracy, large-file performance on every machine, real production CPU/billing limits, real Turnstile account verification, production DNS/TLS, or actual R2/D1 account permissions. Cloudflare deployment and social-platform preview caches require approved production smoke tests.
+Mobile emulation is not a physical iPhone/Android device. Safari has not been tested; Firefox verification covers the targeted viewer regressions described below. The suite does not establish HDR/colorimetric accuracy, large-file performance on every machine, real production CPU/billing limits, real Turnstile account verification, production DNS/TLS, or actual R2/D1 account permissions. Cloudflare deployment and social-platform preview caches require approved production smoke tests.
 
 Static GitHub Pages subpath output is checked separately during CI. Publishing uses original byte comparisons; no lossy round-trip is introduced by the app. Full JPEG/WebP decoding is delegated to the browser, while the server performs structural validation. See SECURITY.md and deployment docs for operational boundaries.
 
@@ -67,6 +67,16 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 25 full-stack browser cases and 18 demo cases, in addition to 51 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 29 full-stack browser cases and 22 demo cases, in addition to 51 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
+
+## Split divider focus regression
+
+[Issue #4](https://github.com/Kuba25x/upscale-compare/issues/4) was reproduced on main at `8d2e5d4` in Chromium. The global focus-visible rule outlines the full-height slider hit target; clipping hides its top/bottom edges and leaves two vertical accent lines. The fix moves only the outline to the circular handle; slider geometry, pointer handlers and keyboard behavior are unchanged.
+
+`tests/shared/divider-focus.ts` runs against the normal viewer and production demo, in Chromium by default and Firefox when `RUN_FIREFOX=true`. It samples screenshot pixels above the handle (the baseline regression fails with 32 unwanted accent pixels), verifies a visible 2px handle outline, and uses real Tab, arrow, Shift+arrow, Home/End, zoom and F fullscreen keyboard input. It also repeats the reported mouse-then-keyboard sequence after mode changes and checks real mouse divider movement. Existing mobile cases still exercise touch divider dragging and synchronized pinch gestures.
+
+The Firefox projects are named `firefox-viewer` and `demo-firefox-viewer`; both include the existing panning regressions and the divider-focus regressions. Windows Chrome/DuckDuckGo and physical Windows devices are not available in this environment; Chromium engine reproduction and hosted Firefox validation are used instead.
+
+Validation on 2026-10-27: `npm run build`, `npm test` (51), `npm run test:e2e` (23) and `npm run test:demo` (16) passed: **90 local suite cases**. Formatting, `git diff --check` and dependency audit also passed (zero known vulnerabilities). The new rendered-pixel regression was executed before the fix and failed as expected, then passed after the fix. Hosted CI results for the expanded Firefox coverage will be recorded once completed.
