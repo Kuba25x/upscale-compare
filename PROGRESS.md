@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1, #2 and #3 are merged into `main`. Work continues from `origin/main` at `8d2e5d4` on the separate branch `fix/divider-focus-indicator` for [Issue #4](https://github.com/Kuba25x/upscale-compare/issues/4).
+PRs #1, #2 and #3 are merged into `main`. Work continues from `origin/main` at `8d2e5d4` on the separate branch `fix/divider-focus-indicator` for [Issue #4](https://github.com/Kuba25x/upscale-compare/issues/4), with [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5) open against `main`.
 
 The divider visual bug was reproduced in Chromium, including the actual F fullscreen shortcut: the global `[tabindex]:focus-visible` style outlines the full-height slider. Clipping hides its top/bottom edges, leaving two green vertical lines. A CSS-only fix confines the focus outline to the circular handle while preserving the full pointer target, slider semantics, Tab access and keyboard handling. Regression tests sample rendered pixels, check the visible handle outline, exercise shortcuts/fullscreen/mode switches, and verify mouse and keyboard movement. Existing touch and panning/upload tests remain in place. Firefox coverage is enabled in both regular and demo CI projects.
 
@@ -93,7 +93,7 @@ Previous panning fix and community review, 2026-10-26:
 ## Exact next steps
 
 1. Local build, unit/API, Chromium/mobile and production-demo validation for Issue #4 is complete (90 passing suite cases).
-2. Commit and push `fix/divider-focus-indicator`, then open a PR targeting `main` with `Fixes #4` (the issue remains open until merge).
+2. Review [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5), pushed on `fix/divider-focus-indicator` with `Fixes #4`; the issue remains open until merge.
 3. Verify hosted CI, especially the Firefox divider-focus cases; local Firefox installation is unavailable under the current download policy.
 4. Leave the PR unmerged, the issue open, and do not deploy. The owner decides when to merge and publish.
 5. Preserve demo/production separation, the community panning attribution, AGPL-3.0 and all Cloudflare safeguards.
