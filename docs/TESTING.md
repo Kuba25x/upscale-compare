@@ -26,7 +26,7 @@ Generated test patterns contain no private or third-party game assets. Browser s
 
 ## Executed results
 
-Last verified development checkpoint: 2026-10-26.
+Initial development checkpoint: 2026-10-26. Later viewer regressions and validation results are recorded below.
 
 - Frontend and Worker TypeScript checks: passed.
 - Vite production build and Worker bundle: passed.
@@ -67,16 +67,25 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 29 full-stack browser cases and 22 demo cases, in addition to 51 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 31 full-stack browser cases and 24 demo cases, in addition to 51 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
 ## Split divider focus regression
 
-[Issue #4](https://github.com/Kuba25x/upscale-compare/issues/4) was reproduced on main at `8d2e5d4` in Chromium. The global focus-visible rule outlines the full-height slider hit target; clipping hides its top/bottom edges and leaves two vertical accent lines. The fix moves only the outline to the circular handle; slider geometry, pointer handlers and keyboard behavior are unchanged.
+[Issue #4](https://github.com/Kuba25x/upscale-compare/issues/4) was reproduced on main at `8d2e5d4` in Chromium. The global focus-visible rule outlined the full-height slider hit target; clipping hid its top/bottom edges and left two vertical accent lines. Merged [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5) confined the ring to the circular handle. The baseline rendered-pixel test failed with 32 unwanted accent pixels; the outline fix removed them. [Hosted Validate run #14](https://github.com/Kuba25x/upscale-compare/actions/runs/40469175557) passed 102 cases for that fix, including Firefox.
 
-`tests/shared/divider-focus.ts` runs against the normal viewer and production demo, in Chromium by default and Firefox when `RUN_FIREFOX=true`. It samples screenshot pixels above the handle (the baseline regression fails with 32 unwanted accent pixels), verifies a visible 2px handle outline, and uses real Tab, arrow, Shift+arrow, Home/End, zoom and F fullscreen keyboard input. It also repeats the reported mouse-then-keyboard sequence after mode changes and checks real mouse divider movement. Firefox can keep pointer focus without matching `:focus-visible` after a letter key, whereas Chromium matches it in the reproduction. The test accepts that valid modality difference, requires zero unwanted lines in either state, and uses real Tab/Shift+Tab navigation to require a visible handle ring in both browsers. Existing mobile cases still exercise touch divider dragging and synchronized pinch gestures.
+[Issue #6](https://github.com/Kuba25x/upscale-compare/issues/6) clarifies the interaction requirement: clicking or dragging must not assign slider keyboard focus, even if the user subsequently presses a shortcut. The old `onPointerDown` explicitly focused the slider. The revised handler focuses the existing viewer stage instead, preserving shortcuts after label editing and giving Tab a predictable route into the slider. The handle CSS remains unchanged. A new regression was executed against unmodified main at `be6c936` and failed because the mouse-operated divider was still the active element.
 
-The Firefox projects are named `firefox-viewer` and `demo-firefox-viewer`; both include the existing panning regressions and the divider-focus regressions. Windows Chrome/DuckDuckGo and physical Windows devices are not available in this environment; Chromium engine reproduction and hosted Firefox validation are used instead.
+`tests/shared/divider-focus.ts` runs against the normal viewer and production demo, in Chromium by default and Firefox when `RUN_FIREFOX=true`. It now verifies:
 
-Validation on 2026-10-27: `npm run build`, `npm test` (51), `npm run test:e2e` (23) and `npm run test:demo` (16) passed: **90 local suite cases**. Formatting, `git diff --check` and dependency audit also passed (zero known vulnerabilities). The new rendered-pixel regression was executed before the fix and failed as expected, then passed after the fix. Exact hosted Chromium/Firefox execution results are linked in the Validation section of [PR #5](https://github.com/Kuba25x/upscale-compare/pull/5); no local Firefox execution is claimed.
+- Actual `document.activeElement`, `:focus-visible`, and handle outline visibility before/after pointer use and real keyboard input.
+- No full-height accent pixels in browser screenshots above the handle.
+- Mouse clicks and captured drags, including immediately during pointer-down; keys after editing a label; fullscreen, zoom, image swap and mode shortcuts without a slider ring.
+- Real Tab/Shift+Tab access with a visible 2px handle ring, arrow/Shift+arrow/Home/End controls, and shortcuts while the slider has keyboard focus.
+- Repeated keyboard → mouse → keyboard transitions: pointer input clears existing slider focus, viewer arrows pan both images, and Tab re-entry restores slider adjustment.
+- Unchanged image coordinates during divider drag/keys. The mobile suite also verifies stage focus and no slider ring after touch dragging, then exercises synchronized pinch gestures.
+
+The Firefox projects are named `firefox-viewer` and `demo-firefox-viewer`; both include panning and divider-focus regressions. Firefox and Chromium differ in their pointer-to-keyboard focus-visible heuristics; the new tests require the slider to remain unfocused after pointer use in both engines. Windows Chrome/DuckDuckGo and physical Windows devices are not available in this environment. No local Firefox execution is claimed; its official download domains are blocked by network policy.
+
+Current pointer-focus validation on 2026-10-27: `npm run build`, `npm test` (51), `npm run test:e2e` (24) and `npm run test:demo` (17) passed: **92 local suite cases**. Formatting and `git diff --check` passed. The focus-ownership regression failed on unmodified main and passed with the fix. Hosted Chromium/Firefox execution results will be linked from the follow-up PR's Validation section; the expected combined suite includes 51 unit/API, 31 regular browser and 24 demo browser cases.

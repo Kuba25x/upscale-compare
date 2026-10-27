@@ -366,7 +366,8 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
                 if (event.button !== 0) return;
                 event.preventDefault();
                 event.stopPropagation();
-                event.currentTarget.focus({ preventScroll: true });
+                // Keep pointer gestures in the viewer; Tab gives the slider keyboard focus.
+                stage.current?.focus({ preventScroll: true });
                 event.currentTarget.setPointerCapture(event.pointerId);
                 setDivider(event.clientX);
               }}
