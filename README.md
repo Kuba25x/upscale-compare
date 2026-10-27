@@ -1,6 +1,6 @@
 # Upscale Compare
 
-A focused, open-source image quality comparison tool for game screenshots. Compare DLSS, FSR, XeSS, native rendering, anti-aliasing, or any custom configuration directly in your browser. **Screenshots stay local until you explicitly publish.**
+A focused, open-source image quality comparison tool for game screenshots. Compare DLSS, FSR, XeSS, or any other AA solution directly in your browser. **Screenshots stay local until you explicitly publish.**
 
 ## Features
 
