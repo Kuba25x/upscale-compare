@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { originFor, panBy, scaleFor, zoomAt } from '../../src/lib/geometry';
+import { originFor, panBy, pinchAt, scaleFor, zoomAt } from '../../src/lib/geometry';
 import { manifestSchema, emptyMetadata, emptyImageMetadata, type View } from '../../shared/model';
 const panel = { width: 1000, height: 600 },
   image = { width: 2000, height: 1000 };
@@ -69,4 +69,26 @@ it('snaps to the global display grid when a panel has a fractional physical offs
   );
   expect(((result.x + position.x) * 1.25) % 1).toBeCloseTo(0);
   expect(((result.y + position.y) * 1.25) % 1).toBeCloseTo(0);
+});
+
+// Moving the gesture midpoint and changing scale must preserve the rendered source anchor.
+describe('pinch anchor', () => {
+  it.each([1, 1.25, 2, 3])('uses one rendered transform at DPR %s', (dpr) => {
+    const view: View = { zoom: 1, center: { x: 123.33, y: 77.78 } };
+    const position = { x: 9, y: 77 },
+      from = { x: -140.25, y: 55.75 },
+      to = { x: -139.75, y: 56.25 };
+    const scale = scaleFor(view, panel, image, dpr);
+    const before = originFor(view, panel, scale, dpr, position);
+    const next = pinchAt(view, scale, 1.48, from, to, dpr, panel, position);
+    const nextScale = next.zoom! / dpr;
+    const after = originFor(next, panel, nextScale, dpr, position);
+    for (const axis of ['x', 'y'] as const) {
+      const half = (axis === 'x' ? panel.width : panel.height) / 2;
+      const sourceBefore = (half + from[axis] - before[axis]) / scale;
+      const sourceAfter = (half + to[axis] - after[axis]) / nextScale;
+      expect(sourceAfter).toBeCloseTo(sourceBefore, 10);
+    }
+    expect(next.zoom).toBe(1.48);
+  });
 });

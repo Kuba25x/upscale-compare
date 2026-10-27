@@ -1,7 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type TouchEvent as ReactTouchEvent,
+} from 'react';
+import { snapshotContacts, sameContacts, samePositions } from '../lib/contact-snapshot';
+import type { Point } from '../lib/geometry';
 import { Expand, Info, Keyboard, Minus, Plus, Shrink } from 'lucide-react';
 import type { Config, LocalImage, View } from '../../shared/model';
-import { clamp, originFor, panBy, scaleFor, zoomAt } from '../lib/geometry';
+import {
+  gestureDiagnostics,
+  observeGestureEvents,
+  diagnosticViewport,
+  type DiagnosticData,
+} from '../lib/gesture-diagnostics';
+import { clamp, originFor, panBy, pinchAt, scaleFor, zoomAt } from '../lib/geometry';
 
 interface Props {
   images: LocalImage[];
@@ -15,13 +29,29 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
   const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
   const [fullscreen, setFullscreen] = useState(false);
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pointers = useRef(new Map<number, { x: number; y: number; pointerType: string }>());
+  const touchContacts = useRef(new Map<number, Point>());
+  const nativeTouchSeen = useRef(false);
+  const pinchRightPanel = useRef<boolean | null>(null);
+  const touchPinch = useRef(false);
   const [panning, setPanning] = useState(false);
-  const endPointer = useCallback((pointerId: number) => {
+  const endPointer = useCallback((pointerId: number, reason = 'pointerup') => {
     pointers.current.delete(pointerId);
+    if (pointers.current.size < 2 && touchContacts.current.size < 2) pinchRightPanel.current = null;
     const element = stage.current;
     if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
-    setPanning(pointers.current.size > 0);
+    if (gestureDiagnostics?.recording)
+      gestureDiagnostics.record('pointer-end', {
+        pointerId,
+        reason,
+        remainingIds: [...pointers.current.keys()],
+      });
+    setPanning(
+      touchContacts.current.size > 0 ||
+        [...pointers.current.values()].some(
+          (point) => !nativeTouchSeen.current || point.pointerType !== 'touch',
+        ),
+    );
   }, []);
   const cancelPanning = useCallback(() => {
     const element = stage.current;
@@ -29,6 +59,9 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
       if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
     }
     pointers.current.clear();
+    touchContacts.current.clear();
+    pinchRightPanel.current = null;
+    if (gestureDiagnostics?.recording) gestureDiagnostics.record('cancel-all', {});
     setPanning(false);
   }, []);
   useEffect(() => {
@@ -45,6 +78,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
         if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
       }
       pointers.current.clear();
+      touchContacts.current.clear();
     };
   }, [cancelPanning]);
   const [a, b] = config.selected.map((index) => images[index]);
@@ -56,6 +90,82 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
   const scale = scaleFor(config.view, panel, bounds, dpr);
   const latest = useRef({ config, panel, bounds, dpr });
   latest.current = { config, panel, bounds, dpr };
+  const diagnosticFrame = useRef<DiagnosticData>({});
+  const diagnosticCommit = useRef(0);
+  const diagnosticPointers = useCallback(() => {
+    const element = stage.current;
+    const divider = element?.querySelector('[role="slider"]');
+    const activePointers = [...pointers.current].slice(0, 16).map(([id, point]) => ({
+      id,
+      x: point.x,
+      y: point.y,
+      stageCapture: element?.hasPointerCapture(id) ?? false,
+      dividerCapture: divider?.hasPointerCapture(id) ?? false,
+    }));
+    return {
+      activePointers,
+      touchContacts: [...touchContacts.current].map(([id, point]) => ({ id, ...point })),
+      nativeTouchSeen: nativeTouchSeen.current,
+      touchDistance:
+        touchContacts.current.size < 2
+          ? null
+          : (() => {
+              const [first, second] = [...touchContacts.current.values()];
+              return Math.hypot(second.x - first.x, second.y - first.y);
+            })(),
+      cachedDistance:
+        activePointers.length < 2
+          ? null
+          : Math.hypot(
+              activePointers[1].x - activePointers[0].x,
+              activePointers[1].y - activePointers[0].y,
+            ),
+      lockedRightPanel: pinchRightPanel.current,
+      touchPinch: touchPinch.current,
+    };
+  }, []);
+  useEffect(() => {
+    if (!gestureDiagnostics) return;
+    const element = stage.current!;
+    const removeProvider = gestureDiagnostics.setProvider(() => ({
+      frame: diagnosticFrame.current,
+      ...diagnosticPointers(),
+      viewport: diagnosticViewport(),
+      touchAction: getComputedStyle(element).touchAction,
+    }));
+    const removeEvents = observeGestureEvents(element, gestureDiagnostics, diagnosticPointers);
+    return () => {
+      removeEvents();
+      removeProvider();
+    };
+  }, [diagnosticPointers]);
+  useEffect(() => {
+    if (!gestureDiagnostics) return;
+    const frame = {
+      commitIndex: ++diagnosticCommit.current,
+      mode: config.mode,
+      divider: config.divider,
+      view: { zoom: config.view.zoom, center: { ...config.view.center } },
+      scale,
+      dpr,
+      stage: { ...size },
+      panel: { ...panel },
+      bounds: { ...bounds },
+      imageDimensions: [a, b].map((image) => ({ width: image.width, height: image.height })),
+      renderedStyles: [
+        ...stage.current!.querySelectorAll<HTMLImageElement>('.comparison-image'),
+      ].map((image, index) => ({
+        side: index === 0 ? 'A' : 'B',
+        width: image.style.width,
+        height: image.style.height,
+        transform: image.style.transform,
+        imageRendering: image.style.imageRendering,
+      })),
+    };
+    diagnosticFrame.current = frame;
+    if (gestureDiagnostics.recording) gestureDiagnostics.record('commit', frame);
+  }, [config, size, dpr, images]);
+
   useEffect(() => {
     const resize = () => {
       if (stage.current) {
@@ -92,8 +202,19 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
     }
   };
   useEffect(() => {
+    const element = stage.current!;
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
+      const diagnosticEvent = gestureDiagnostics?.eventId(event);
+      if (gestureDiagnostics?.recording)
+        gestureDiagnostics.record('wheel-handler', {
+          eventId: diagnosticEvent,
+          ignored:
+            touchPinch.current && (pointers.current.size > 0 || touchContacts.current.size > 0),
+        });
+      // A touch pinch owns zoom until its contacts end; do not apply a second stream.
+      if (touchPinch.current && (pointers.current.size > 0 || touchContacts.current.size > 0))
+        return;
       const {
         config: current,
         panel: currentPanel,
@@ -110,22 +231,33 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
       };
       onChange((previous) => {
         const oldScale = scaleFor(previous.view, currentPanel, currentBounds, ratio);
-        return {
-          ...previous,
-          view: zoomAt(
-            previous.view,
+        const nextView = zoomAt(
+          previous.view,
+          oldScale,
+          oldScale * ratio * Math.exp(-event.deltaY * 0.0015),
+          offset,
+          ratio,
+          currentPanel,
+          { x: rect.left + (rightPanel ? currentPanel.width + 1 : 0), y: rect.top },
+        );
+        if (gestureDiagnostics?.recording)
+          gestureDiagnostics.record('calculation', {
+            eventId: diagnosticEvent,
+            source: 'wheel',
+            before: previous.view,
+            after: nextView,
             oldScale,
-            oldScale * ratio * Math.exp(-event.deltaY * 0.0015),
+            requestedZoom: oldScale * ratio * Math.exp(-event.deltaY * 0.0015),
+            deltaY: event.deltaY,
             offset,
-            ratio,
-            currentPanel,
-            { x: rect.left + (rightPanel ? currentPanel.width + 1 : 0), y: rect.top },
-          ),
-        };
+            dpr: ratio,
+            panel: currentPanel,
+          });
+        return { ...previous, view: nextView };
       });
     };
-    stage.current!.addEventListener('wheel', wheel, { passive: false });
-    return () => stage.current?.removeEventListener('wheel', wheel);
+    element.addEventListener('wheel', wheel, { passive: false });
+    return () => element.removeEventListener('wheel', wheel);
   }, [onChange]);
   useEffect(() => {
     const keyboard = (event: KeyboardEvent) => {
@@ -232,6 +364,166 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
       divider: clamp((clientX - rect.left) / rect.width, 0, 1),
     }));
   };
+  const moveContacts = (
+    before: Point[],
+    after: Point[],
+    diagnosticEvent: number | undefined,
+    diagnosticIds: number[] | undefined,
+    input: 'pointer' | 'touch',
+  ) => {
+    if (!before.length || !after.length) return;
+    if (after.length >= 2) {
+      const oldDistance = Math.hypot(before[1].x - before[0].x, before[1].y - before[0].y);
+      const distance = Math.hypot(after[1].x - after[0].x, after[1].y - after[0].y);
+      if (oldDistance < 1) {
+        if (gestureDiagnostics?.recording)
+          gestureDiagnostics.record('ignored-move', {
+            eventId: diagnosticEvent,
+            reason: 'short-span',
+            oldDistance,
+            distance,
+          });
+        return;
+      }
+      const midpoint = { x: (after[0].x + after[1].x) / 2, y: (after[0].y + after[1].y) / 2 };
+      const oldMidpoint = {
+        x: (before[0].x + before[1].x) / 2,
+        y: (before[0].y + before[1].y) / 2,
+      };
+      const rect = stage.current!.getBoundingClientRect();
+      // Keep the panel selected when the second contact joined, even across the seam.
+      const panelOffset = config.mode === 'side' && pinchRightPanel.current ? panel.width + 1 : 0;
+      const localX = midpoint.x - rect.left - panelOffset;
+      updateView((view) => {
+        const oldScale = scaleFor(view, panel, bounds, dpr);
+        const nextView = pinchAt(
+          view,
+          oldScale,
+          (oldScale * dpr * distance) / oldDistance,
+          {
+            x: oldMidpoint.x - rect.left - panelOffset - panel.width / 2,
+            y: oldMidpoint.y - rect.top - panel.height / 2,
+          },
+          { x: localX - panel.width / 2, y: midpoint.y - rect.top - panel.height / 2 },
+          dpr,
+          panel,
+          { x: rect.left + panelOffset, y: rect.top },
+        );
+        if (gestureDiagnostics?.recording)
+          gestureDiagnostics.record('calculation', {
+            eventId: diagnosticEvent,
+            source: 'pinch',
+            input,
+            before: view,
+            after: nextView,
+            oldScale,
+            requestedZoom: (oldScale * dpr * distance) / oldDistance,
+            oldDistance,
+            distance,
+            ratio: distance / oldDistance,
+            oldMidpoint,
+            midpoint,
+            beforePointers: before,
+            afterPointers: after,
+            pointerIds: diagnosticIds,
+            panelOffset,
+            dpr,
+            panel: { ...panel },
+            stageRect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+          });
+        return nextView;
+      });
+    } else
+      updateView((view) => {
+        const currentScale = scaleFor(view, panel, bounds, dpr);
+        const delta = { x: after[0].x - before[0].x, y: after[0].y - before[0].y };
+        const nextView = panBy(view, delta, currentScale);
+        if (gestureDiagnostics?.recording)
+          gestureDiagnostics.record('calculation', {
+            eventId: diagnosticEvent,
+            source: 'pan',
+            input,
+            before: view,
+            after: nextView,
+            oldScale: currentScale,
+            delta,
+            previousPoint: before[0],
+            nextPoint: after[0],
+          });
+        return nextView;
+      });
+  };
+  const nativeTouches = (
+    event: ReactTouchEvent<HTMLDivElement>,
+    phase: 'start' | 'move' | 'end',
+  ) => {
+    const previous = touchContacts.current;
+    if (phase !== 'start' && previous.size === 0) return;
+    const eligible = Array.from(event.touches).filter(
+      (contact) =>
+        contact.target instanceof Element &&
+        event.currentTarget.contains(contact.target) &&
+        !contact.target.closest('button'),
+    );
+    if (
+      phase === 'start' &&
+      previous.size === 0 &&
+      (eligible.length === 0 ||
+        (eligible.length === 1 && (eligible[0].target as Element).closest('[role="slider"]')))
+    )
+      return;
+    const next = snapshotContacts(
+      previous,
+      eligible.map((contact) => ({
+        id: contact.identifier,
+        x: contact.clientX,
+        y: contact.clientY,
+      })),
+    );
+    nativeTouchSeen.current = true;
+    if (phase === 'start' && previous.size === 0) touchPinch.current = false;
+    const previousPair = [...previous.keys()].slice(0, 2),
+      nextPair = [...next.keys()].slice(0, 2);
+    const pairChanged =
+      previousPair.length !== nextPair.length ||
+      previousPair.some((id, index) => id !== nextPair[index]);
+    touchContacts.current = next;
+    if (next.size < 2) pinchRightPanel.current = null;
+    else {
+      touchPinch.current = true;
+      if (pairChanged) {
+        const [first, second] = [...next.values()];
+        const rect = event.currentTarget.getBoundingClientRect();
+        pinchRightPanel.current =
+          config.mode === 'side' && (first.x + second.x) / 2 - rect.left > panel.width;
+      }
+    }
+    const diagnosticEvent = gestureDiagnostics?.eventId(event.nativeEvent);
+    if (gestureDiagnostics?.recording)
+      gestureDiagnostics.record('touch-snapshot-handler', {
+        eventId: diagnosticEvent,
+        phase,
+        pairChanged,
+        ...diagnosticPointers(),
+      });
+    // Only move on a complete, stable-identity frame. Contact changes rebase without motion.
+    if (phase === 'move' && sameContacts(previous, next) && !samePositions(previous, next))
+      moveContacts(
+        [...previous.values()],
+        [...next.values()],
+        diagnosticEvent,
+        gestureDiagnostics?.recording ? [...next.keys()] : undefined,
+        'touch',
+      );
+    if (next.size === 0) {
+      for (const [id, point] of [...pointers.current])
+        if (point.pointerType === 'touch') endPointer(id, 'touch-ended');
+    }
+    setPanning(
+      next.size > 0 ||
+        [...pointers.current.values()].some((point) => point.pointerType !== 'touch'),
+    );
+  };
   const layer = (image: LocalImage, side: 'A' | 'B') => {
     const panelOffset = config.mode === 'side' && side === 'B' ? panel.width + 1 : 0;
     const origin = originFor(config.view, panel, scale, dpr, {
@@ -269,7 +561,17 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
         tabIndex={0}
         aria-label="Image comparison. Drag to pan, scroll to zoom."
         onDragStartCapture={(event) => event.preventDefault()}
-        onDoubleClick={() => setZoom(config.view.zoom === 1 ? null : 1)}
+        onDoubleClick={(event) => {
+          if (gestureDiagnostics?.recording)
+            gestureDiagnostics.record('double-click-handler', {
+              eventId: gestureDiagnostics.eventId(event.nativeEvent),
+              ignored: touchPinch.current,
+              currentView: config.view,
+              requestedZoom: config.view.zoom === 1 ? null : 1,
+            });
+          // Some input sequences can emit a compatibility double-click after touch-up.
+          if (!touchPinch.current) setZoom(config.view.zoom === 1 ? null : 1);
+        }}
         onPointerDown={(event) => {
           if (event.button !== 0 || (event.target as HTMLElement).closest('button,[role=slider]'))
             return;
@@ -277,66 +579,89 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
           event.preventDefault();
           event.currentTarget.focus({ preventScroll: true });
           stage.current!.setPointerCapture(event.pointerId);
-          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+          if (pointers.current.size === 0 && touchContacts.current.size === 0)
+            touchPinch.current = false;
+          pointers.current.set(event.pointerId, {
+            x: event.clientX,
+            y: event.clientY,
+            pointerType: event.pointerType,
+          });
+          if (
+            pointers.current.size === 2 &&
+            !(event.pointerType === 'touch' && nativeTouchSeen.current)
+          ) {
+            touchPinch.current = true;
+            const [first, second] = [...pointers.current.values()];
+            const rect = event.currentTarget.getBoundingClientRect();
+            pinchRightPanel.current =
+              config.mode === 'side' && (first.x + second.x) / 2 - rect.left > panel.width;
+          }
+          if (gestureDiagnostics?.recording)
+            gestureDiagnostics.record('pointer-down-handler', {
+              eventId: gestureDiagnostics.eventId(event.nativeEvent),
+              ...diagnosticPointers(),
+            });
           setPanning(true);
         }}
         onPointerMove={(event) => {
+          const diagnosticEvent = gestureDiagnostics?.eventId(event.nativeEvent);
           const old = pointers.current.get(event.pointerId);
-          if (!old) return;
+          if (!old) {
+            if (gestureDiagnostics?.recording)
+              gestureDiagnostics.record('ignored-move', {
+                eventId: diagnosticEvent,
+                reason: 'untracked-pointer',
+                pointerId: event.pointerId,
+              });
+            return;
+          }
           if (
             !event.currentTarget.hasPointerCapture(event.pointerId) ||
             (event.pointerType === 'mouse' && (event.buttons & 1) === 0)
           ) {
-            endPointer(event.pointerId);
+            if (gestureDiagnostics?.recording)
+              gestureDiagnostics.record('ignored-move', {
+                eventId: diagnosticEvent,
+                reason: 'capture-or-buttons',
+                pointerId: event.pointerId,
+                captured: event.currentTarget.hasPointerCapture(event.pointerId),
+                buttons: event.buttons,
+              });
+            endPointer(event.pointerId, 'capture-or-buttons');
             return;
           }
           const before = [...pointers.current.values()];
-          const next = { x: event.clientX, y: event.clientY };
+          const diagnosticIds = gestureDiagnostics?.recording
+            ? [...pointers.current.keys()]
+            : undefined;
+          const next = { x: event.clientX, y: event.clientY, pointerType: event.pointerType };
           pointers.current.set(event.pointerId, next);
-          if (pointers.current.size >= 2) {
-            const after = [...pointers.current.values()];
-            const oldDistance = Math.hypot(before[1].x - before[0].x, before[1].y - before[0].y);
-            const distance = Math.hypot(after[1].x - after[0].x, after[1].y - after[0].y);
-            if (oldDistance < 1) return;
-            const midpoint = { x: (after[0].x + after[1].x) / 2, y: (after[0].y + after[1].y) / 2 };
-            const oldMidpoint = {
-              x: (before[0].x + before[1].x) / 2,
-              y: (before[0].y + before[1].y) / 2,
-            };
-            const rect = stage.current!.getBoundingClientRect();
-            let localX = midpoint.x - rect.left;
-            const rightPanel = config.mode === 'side' && localX > panel.width;
-            if (rightPanel) localX -= panel.width + 1;
-            updateView((view) => {
-              const oldScale = scaleFor(view, panel, bounds, dpr);
-              const moved = panBy(
-                view,
-                { x: midpoint.x - oldMidpoint.x, y: midpoint.y - oldMidpoint.y },
-                oldScale,
-              );
-              return zoomAt(
-                moved,
-                oldScale,
-                (oldScale * dpr * distance) / oldDistance,
-                { x: localX - panel.width / 2, y: midpoint.y - rect.top - panel.height / 2 },
-                dpr,
-                panel,
-                { x: rect.left + (rightPanel ? panel.width + 1 : 0), y: rect.top },
-              );
-            });
-          } else
-            updateView((view) =>
-              panBy(
-                view,
-                { x: next.x - old.x, y: next.y - old.y },
-                scaleFor(view, panel, bounds, dpr),
-              ),
-            );
+          if (event.pointerType === 'touch' && nativeTouchSeen.current) {
+            if (gestureDiagnostics?.recording)
+              gestureDiagnostics.record('pointer-observation', {
+                eventId: diagnosticEvent,
+                reason: 'touch-snapshot-owns-motion',
+                pointerId: event.pointerId,
+              });
+            return;
+          }
+          moveContacts(
+            before,
+            [...pointers.current.values()],
+            diagnosticEvent,
+            diagnosticIds,
+            'pointer',
+          );
         }}
+        onTouchStart={(event) => nativeTouches(event, 'start')}
+        onTouchMove={(event) => nativeTouches(event, 'move')}
+        onTouchEnd={(event) => nativeTouches(event, 'end')}
+        onTouchCancel={(event) => nativeTouches(event, 'end')}
         onPointerUp={(event) => endPointer(event.pointerId)}
-        onPointerCancel={(event) => endPointer(event.pointerId)}
+        onPointerCancel={(event) => endPointer(event.pointerId, 'pointercancel')}
         onLostPointerCapture={(event) => {
-          if (event.target === event.currentTarget) endPointer(event.pointerId);
+          if (event.target === event.currentTarget)
+            endPointer(event.pointerId, 'lostpointercapture');
         }}
       >
         {config.mode === 'split' ? (
@@ -363,6 +688,11 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
               tabIndex={0}
               style={{ left: `clamp(18px, ${config.divider * 100}%, calc(100% - 18px))` }}
               onPointerDown={(event) => {
+                if (event.pointerType === 'touch' && touchContacts.current.size > 0) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  return;
+                }
                 if (event.button !== 0) return;
                 event.preventDefault();
                 event.stopPropagation();
@@ -372,6 +702,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
                 setDivider(event.clientX);
               }}
               onPointerMove={(event) => {
+                if (event.pointerType === 'touch' && touchContacts.current.size > 0) return;
                 if (event.pointerType === 'mouse' && (event.buttons & 1) === 0) {
                   if (event.currentTarget.hasPointerCapture(event.pointerId))
                     event.currentTarget.releasePointerCapture(event.pointerId);

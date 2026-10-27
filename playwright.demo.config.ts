@@ -19,12 +19,16 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'demo-desktop', use: { viewport: { width: 1440, height: 900 }, launchOptions } },
+    {
+      name: 'demo-desktop',
+      testIgnore: /mobile-/,
+      use: { viewport: { width: 1440, height: 900 }, launchOptions },
+    },
     ...(process.env.RUN_FIREFOX === 'true'
       ? [
           {
             name: 'demo-firefox-viewer',
-            testMatch: /(panning|divider-focus)\.spec\.ts/,
+            testMatch: /(panning|divider-focus|pinch)\.spec\.ts/,
             use: {
               browserName: 'firefox' as const,
               viewport: { width: 1440, height: 900 },
@@ -37,7 +41,7 @@ export default defineConfig({
       : []),
     {
       name: 'demo-mobile',
-      grep: /uploads|shared links|pixel/,
+      grep: /uploads|shared links|pixel|touch pinch/,
       use: {
         viewport: { width: 390, height: 844 },
         deviceScaleFactor: 2,

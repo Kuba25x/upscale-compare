@@ -18,6 +18,7 @@ import { API_URL, fetchComparison, publicImageUrl } from './lib/api';
 import { DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/config';
 import { formatBytes, loadImage } from './lib/images';
 import { Viewer } from './components/Viewer';
+import { GestureDiagnostics } from './components/GestureDiagnostics';
 import { Modal } from './components/Modal';
 import { MetadataEditor } from './components/MetadataEditor';
 import { readDeletionKey, ShareDialog, type Published } from './components/ShareDialog';
@@ -591,6 +592,7 @@ export default function App() {
           </div>
         </Modal>
       )}
+      <GestureDiagnostics />
       {modal === 'privacy' && (
         <Modal title="Your images, your choice" onClose={() => setModal(null)}>
           <div className="privacy-copy">

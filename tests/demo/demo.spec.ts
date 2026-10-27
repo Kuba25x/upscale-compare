@@ -183,3 +183,44 @@ test('serves built assets and license notices at the GitHub Pages subpath', asyn
   }
   await page.screenshot({ path: 'test-results/demo/landing.png' });
 });
+
+test('production demo refuses the development diagnostics flag', async ({ page }) => {
+  await page.addInitScript(() => {
+    const diagnosticEvents = new Set([
+      'pointerdown',
+      'pointermove',
+      'pointerup',
+      'pointercancel',
+      'gotpointercapture',
+      'lostpointercapture',
+      'touchstart',
+      'touchmove',
+      'touchend',
+      'touchcancel',
+      'wheel',
+      'dblclick',
+    ]);
+    const observed: string[] = [];
+    Object.defineProperty(window, '__diagnosticListeners', { value: observed });
+    const add = EventTarget.prototype.addEventListener;
+    EventTarget.prototype.addEventListener = function (type, listener, options) {
+      if (
+        (this === document && diagnosticEvents.has(type)) ||
+        (this === window.visualViewport && ['resize', 'scroll'].includes(type))
+      )
+        observed.push(type);
+      return add.call(this, type, listener, options);
+    };
+  });
+  await page.goto('./?diagnostics=1');
+  await expect(page.getByRole('button', { name: 'Diagnostics', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeVisible();
+  await page
+    .getByTestId('file-input')
+    .setInputFiles([imageFile(), imageFile('FSR Quality.png', 1)]);
+  await expect(page.getByTestId('stage')).toBeVisible();
+  await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
+  await page.getByRole('button', { name: 'Split Screen', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Diagnostics', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => Reflect.get(window, '__diagnosticListeners'))).toEqual([]);
+});

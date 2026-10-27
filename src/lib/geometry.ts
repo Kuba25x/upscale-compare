@@ -65,3 +65,26 @@ export function panBy(view: View, delta: Point, scale: number): View {
     center: { x: view.center.x - delta.x / scale, y: view.center.y - delta.y / scale },
   };
 }
+
+export function pinchAt(
+  view: View,
+  oldScale: number,
+  nextZoom: number,
+  oldOffset: Point,
+  nextOffset: Point,
+  dpr: number,
+  panel: Size,
+  panelPosition: Point,
+): View {
+  const zoom = clamp(nextZoom, 0.025, 16);
+  const nextScale = zoom / dpr;
+  const origin = originFor(view, panel, oldScale, dpr, panelPosition);
+  // Use the rendered source point once; snapping an intermediate pan introduces drift.
+  return {
+    zoom,
+    center: {
+      x: (panel.width / 2 + oldOffset.x - origin.x) / oldScale - nextOffset.x / nextScale,
+      y: (panel.height / 2 + oldOffset.y - origin.y) / oldScale - nextOffset.y / nextScale,
+    },
+  };
+}

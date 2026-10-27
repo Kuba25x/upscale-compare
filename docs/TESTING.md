@@ -7,6 +7,7 @@ npm run build
 npm test
 npm run test:e2e
 npm run test:demo
+npm run test:diagnostics
 npm run format:check
 npm audit --audit-level=high
 ```
@@ -67,7 +68,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 31 full-stack browser cases and 24 demo cases, in addition to 51 unit/API tests. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 55 full-stack browser cases and 49 demo cases, in addition to 68 unit/API tests and 7 diagnostic browser cases. The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -89,3 +90,33 @@ CI enables Firefox automatically. With Firefox enabled, the suites contain 31 fu
 The Firefox projects are named `firefox-viewer` and `demo-firefox-viewer`; both include panning and divider-focus regressions. Firefox and Chromium differ in their pointer-to-keyboard focus-visible heuristics; the new tests require the slider to remain unfocused after pointer use in both engines. Windows Chrome/DuckDuckGo and physical Windows devices are not available in this environment. No local Firefox execution is claimed; its official download domains are blocked by network policy.
 
 Current pointer-focus validation on 2026-10-27: `npm run build`, `npm test` (51), `npm run test:e2e` (24) and `npm run test:demo` (17) passed: **92 local suite cases**. Formatting and `git diff --check` passed. The focus-ownership regression failed on unmodified main and passed with the fix. Exact hosted Chromium/Firefox execution results are linked in the Validation section of [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7). The configured combined suite includes 51 unit/API, 31 regular browser and 24 demo browser cases.
+
+## Pinch regression and device limits
+
+See [pinch investigation](PINCH_INVESTIGATION.md) for baseline failures, the inspected user recording, candidate changes and the required actual-device checklist. `tests/shared/pinch.ts` uses synthetic contacts and a capture shim in desktop Chromium/Firefox; `tests/shared/touch-gestures.ts` uses native Chromium CDP touch dispatch in the mobile projects. Both run against regular and production demo builds. Neither executes Firefox for Android.
+
+The tests cover repeated slow/fast/batched input, proportional zoom, midpoint anchoring, either side and panel-seam crossing, contact replacement/cancellation, capture loss, compatibility-event interference, wheel recovery and mouse double-click recovery. Four new geometry cases check source anchors at different DPR values. Do not treat a green desktop Firefox job as proof that Issue #8 is resolved on Android. Final automated and device results are recorded in PR #9.
+
+Pinch candidate local validation on 2026-10-27: `npm run build`, `npm test` (55), `npm run test:e2e` (33) and `npm run test:demo` (26) passed: **114 local suite cases**. Formatting and `git diff --check` passed. The hosted configuration contains 142 cases including desktop Firefox; exact hosted execution evidence is linked from [PR #9](https://github.com/Kuba25x/upscale-compare/pull/9). At that candidate checkpoint, actual Firefox for Android had not been tested; the subsequent reporter retest failed, as described below.
+
+## Local diagnostic recording
+
+`npm run test:diagnostics` starts a dedicated development demo on port 5175. It verifies explicit activation, phone downloads, local-HTTP copy fallback, exclusion of image/naming/metadata/URL/storage markers, absence of log requests, native touch/capture/cancel traces, and exact gesture-result parity with recording disabled. The production-demo suite separately proves that `?diagnostics=1` cannot enable the recorder in a built demo. Unit cases cover guard combinations, browser identity minimization, bounded memory, reset/stop semantics, frozen final state and non-finite numeric evidence.
+
+CI also runs the diagnostic UI in desktop Firefox. This verifies recording behavior; the first Android candidate failed before the later native-log fix. The reporter has now verified that fix on the actual device in both modes. See [diagnostic operation and schema](GESTURE_DIAGNOSTICS.md) before interpreting updater evaluations as applied commits. No new gesture formula is introduced by this phase.
+
+Diagnostic-stage local verification on 2026-10-27: production frontend/Worker build passed; 65 unit/API + 33 regular browser + 27 production-demo + 5 diagnostic browser cases passed (**130 total**). Formatting and `git diff --check` passed. The configured CI total is 160 cases including desktop Firefox diagnostics; exact hosted results are linked from PR #9's Validation section. This diagnostic stage does not claim to fix the reporter's Android issue.
+
+## Native-log input coherence regression
+
+[Device-log analysis](PINCH_LOG_ANALYSIS.md) documents the confirmed stale-secondary-pointer cause. `tests/shared/atomic-pinch.ts` replays its reduced delivery pattern with complete Touch snapshots and sparse secondary Pointer Events; it was executed red before the fix and green afterward. The shared cases also cover independent Touch/Pointer IDs, TouchList reordering, Chrome-style dual pointer delivery without double processing, contact replacement/third contacts, cancellation, one-finger pan and mouse recovery. They run in regular/demo Chromium and desktop Firefox projects. Unit cases check immutable, stable-identity snapshot replacement. Native Chromium touch tests additionally verify divider dragging after pinch.
+
+A private workspace replay of all four supplied streams checked 2,465 touch frames, with largest absolute scale error 1.11e-16. This is handler replay with a synthetic capture shim and placeholder images, not an actual Firefox Android run. The reporter has now confirmed the fix on the actual device; see the linked analysis. Exact final automated counts are recorded in PR #9's Validation section.
+
+Native-log fix validation on 2026-10-27: build passed; 68 unit/API + 37 regular Chromium/HiDPI/mobile + 31 production-demo + 5 diagnostic browser cases passed (**141 local cases**). Formatting and `git diff --check` passed. The configured hosted total is 179 including desktop Firefox. Full actual-device log replay and reduced red/green reproduction are described in the analysis; the reporter subsequently confirmed the patched phone in both modes, and Chrome remained correct.
+
+## Final review and device acceptance
+
+On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay.
+
+Hosted Validate run #22 passed all 179 cases on the verified code. The strengthened production-demo guard also checks that the diagnostic query cannot install document input or visual-viewport observers after image upload and mode switching. The development-only diagnostic tool is retained for optional future investigations; it is inactive in public production builds. Issue #8 remains open until merge; the owner controls merge and deployment.

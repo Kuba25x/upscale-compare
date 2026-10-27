@@ -20,11 +20,13 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-PRs #1, #2, #3 and #5 are merged into `main`. Work continues from `origin/main` at `be6c936` on the separate branch `fix/divider-pointer-focus` for [Issue #6](https://github.com/Kuba25x/upscale-compare/issues/6), with [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7) open against `main`, following up the clarified input behavior after Issue #4 and PR #5.
+PRs #1, #2, #3, #5 and #7 are merged into `main`. Work continues from `origin/main` at `a79f6a5` on `fix/stable-pinch-gestures` for [Issue #8](https://github.com/Kuba25x/upscale-compare/issues/8), with [PR #9](https://github.com/Kuba25x/upscale-compare/pull/9) open against `main`.
 
-The remaining cause is explicit slider focus in `onPointerDown`: Chromium can later activate `:focus-visible` when any key is pressed. Pointer gestures now focus the existing viewer stage instead, keeping shortcuts available after label editing and removing old slider keyboard focus when switching to the mouse. Real Tab/Shift+Tab navigation still reaches the slider and reveals its existing accessible handle ring. No CSS or global modality tracking is introduced. Pointer capture, touch handling, geometry, slider keys and image navigation remain unchanged.
+Four actual-device logs now confirm the cause of Issue #8: Firefox's secondary Pointer Event coordinates remain stale while Touch Events already expose both current contacts. A late pointer refresh produces a false large distance/midpoint change. Chrome's cache matches the full touch snapshots. See `docs/PINCH_LOG_ANALYSIS.md` for counts, precise event/commit sequences and log hashes.
 
-Shared regressions now verify actual focus ownership, the absence of both handle rings and full-height lines after pointer use, shortcuts/fullscreen/mode switches, label-input exit, repeated keyboard-to-mouse-to-Tab transitions, and the distinction between image-pan arrows and focused-slider arrows. The mobile touch/pinch case also checks focus ownership after touch input. Chromium and Firefox run the shared cases in both regular and demo builds.
+The current fix drives native touch navigation from complete copied Touch Event snapshots, without matching Touch IDs to Pointer IDs. Pointer Events still track capture/lifecycle, mouse/pen and pointer-only fallback; they cannot double-apply native touch motion. Stable-identity snapshots rebase on contact changes, preserve one-finger/divider controls, and clear on cancellation. Existing geometry and diagnostics are retained.
+
+The new representative device-pattern regression fails before this fix and passes in both modes afterward. A private Chromium replay of all four supplied streams checks 2,465 touch frames against full-snapshot scale ratios, with maximum error 1.11e-16. This is coordinate/order replay with placeholder images, not a new actual-device test. On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay. PR #9 is ready for review after final checks; Issue #8 stays open until merge. Raw logs are not committed publicly.
 
 The previous community panning fix remains intact, including its attribution and review in `docs/PANNING_FIX_REVIEW.md`.
 
@@ -33,6 +35,8 @@ Development organization: search existing GitHub Issues before creating a substa
 No merge or deployment is authorized. Preserve existing demo/production modes and Cloudflare security behavior.
 
 ## Completed features
+
+- Candidate pinch isolation, fixed reference panel, direct rendered-source anchoring and reliable wheel-listener cleanup, with detailed investigation/device-verification documentation. The later full-touch-snapshot fix is verified by the reporter on actual Android Firefox in both modes.
 
 - Pointer divider gestures retain viewer-stage focus; Tab/Shift+Tab give the slider keyboard focus. Regression coverage checks both directions of input switching, real shortcuts, fullscreen and prior input-field focus.
 
@@ -58,7 +62,36 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 
 ## Tests executed
 
-Current pointer/keyboard focus follow-up, 2026-10-27:
+Current device-log fix, 2026-10-27:
+
+- Four complete native logs analyzed; no dropped/truncated data. Firefox cache errors reach 90.450 / 177.980 CSS px; Chrome errors are zero.
+- Device-pattern regression executed red before the fix and green afterward in both modes; native Chromium repeated gestures/divider and touch lifecycle cases pass.
+- Four-stream Chromium replay: 2,465 touch frames passed proportional-zoom checks.
+- Full build passed, including frontend/Worker typechecks and production bundles.
+- `npm test`: 68 passed; `npm run test:e2e`: 37 passed; `npm run test:demo`: 31 passed; `npm run test:diagnostics`: 5 passed (**141 local cases**).
+- Formatting and `git diff --check` passed. Hosted configuration contains 179 cases including desktop Firefox (68 + 55 + 49 + 7); exact CI evidence is linked from PR #9.
+- Reporter physical retest passed on Xiaomi 15T / Android 16 / Firefox 158.0.2 in both modes; Chrome on the same phone also passed.
+
+Previous local diagnostics, 2026-10-27:
+
+- Initial `npm test`: 65 unit/API cases passed.
+- Initial diagnostic browser suite: five desktop/mobile Chromium cases passed, including export, copy fallback, privacy, no requests and gesture-result parity.
+- Full `npm run build` passed, including frontend/Worker typechecks and bundles.
+- `npm test`: 65 passed; `npm run test:e2e`: 33 passed; `npm run test:demo`: 27 passed; `npm run test:diagnostics`: 5 passed (130 local cases total).
+- Formatting and `git diff --check` passed. Hosted configuration includes 160 cases (65 unit/API + 47 regular browser + 41 demo browser + 7 diagnostics). Exact hosted results are recorded in PR #9's Validation section.
+- The actual-device failure is user-confirmed. Do not mark the original problem solved based on these tests.
+
+Previous pinch candidate investigation, 2026-10-27:
+
+- Recording inspected; baseline compatibility-event and seam regressions fail before the fix. Seven targeted synthetic Chromium cases and two native Chromium CDP mobile cases passed after the candidate changes.
+- `npm run build`: passed (frontend/Worker typechecks and production bundles).
+- `npm test`: 55 passed, including four new geometry anchor cases.
+- `npm run test:e2e`: 33 Chromium desktop/HiDPI/mobile cases passed.
+- `npm run test:demo`: production demo build and 26 desktop/mobile cases passed at `/upscale-compare/`.
+- 114 local suite cases passed; formatting and `git diff --check` passed. Hosted desktop Firefox validation is configured (47 regular browser + 40 demo browser + 55 unit/API = 142 cases).
+- At the earlier candidate checkpoint, no actual-device test had been performed. The subsequent reporter retest failed; hosted desktop Firefox checks cannot establish device resolution.
+
+Previous pointer/keyboard focus follow-up, 2026-10-27:
 
 - The new regression failed against unmodified main at `be6c936`: after a mouse click and letter key, the divider incorrectly remained `document.activeElement`.
 - After the focus-ownership fix, all three targeted Chromium focus cases passed.
@@ -100,14 +133,19 @@ Previous panning fix and community review, 2026-10-26:
 
 - No production deployment, Cloudflare account permission check, real Turnstile smoke test, or provider CPU budget benchmark has been performed.
 - JPEG/WebP content is structurally validated, not fully decoded server-side. PNG additionally validates its bounded complete decompressed raster. Animated, interlaced PNG, or rotated/mirrored EXIF uploads are not accepted for publication.
-- Browser color management applies; HDR/raw-color analysis is outside scope. Safari and physical devices have not been tested. Firefox CI verification covers the targeted viewer regressions.
+- Browser color management applies; HDR/raw-color analysis is outside scope. Safari has not been tested. The reporter verified pinch on the physical Xiaomi/Firefox and Chrome configuration described above. Firefox CI verification covers the targeted viewer regressions.
 - A crash before a pending row is inserted can conservatively over-count quota; the documented disabled-upload reconciliation procedure handles this.
 - Per-IP limits do not stop distributed attacks or cap provider request costs. Large PNG validation may exceed Workers Free CPU allowance. Production requires operator contacts, monitoring, provider quota review and approval.
 - No automatic expiration: active links persist until owner/operator deletion. Local unpublished state is intentionally lost on refresh.
 
+## Final review, 2026-10-27
+
+On 2026-10-27, the reporter confirmed the latest fix (`e5b20cd`) on Xiaomi 15T / Android 16 / Firefox 158.0.2: pinch expansion and contraction are smooth, without scale or position jumps, in both Split Screen and Side-by-Side. Chrome on the same phone also remains correct. This is reporter-executed physical-device verification, distinct from CI and synthetic replay.
+
+Final review found no new blocker in input ownership, stable touch snapshots, contact lifecycle/cancel, pointer capture/fallback, divider input or geometry. Production diagnostics are disabled by the development + demo + query guard: no recorder, diagnostic observers or UI. The production-demo regression now checks observer absence after upload and mode switches. Backend, dependencies, license and deployment triggers are unchanged.
+
 ## Exact next steps
 
-1. Review [PR #7](https://github.com/Kuba25x/upscale-compare/pull/7), pushed on `fix/divider-pointer-focus` with `Fixes #6`. Local validation is complete (92 passing suite cases).
-2. Inspect the latest Validate checks and the PR Validation section for hosted Chromium/Firefox results, including pointer/keyboard transitions in normal and demo builds. The combined configured suite contains 106 cases (51 unit/API + 31 regular browser + 24 demo browser).
-3. Leave the PR unmerged, Issue #6 open, and do not deploy. The owner decides when to merge and publish after verification.
-4. Continue from the existing branch; preserve demo/production separation, community panning attribution, AGPL-3.0 and all Cloudflare safeguards. Do not start unrelated Issues without the owner's prioritization.
+1. PR #9 is ready for owner review; see its Validation section for final local and hosted results. Keep Issue #8 open until the verified solution is merged.
+2. Merge and deployment are owner actions. Do not merge, deploy, activate cloud resources or create another issue/PR automatically.
+3. Preserve the analysis, opt-in development diagnostics, image quality, attribution, AGPL-3.0 and backend safeguards. Raw user logs remain outside the public repository.
