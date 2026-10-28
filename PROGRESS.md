@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stage 1, **Bound image validation resource usage**, is implemented locally on `fix/bound-image-validation` from `origin/main` at `b6eda8c`. Scope is limited to upload/image resource bounds and regression coverage. No later sharing stages, production resources, deployments, merges, Issues or PRs have been started. See [resource limits](docs/RESOURCE_LIMITS.md) for the design, hard ceilings, local measurements and production boundaries.
+Share Comparison stage 1 is merged through PR #10 at `cb695c2`. Stage 2, **Harden publication and cleanup recovery**, is implemented on `fix/publication-cleanup-recovery` from that main revision. It adds atomic reservation/pending insertion, guarded activation/compensation, retryable cleanup and migration 0002. See [publication recovery](docs/PUBLICATION_RECOVERY.md) for state, grace, migration/rollback and verification boundaries. Only this stage is authorized; no subsequent stage or deployment has been started.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -63,6 +63,15 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Share Comparison stage 2, 2026-10-28:
+
+- Full build and frontend/Worker typechecks passed; 158 unit/API cases passed, including 37 new recovery/migration/fault-injection cases.
+- 37 Chromium/HiDPI/mobile E2E and 31 production-demo browser cases passed (226 cases across these suites).
+- Real local D1/R2 faults were injected before/after operations, including committed writes with lost responses. Coverage includes quota/row atomicity, every image-write position, failed compensation, cleanup rollback and missing ledger, migration compatibility, stale candidates, late objects, persistent-failure fairness and concurrent deletion/maintenance.
+- Both migrations also passed through local Wrangler in an isolated state directory; no remote database was contacted.
+- Production resources, provider failure/latency semantics, Firefox and diagnostic browser cases have not been revalidated in this stage. Hosted checks will be assessed on the PR separately.
+- Publication-result/key recovery and global cost controls remain outside this stage.
 
 Share Comparison stage 1, 2026-10-27:
 

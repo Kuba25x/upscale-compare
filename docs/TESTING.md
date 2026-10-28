@@ -68,7 +68,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 55 full-stack browser cases and 49 demo cases, in addition to 121 unit/API tests and 7 diagnostic browser cases (232 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 55 full-stack browser cases and 49 demo cases, in addition to 158 unit/API tests and 7 diagnostic browser cases (269 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -126,3 +126,9 @@ Hosted Validate run #22 passed all 179 cases on the verified code. The strengthe
 See [resource limits](RESOURCE_LIMITS.md) for the design, ceilings, overload behavior and local diagnostic measurements. New coverage exercises container item limits, bounded decompressor input, a complete 8K raster, exact byte limits, fragmented/ambiguous multipart bodies, receive timeout/cancellation and per-isolate admission. Local workerd integration includes two 20 MiB originals in one complete 40 MiB publication, four-image uploads, concurrent publications and rejection before quota or R2 writes.
 
 Validation on 2026-10-27: full build and typechecks passed; 121 unit/API, 37 Chromium/HiDPI/mobile E2E and 31 production-demo cases passed (189 cases). The many-empty-IDAT regression failed against the baseline implementation because it accepted the file; the same test passed after the fix. Both publication/restoration and owner-deletion browser smoke cases passed again against the final Worker. Formatting and diff whitespace checks passed. Firefox, diagnostic browser cases, hosted CI and production resource limits were not revalidated in this stage.
+
+## Publication and cleanup recovery (Share Comparison stage 2)
+
+[Publication recovery](PUBLICATION_RECOVERY.md) describes the migration, state machine and remaining cross-service boundaries. The dedicated integration suite wraps real local D1/R2 calls to fail before execution or after a successful commit. It tests failed insert/reservation triggers, capacity races and ID collisions, lost acknowledgments, all four R2 write positions, failed compensating deletion, atomic quota release rollback, missing ledger, legacy migration/accounting, stale candidates, late-object grace, concurrent cleanup and fairness with a persistently failing full batch at the next hourly run. No production fault-injection endpoint is added.
+
+On 2026-10-28, build/typechecks, 158 unit/API cases (37 new), 37 Chromium/HiDPI/mobile E2E cases and 31 production-demo cases passed. Fresh migrations were also applied with local Wrangler in an isolated state directory. The stage-1 40 MiB original-byte round trip remains part of the passing API suite. Production failure semantics, CPU/cost, Firefox and diagnostic browser cases were not revalidated here.

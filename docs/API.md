@@ -79,7 +79,7 @@ Returns social preview HTML with Open Graph title/description/image and a browse
 
 ## DELETE /api/comparisons/:id
 
-Use `Authorization: Bearer <private-deletion-key>`. The operator's separate admin secret is also accepted. No public-link knowledge alone allows deletion. Returns 204 after deletion. Invalid keys return 403; unknown IDs return 404. An interrupted deletion becomes inaccessible immediately and is retried by maintenance.
+Use `Authorization: Bearer <private-deletion-key>`. The operator's separate admin secret is also accepted. No public-link knowledge alone allows deletion. Returns 204 after deletion. Invalid keys return 403; unknown IDs return 404. Once the deleting transition commits, the comparison becomes inaccessible. Interrupted cleanup retains a private marker and reservation for maintenance retries. A still-pending upload also has a grace period before final physical removal; 204 does not promise that abandoned in-flight storage operations have already settled. See [publication recovery](PUBLICATION_RECOVERY.md).
 
 ## Important status codes
 

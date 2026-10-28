@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { readFile } from 'node:fs/promises';
+import { migrateTestDatabase } from '../fixtures/database';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { PNG } from 'pngjs';
 import { emptyMetadata, emptyImageMetadata } from '../../shared/model';
@@ -70,9 +70,7 @@ beforeAll(async () => {
       },
     }),
   );
-  await (
-    await mf.getD1Database('DB')
-  ).exec((await readFile('worker/migrations/0001_initial.sql', 'utf8')).replace(/\n/g, ' '));
+  await migrateTestDatabase(await mf.getD1Database('DB'));
 });
 beforeEach(async () => {
   const db = await mf.getD1Database('DB');

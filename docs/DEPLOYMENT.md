@@ -63,7 +63,7 @@ node scripts/prepare-production.mjs
 
 This generates an ignored `worker/wrangler.production.json` and creates no resources. It defaults to `ENVIRONMENT=production`, exact allowed frontend origin, a 5 GiB storage cap, 1,000 comparisons, five publish attempts per IP per hour, 240 reads per IP per minute, and `UPLOADS_ENABLED=false`. Review and lower limits as appropriate. Do not deploy `worker/wrangler.jsonc`: that configuration is for local development and bypasses Turnstile.
 
-After authorization, apply migrations and deploy the disabled API:
+After authorization, follow the [publication recovery migration precautions](PUBLICATION_RECOVERY.md#migration-and-rollback), including pausing deletion/cron and draining writers. Then apply migrations before deploying the disabled API:
 
 ```bash
 npx wrangler d1 migrations apply upscale-compare --remote --config worker/wrangler.production.json
@@ -128,9 +128,9 @@ Cloudflare's allowances and pricing change; check the current Workers, D1, R2 an
 
 The admin secret can delete any comparison with `DELETE /api/comparisons/:id` and `Authorization: Bearer <ADMIN_TOKEN>`. Use a secret-aware API client; do not paste credentials into issue comments or command history. No administrator UI or authentication cookies are provided.
 
-The hourly scheduled handler removes expired rate rows and retries abandoned pending/deleting records older than an hour. Active comparisons are permanent until explicitly deleted. Monitor failed scheduled runs and storage usage. R2 and D1 should be backed up under your own retention policy; protect backups as public-upload data with private deletion hashes.
+The hourly scheduled handler removes expired rate rows and processes up to 10 due non-active comparisons with conditional claims, fair retry ordering and backoff. Abandoned pending uploads retain an extra one-hour grace marker/reservation before final cleanup. See [publication recovery and migration precautions](PUBLICATION_RECOVERY.md). Active comparisons are permanent until explicitly deleted. Monitor failed scheduled runs and storage usage. R2 and D1 should be backed up under your own retention policy; protect backups as public-upload data with private deletion hashes.
 
-If a crash occurs between quota reservation and pending-row insertion, quota may conservatively over-count usage. To reconcile: disable uploads, wait for in-flight requests to stop, run the janitor, inspect pending/deleting records and private bucket objects, and remove any confirmed orphan objects. Then, while uploads remain disabled, reconcile the ledger with the comparison table:
+New publications reserve quota atomically with their pending row. Legacy reservation gaps or other historical drift can still conservatively over-count usage; migration does not silently reduce the ledger. To reconcile: disable uploads, wait for in-flight requests to stop, run the janitor, inspect pending/deleting records and private bucket objects, and remove any confirmed orphan objects. Then, while uploads remain disabled, reconcile the ledger with the comparison table:
 
 ```sql
 UPDATE quota
