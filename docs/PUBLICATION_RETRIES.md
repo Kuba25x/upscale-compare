@@ -36,7 +36,8 @@ local development. The API stores only hashes of credentials.
    with uploads disabled or a missing production verification secret.
 6. The frontend makes at most one result check after a failed upload response;
    it never automatically resends images or polls. Further checks/retries need a
-   user action. Each finished upload attempt clears/resets its challenge. If no
+   user action. Unsuccessful uploads clear/reset their challenge; success removes
+   the widget without starting an unused challenge. If no
    marker exists, a retry needs a fresh production challenge because the prior
    token may already have been consumed.
 

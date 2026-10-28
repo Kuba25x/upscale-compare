@@ -8,21 +8,12 @@ import {
   type PublicationAttempt,
 } from '../lib/publication-journal';
 import { Modal } from './Modal';
+import { loadTurnstile, type Turnstile } from '../lib/turnstile';
 export interface Published {
   id: string;
   shareUrl: string;
   deleteToken?: string;
   deleted?: boolean;
-}
-interface Turnstile {
-  render: (element: HTMLElement, options: Record<string, unknown>) => string;
-  remove: (id: string) => void;
-  reset: (id: string) => void;
-}
-declare global {
-  interface Window {
-    turnstile?: Turnstile;
-  }
 }
 export function readDeletionKey(id: string): string | undefined {
   try {
@@ -62,7 +53,9 @@ export function ShareDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleted, setDeleted] = useState(existing?.deleted || false);
   const challengeElement = useRef<HTMLDivElement>(null);
-  const widget = useRef<string | undefined>(undefined);
+  const widget = useRef<{ api: Turnstile; id: string } | undefined>(undefined);
+  const [verificationError, setVerificationError] = useState('');
+  const [verificationRevision, setVerificationRevision] = useState(0);
   const attempt = useRef<PublicationAttempt | undefined>(undefined);
   const forceNew = useRef(false);
   const [terminal, setTerminal] = useState(false);
@@ -82,49 +75,68 @@ export function ShareDialog({
     };
   }, []);
   useEffect(() => {
-    if (!health?.verificationRequired || !import.meta.env.VITE_TURNSTILE_SITE_KEY || published)
+    if (
+      !health?.uploadsEnabled ||
+      !health.verificationRequired ||
+      !import.meta.env.VITE_TURNSTILE_SITE_KEY ||
+      published
+    )
       return;
     let disposed = false;
-    const render = () => {
-      if (disposed || !window.turnstile || !challengeElement.current) return;
-      widget.current = window.turnstile.render(challengeElement.current, {
-        sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
-        theme: 'dark',
-        action: 'publish',
-        callback: (token: string) => setChallenge(token),
-        'expired-callback': () => setChallenge(''),
-        'error-callback': () => {
+    setVerificationError('');
+    setChallenge('');
+    loadTurnstile()
+      .then((api) => {
+        if (disposed || !challengeElement.current) return;
+        const id = api.render(challengeElement.current, {
+          sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+          theme: 'dark',
+          action: 'publish',
+          callback: (token: string) => {
+            if (!disposed) {
+              setChallenge(token);
+              setVerificationError('');
+            }
+          },
+          'expired-callback': () => {
+            if (!disposed) setChallenge('');
+          },
+          'error-callback': () => {
+            if (disposed) return;
+            setChallenge('');
+            setVerificationError(
+              'Verification could not load. Check your connection and try again.',
+            );
+          },
+        });
+        if (typeof id !== 'string' || !id) throw new Error('Widget did not render');
+        widget.current = { api, id };
+      })
+      .catch(() => {
+        if (!disposed) {
           setChallenge('');
-          setError('Verification could not load. Check your connection and try again.');
-        },
+          setVerificationError('Verification could not load. Check your connection and try again.');
+        }
       });
-    };
-    if (window.turnstile) render();
-    else {
-      let script = document.querySelector<HTMLScriptElement>('script[data-turnstile]');
-      if (!script) {
-        script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-        script.async = true;
-        script.dataset.turnstile = 'true';
-        document.head.append(script);
-      }
-      script.addEventListener('load', render, { once: true });
-      script.addEventListener(
-        'error',
-        () => {
-          if (!disposed) setError('Verification could not load. Please try again later.');
-        },
-        { once: true },
-      );
-    }
     return () => {
       disposed = true;
-      if (widget.current && window.turnstile) window.turnstile.remove(widget.current);
+      if (widget.current) {
+        try {
+          widget.current.api.remove(widget.current.id);
+        } catch {
+          /* Provider cleanup cannot interrupt local comparison. */
+        }
+      }
       widget.current = undefined;
     };
-  }, [health?.verificationRequired, Boolean(published)]);
+  }, [
+    health?.uploadsEnabled,
+    health?.verificationRequired,
+    Boolean(published),
+    verificationRevision,
+  ]);
   const share = async (checkOnly = false) => {
+    let completed = false;
     setBusy(true);
     setError('');
     try {
@@ -153,6 +165,7 @@ export function ShareDialog({
           'Publication is still processing. Check its result again in a few seconds; your private key is saved.',
         );
       const publishedResult = { ...result, deleteToken: current.deleteToken };
+      completed = true;
       let storageSaved = true;
       try {
         completePublication(current, result.id);
@@ -170,8 +183,14 @@ export function ShareDialog({
       if (reason instanceof ApiError && reason.status === 410) setTerminal(true);
       setError((reason as Error).message);
     } finally {
-      if (widget.current && window.turnstile) window.turnstile.reset(widget.current);
       setChallenge('');
+      if (!completed && widget.current) {
+        try {
+          widget.current.api.reset(widget.current.id);
+        } catch {
+          setVerificationError('Verification could not load. Check your connection and try again.');
+        }
+      }
       setBusy(false);
     }
   };
@@ -336,6 +355,18 @@ export function ShareDialog({
             I have permission to publish these images and understand they will be public.
           </label>
           <div ref={challengeElement} className="challenge" />
+          {verificationError && (
+            <button
+              disabled={busy}
+              onClick={() => {
+                setChallenge('');
+                setError('');
+                setVerificationRevision((revision) => revision + 1);
+              }}
+            >
+              Retry verification
+            </button>
+          )}
           {health && !health.uploadsEnabled && (
             <p className="error">
               Public uploads are currently disabled. You can keep comparing locally.
@@ -388,9 +419,9 @@ export function ShareDialog({
           </div>
         </>
       )}
-      {error && (
+      {(verificationError || error) && (
         <p className="error" role="alert">
-          {error}
+          {verificationError || error}
         </p>
       )}
     </Modal>

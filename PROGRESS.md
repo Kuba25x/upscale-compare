@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stages 1–3 are merged through PRs #10–#12. Stage 4, **Add cost controls and emergency publishing stop**, starts from `origin/main` at `266ed73` on `feat/publishing-cost-controls`. Migration 0004 adds atomic D1 daily budgets, a persistent generation-fenced publishing stop and private operator status. Production defaults remain closed; no budget or paid plan is selected for the owner. See [cost controls](docs/COST_CONTROLS.md), [recoverable retries](docs/PUBLICATION_RETRIES.md) and the [cleanup foundation](docs/PUBLICATION_RECOVERY.md). Only stage 4 is authorized; no subsequent stage, merge or deployment has been started.
+Share Comparison stages 1–4 are merged through PRs #10–#13. Stage 5, **Validate production sharing flow locally**, starts from `origin/main` at `305ec97` on `test/production-sharing-flow`. It adds built-production subpath browser tests against a production-mode local Worker with offline verification doubles, plus regressions/fixes for SDK loading/retry and strict server verification/readiness. See [local sharing validation](docs/LOCAL_SHARING_VALIDATION.md). Existing resource, cleanup, retry and cost controls stay in force. Only stage 5 is authorized; no subsequent stage, merge, deployment, paid service or production budget activation has been started.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -63,6 +63,13 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Share Comparison stage 5, 2026-10-28:
+
+- Full production build and frontend/Worker typechecks passed. The final local suites passed **245 unit/API cases**, **45 Chromium/HiDPI/mobile E2E cases**, **20 built-production sharing cases** and **31 production-demo cases**: **341 cases**, including 10 new API and 20 new browser cases.
+- Production sharing runs optimized bundles at the repository subpath against the actual production-mode Worker, fresh local D1/R2 and offline verification doubles. Coverage includes consent, token expiry/rejection, widget loading/lifecycle failures, CORS, unavailable configuration, emergency stop, lost-response/refresh recovery, private key backup, public refresh and owner deletion.
+- Two SDK failure/reopen regressions and three strict-verification/readiness regressions were executed red on the stage-4 implementation and green after the fixes. Provider transport/HTTP/JSON/hostname/action/timeout failures leave no publication rows, retry markers, quota reservation or objects.
+- Formatting and `git diff --check` passed. Existing 40 MiB original-byte, resource, cleanup, retry and cost-control coverage remains passing. No real provider request, production resource/configuration change, paid-service activation, new CPU/memory benchmark, local Firefox/diagnostic execution or stage-6 image-fidelity matrix is claimed. Hosted CI is reported separately on the PR.
 
 Share Comparison stage 4, 2026-10-28:
 
