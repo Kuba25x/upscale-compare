@@ -4,6 +4,7 @@ import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { emptyImageMetadata, emptyMetadata } from '../../shared/model';
 import { crc32, MAX_IMAGE_CHUNKS } from '../../worker/src/image-validation';
 import { pngChunk, rasterPng } from '../fixtures/png';
+import { testPublicationHeaders } from '../fixtures/publication';
 
 let mf: Miniflare;
 const origin = 'http://localhost:5173';
@@ -34,7 +35,7 @@ function form(images: Uint8Array[] = [tiny, tiny]) {
 async function publish(data = form()) {
   const req = new Request('http://localhost/api/comparisons', {
     method: 'POST',
-    headers: { Origin: origin },
+    headers: { Origin: origin, ...testPublicationHeaders() },
     body: data,
   });
   return mf.dispatchFetch(req.url, {

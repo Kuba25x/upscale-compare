@@ -32,7 +32,14 @@ describe.each([
     await expect(api.fetchComparison('a'.repeat(16))).rejects.toThrow(
       'Public sharing is not available',
     );
-    await expect(api.publish([], manifest, 'token')).rejects.toThrow(
+    await expect(api.publish([], manifest, 'token', { key: '', deleteToken: '' })).rejects.toThrow(
+      'Public sharing is not available',
+    );
+    await expect(api.recoverPublication({ key: '', deleteToken: '' })).rejects.toThrow(
+      'Public sharing is not available',
+    );
+    const journal = await import('../../src/lib/publication-journal');
+    await expect(journal.preparePublication([], manifest)).rejects.toThrow(
       'Public sharing is not available',
     );
     expect(() => api.publicImageUrl('a'.repeat(16), 0)).toThrow('Public sharing is not available');

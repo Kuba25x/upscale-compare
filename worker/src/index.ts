@@ -9,6 +9,8 @@ import {
 import { validateImage } from './image-validation';
 import { comparisonErrorPage } from './error-page';
 import { MAX_UPLOAD_BYTES, readUpload, UploadError, UploadGate } from './upload';
+import { publicationFingerprint, sha256 } from '../../shared/publication';
+import { findPublication, readPublicationCredentials } from './publication-retry';
 import {
   eraseComparison,
   PublicationError,
@@ -126,6 +128,7 @@ async function publish(request: Request, env: Env) {
   if (env.ENVIRONMENT !== 'development' && !env.TURNSTILE_SECRET)
     fail(503, 'Publishing is not configured.');
   await throttle(env, request, 'publish', numeric(env.PUBLISHES_PER_HOUR, 10), 3600);
+  const intent = await readPublicationCredentials(request);
   const totalLimit = Math.min(numeric(env.MAX_TOTAL_BYTES, MAX_UPLOAD_BYTES), MAX_UPLOAD_BYTES);
   const fileLimit = Math.min(numeric(env.MAX_FILE_BYTES, MAX_FILE_BYTES), MAX_FILE_BYTES);
   const form = await readUpload(request, { maxFileBytes: fileLimit, maxTotalBytes: totalLimit });
@@ -142,6 +145,12 @@ async function publish(request: Request, env: Env) {
   const uploads = form.images;
   if (uploads.length !== manifest.images.length)
     fail(400, 'Upload between two and four matching image files.');
+  const digests = [];
+  for (const file of uploads)
+    digests.push({ type: file.type, size: file.bytes.byteLength, hash: await sha256(file.bytes) });
+  intent.requestHash = await publicationFingerprint(manifest, digests);
+  const existing = await findPublication(env.DB, intent);
+  if (existing) return publicationResponse(existing, request);
   await challenge(env, request, form.challenge);
   const stored: PublicComparison['images'] = [];
   // Validate sequentially to bound memory usage. Original bytes are never re-encoded.
@@ -168,14 +177,29 @@ async function publish(request: Request, env: Env) {
     });
   }
   const id = random(8),
-    deleteToken = random(32),
     createdAt = new Date().toISOString();
   const payload: PublicComparison = { id, createdAt, ...manifest, images: stored };
-  await saveComparison(env, payload, await hash(deleteToken), uploads, {
-    maxStorageBytes: numeric(env.MAX_STORAGE_BYTES, 5 * 1024 ** 3),
-    maxComparisons: numeric(env.MAX_COMPARISONS, 1000),
-  });
-  return json({ id, deleteToken, shareUrl: `${new URL(request.url).origin}/s/${id}` }, 201);
+  const saved = await saveComparison(
+    env,
+    payload,
+    intent.digest,
+    uploads,
+    {
+      maxStorageBytes: numeric(env.MAX_STORAGE_BYTES, 5 * 1024 ** 3),
+      maxComparisons: numeric(env.MAX_COMPARISONS, 1000),
+    },
+    intent,
+  );
+  return publicationResponse(saved, request);
+}
+function publicationResponse(
+  result: { status: 'active'; id: string } | { status: 'pending' },
+  request: Request,
+  status = 201,
+) {
+  if (result.status === 'pending')
+    return Response.json(result, { status: 202, headers: { 'Retry-After': '3' } });
+  return json({ ...result, shareUrl: `${new URL(request.url).origin}/s/${result.id}` }, status);
 }
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url),
@@ -193,6 +217,15 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (!origin || !origins.includes(origin))
       fail(403, 'Publishing requires an allowed website origin.');
     return uploadGate.run(() => publish(request, env), request.signal);
+  }
+  if (url.pathname === '/api/publications/result' && request.method === 'POST') {
+    if (!origin || !origins.includes(origin))
+      fail(403, 'Recovery requires an allowed website origin.');
+    const intent = await readPublicationCredentials(request);
+    await throttle(env, request, 'recover', 20, 60);
+    const result = await findPublication(env.DB, intent);
+    if (!result) fail(404, 'No publication was found for these credentials.');
+    return publicationResponse(result!, request, 200);
   }
   const match = url.pathname.match(
     /^\/(api\/comparisons|s)\/([a-f0-9]{16})(?:\/images\/([0-3]))?$/,
@@ -304,7 +337,8 @@ export default {
       headers.set('Access-Control-Allow-Origin', origin);
     headers.set('Vary', 'Origin');
     headers.set('Access-Control-Allow-Methods', 'GET, HEAD, POST, DELETE, OPTIONS');
-    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Idempotency-Key');
+    headers.set('Access-Control-Expose-Headers', 'Retry-After');
     if (response.status === 429) headers.set('Retry-After', '60');
     return new Response(response.body, { status: response.status, headers });
   },

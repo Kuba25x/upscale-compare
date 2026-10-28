@@ -117,9 +117,14 @@ Publication now reserves quota together with its pending record and retains
 cleanup markers after interrupted storage operations. See [publication recovery](docs/PUBLICATION_RECOVERY.md)
 for retry behavior, deletion grace and migration requirements.
 
+Publication attempts also save their private key before uploading and support
+24-hour result recovery without resending images. Interrupted attempts appear
+under **Recover publication**, including after a refresh. See [recoverable retries](docs/PUBLICATION_RETRIES.md)
+for identifier binding, migration 0003 and remaining limitations.
+
 ## Privacy and deletion
 
-Unpublished images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. A private deletion key is saved in browser storage; download a backup after publishing. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. A key is not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](docs/PRIVACY.md).
+Unpublished images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. Private publication/deletion keys are saved in browser storage before uploading; download a backup and keep it private. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. Keys are not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](docs/PRIVACY.md).
 
 ## Contributing and license
 

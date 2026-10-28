@@ -1,6 +1,9 @@
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 import type { PublicComparison } from '../../shared/model';
 import type { UploadImage } from './upload';
+import { findPublication, type PublicationIntent } from './publication-retry';
+import { PublicationError } from './publication-error';
+export { PublicationError } from './publication-error';
 
 export interface ComparisonRow {
   id: string;
@@ -23,15 +26,6 @@ export const ABANDONED_UPLOAD_GRACE_MS = 3600000;
 export const CLEANUP_BATCH_SIZE = 10;
 const imageKey = (id: string, index: number) => 'comparisons/' + id + '/' + index;
 const imageKeys = (id: string) => [0, 1, 2, 3].map((index) => imageKey(id, index));
-
-export class PublicationError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
 
 async function deferCleanup(storage: Storage, row: ComparisonRow, now: number) {
   const delay = Math.min(3600000, 60000 * 2 ** Math.min(Math.max(row.cleanup_attempts - 1, 0), 6));
@@ -111,13 +105,14 @@ export async function saveComparison(
   digest: string,
   images: UploadImage[],
   limits: { maxStorageBytes: number; maxComparisons: number },
+  intent?: PublicationIntent,
 ) {
   const bytes = images.reduce((sum, image) => sum + image.bytes.byteLength, 0);
   // The trigger and conditional INSERT are one transaction: no reservation can
   // exist without its pending row. Do not compensate an unconfirmed INSERT;
   // a collision belongs to another publisher, and an ambiguous commit is durable.
   const reserved = await storage.DB.prepare(
-    'INSERT INTO comparisons (id, payload, delete_hash, bytes, created_at, cleanup_after) SELECT ?, ?, ?, ?, ?, ? FROM quota WHERE id = 1 AND used_bytes + ? <= ? AND comparisons < ? RETURNING id',
+    "INSERT INTO comparisons (id, payload, delete_hash, bytes, created_at, cleanup_after, publication_key, request_hash, retry_until) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? FROM quota WHERE id = 1 AND used_bytes + ? <= ? AND comparisons < ? AND NOT EXISTS (SELECT 1 FROM publication_requests WHERE key_hash = ?) AND (? = 0 OR ? > CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)) RETURNING id",
   )
     .bind(
       comparison.id,
@@ -126,11 +121,23 @@ export async function saveComparison(
       bytes,
       comparison.createdAt,
       Date.now() + PENDING_LIFETIME_MS,
+      intent?.keyHash ?? null,
+      intent?.requestHash ?? null,
+      intent?.expiresAt ?? 0,
       bytes,
       limits.maxStorageBytes,
       limits.maxComparisons,
+      intent?.keyHash ?? null,
+      intent?.expiresAt ?? 0,
+      intent?.expiresAt ?? 0,
     )
     .first();
+  if (!reserved && intent) {
+    if (intent.expiresAt <= Date.now())
+      throw new PublicationError(410, 'The 24-hour publication recovery window has expired.');
+    const existing = await findPublication(storage.DB, intent);
+    if (existing) return existing;
+  }
   if (!reserved)
     throw new PublicationError(
       507,
@@ -155,6 +162,7 @@ export async function saveComparison(
       .bind(comparison.id, digest, Date.now())
       .first();
     if (!active) throw new Error('Publication could not activate.');
+    return { status: 'active' as const, id: comparison.id };
   } catch {
     await compensatePublication(storage, comparison.id, digest, Date.now()).catch(() => undefined);
     throw new PublicationError(503, 'Publishing could not finish. Please try again later.');
@@ -167,6 +175,17 @@ export async function sweepComparisons(storage: Storage, now = Date.now()) {
   try {
     await storage.DB.prepare('DELETE FROM rate_limits WHERE expires_at < ?')
       .bind(Math.floor(now / 1000))
+      .run();
+  } catch {
+    failures++;
+  }
+  try {
+    // Bounded maintenance; timestamp validation also rejects an expired key
+    // after its tombstone is gone. Never recreate a publication on a late retry.
+    await storage.DB.prepare(
+      'DELETE FROM publication_requests WHERE key_hash IN (SELECT key_hash FROM publication_requests WHERE expires_at <= ? ORDER BY expires_at LIMIT 100)',
+    )
+      .bind(now)
       .run();
   } catch {
     failures++;

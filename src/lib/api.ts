@@ -1,5 +1,19 @@
 import type { LocalImage, Manifest, PublicComparison } from '../../shared/model';
 import { DEMO_MODE, requireSharing } from './config';
+import {
+  publicationHeaders,
+  type PublicationCredentials,
+  type PublicationResult,
+} from '../../shared/publication';
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 export const API_URL = DEMO_MODE
   ? ''
@@ -16,11 +30,19 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error || `The sharing service returned an error (${response.status}).`);
+    throw new ApiError(
+      response.status,
+      body?.error || `The sharing service returned an error (${response.status}).`,
+    );
   }
   return response;
 }
-export async function publish(images: LocalImage[], manifest: Manifest, challenge: string) {
+export async function publish(
+  images: LocalImage[],
+  manifest: Manifest,
+  challenge: string,
+  credentials: PublicationCredentials,
+) {
   requireSharing();
   const body = new FormData();
   body.append('manifest', JSON.stringify(manifest));
@@ -29,8 +51,22 @@ export async function publish(images: LocalImage[], manifest: Manifest, challeng
     if (!image.file) throw new Error('Only local comparisons can be published.');
     body.append('images', image.file, image.name);
   });
-  const response = await apiFetch('/api/comparisons', { method: 'POST', body });
-  return response.json() as Promise<{ id: string; deleteToken: string; shareUrl: string }>;
+  const response = await apiFetch('/api/comparisons', {
+    method: 'POST',
+    body,
+    headers: publicationHeaders(credentials),
+  });
+  return response.json() as Promise<PublicationResult>;
+}
+export async function recoverPublication(
+  credentials: PublicationCredentials,
+): Promise<PublicationResult> {
+  return (
+    await apiFetch('/api/publications/result', {
+      method: 'POST',
+      headers: publicationHeaders(credentials),
+    })
+  ).json();
 }
 export async function fetchComparison(id: string): Promise<PublicComparison> {
   return (await apiFetch(`/api/comparisons/${encodeURIComponent(id)}`)).json();

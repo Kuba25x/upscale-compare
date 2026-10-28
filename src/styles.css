@@ -1351,3 +1351,9 @@ input[type='checkbox'] {
   gap: 8px;
   margin: 16px 0;
 }
+.recovery-notice {
+  position: fixed;
+  right: 16px;
+  bottom: 68px;
+  z-index: 20;
+}

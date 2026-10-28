@@ -15,6 +15,8 @@ import {
 import { emptyImageMetadata, emptyMetadata, type PublicComparison } from '../../shared/model';
 import { migrateTestDatabase } from '../fixtures/database';
 import { rasterPng } from '../fixtures/png';
+import { findPublication, type PublicationIntent } from '../../worker/src/publication-retry';
+import { randomHex, PUBLICATION_RETRY_MS } from '../../shared/publication';
 
 let mf: Miniflare,
   storage: Storage,
@@ -157,10 +159,194 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await storage.DB.exec(
-    'DROP TRIGGER IF EXISTS test_insert_failure; DROP TRIGGER IF EXISTS test_quota_failure; DROP TRIGGER IF EXISTS test_delete_failure; DELETE FROM comparisons; DELETE FROM rate_limits; INSERT OR IGNORE INTO quota (id) VALUES (1); UPDATE quota SET used_bytes = 0, comparisons = 0;',
+    'DROP TRIGGER IF EXISTS test_insert_failure; DROP TRIGGER IF EXISTS test_quota_failure; DROP TRIGGER IF EXISTS test_delete_failure; DROP TRIGGER IF EXISTS test_request_failure; DELETE FROM comparisons; DELETE FROM publication_requests; DELETE FROM rate_limits; INSERT OR IGNORE INTO quota (id) VALUES (1); UPDATE quota SET used_bytes = 0, comparisons = 0;',
   );
   const keys = (await objects()).map((object) => object.key);
   if (keys.length) await storage.IMAGES.delete(keys);
+});
+describe('durable publication identity under storage failures', () => {
+  const intent = (): PublicationIntent => ({
+    keyHash: randomHex(32),
+    digest: randomHex(32),
+    requestHash: randomHex(32),
+    expiresAt: Date.now() + PUBLICATION_RETRY_MS,
+  });
+  const saveIntent = (
+    key: PublicationIntent,
+    target = storage,
+    data = comparison(),
+    caps = limits,
+  ) => saveComparison(target, data, key.digest, images, caps, key);
+  it('rolls back the pending row and quota if writing the idempotency marker fails', async () => {
+    await storage.DB.exec(
+      "CREATE TRIGGER test_request_failure BEFORE INSERT ON publication_requests BEGIN SELECT RAISE(ABORT, 'Injected marker failure'); END;",
+    );
+    await expect(saveIntent(intent())).rejects.toThrow();
+    await empty();
+    expect(
+      (await storage.DB.prepare('SELECT * FROM publication_requests').all()).results,
+    ).toHaveLength(0);
+  });
+  it('recovers the pending result after INSERT commits with a lost acknowledgement', async () => {
+    const key = intent();
+    await expect(
+      saveIntent(
+        key,
+        faulty((op, sql, phase) => {
+          if (op === 'first' && sql.startsWith('INSERT INTO comparisons') && phase === 'after')
+            fail();
+        }),
+      ),
+    ).rejects.toThrow();
+    expect(await findPublication(storage.DB, key)).toEqual({ status: 'pending' });
+    expect(await saveIntent(key)).toEqual({ status: 'pending' });
+    expect(await objects()).toHaveLength(0);
+    expect(await quota()).toEqual({ used_bytes: png.length * 4, comparisons: 1 });
+  });
+  it('can retry the same identity if the initial INSERT never committed', async () => {
+    const key = intent();
+    await expect(
+      saveIntent(
+        key,
+        faulty((op, sql, phase) => {
+          if (op === 'first' && sql.startsWith('INSERT INTO comparisons') && phase === 'before')
+            fail();
+        }),
+      ),
+    ).rejects.toThrow();
+    expect(await findPublication(storage.DB, key)).toBeNull();
+    expect((await saveIntent(key)).status).toBe('active');
+    expect(await quota()).toEqual({ used_bytes: png.length * 4, comparisons: 1 });
+  });
+  it('recovers an activation that committed before its acknowledgement was lost', async () => {
+    const key = intent(),
+      data = comparison();
+    await expect(
+      saveIntent(
+        key,
+        faulty((op, sql, phase) => {
+          if (op === 'first' && sql.includes("SET status = 'active'") && phase === 'after') fail();
+        }),
+        data,
+      ),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(await findPublication(storage.DB, key)).toEqual({ status: 'active', id: data.id });
+    expect(await saveIntent(key)).toEqual({ status: 'active', id: data.id });
+    expect(await objects()).toHaveLength(4);
+  });
+  it('allows only one writer and reservation for concurrent retries across callers', async () => {
+    const key = intent();
+    let puts = 0;
+    const target = faulty((op, _sql, phase) => {
+      if (op === 'put' && phase === 'before') puts++;
+    });
+    const results = await Promise.all(Array.from({ length: 5 }, () => saveIntent(key, target)));
+    expect(results.filter((result) => result.status === 'active').length).toBeGreaterThanOrEqual(1);
+    expect(puts).toBe(4);
+    expect(await quota()).toEqual({ used_bytes: png.length * 4, comparisons: 1 });
+    expect(
+      (await storage.DB.prepare('SELECT * FROM publication_requests').all()).results,
+    ).toHaveLength(1);
+  });
+  it('recovers an existing result even when no capacity remains', async () => {
+    const key = intent(),
+      first = await saveIntent(key);
+    expect(
+      await storage.DB.prepare(
+        'SELECT publication_key, request_hash, retry_until FROM comparisons WHERE id = ?',
+      )
+        .bind((first as { id: string }).id)
+        .first(),
+    ).toEqual({ publication_key: null, request_hash: null, retry_until: 0 });
+    expect(
+      await saveIntent(key, storage, comparison(), { maxStorageBytes: 1, maxComparisons: 1 }),
+    ).toEqual(first);
+  });
+  it('never writes images while a prior writer still owns a pending publication', async () => {
+    const key = intent();
+    const writer = saveIntent(
+      key,
+      faulty(async (op, sql, phase) => {
+        if (op === 'put' && sql.endsWith('/0') && phase === 'before') {
+          const retry = await saveIntent(
+            key,
+            faulty((operation) => {
+              if (operation === 'put') fail();
+            }),
+          );
+          expect(retry).toEqual({ status: 'pending' });
+        }
+      }),
+    );
+    expect((await writer).status).toBe('active');
+    expect(await objects()).toHaveLength(4);
+  });
+  it('keeps failed-attempt tombstones after compensation and refuses resurrection', async () => {
+    const key = intent();
+    await expect(
+      saveIntent(
+        key,
+        faulty((op, _sql, phase) => {
+          if (op === 'put' && phase === 'before') fail();
+        }),
+      ),
+    ).rejects.toMatchObject({ status: 503 });
+    await empty();
+    await expect(findPublication(storage.DB, key)).rejects.toMatchObject({ status: 410 });
+    await expect(saveIntent(key)).rejects.toMatchObject({ status: 410 });
+    await empty();
+  });
+  it('rejects conflicting content or private capability without touching the first publication', async () => {
+    const key = intent(),
+      first = await saveIntent(key);
+    await expect(saveIntent({ ...key, requestHash: randomHex(32) })).rejects.toMatchObject({
+      status: 409,
+    });
+    await expect(saveIntent({ ...key, digest: randomHex(32) })).rejects.toMatchObject({
+      status: 404,
+    });
+    expect(await findPublication(storage.DB, key)).toEqual(first);
+    expect(await objects()).toHaveLength(4);
+  });
+  it('expires bounded tombstone batches without removing active comparisons', async () => {
+    const key = intent(),
+      result = await saveIntent(key);
+    await storage.DB.prepare('UPDATE publication_requests SET expires_at = 1').run();
+    for (let i = 0; i < 104; i++)
+      await storage.DB.prepare('INSERT INTO publication_requests VALUES (?, ?, ?, ?, 1)')
+        .bind(randomHex(32), randomHex(8), randomHex(32), randomHex(32))
+        .run();
+    await sweepComparisons(storage);
+    expect(
+      (await storage.DB.prepare('SELECT * FROM publication_requests').all()).results,
+    ).toHaveLength(5);
+    await sweepComparisons(storage);
+    expect(
+      (await storage.DB.prepare('SELECT * FROM publication_requests').all()).results,
+    ).toHaveLength(0);
+    expect((await row((result as { id: string }).id))!.status).toBe('active');
+    await expect(saveIntent({ ...key, expiresAt: Date.now() - 1 })).rejects.toMatchObject({
+      status: 410,
+    });
+    expect(await quota()).toEqual({ used_bytes: png.length * 4, comparisons: 1 });
+  });
+  it('continues object cleanup if tombstone expiry maintenance fails', async () => {
+    const data = await due();
+    await expect(
+      sweepComparisons(
+        faulty((op, sql, phase) => {
+          if (
+            op === 'run' &&
+            sql.startsWith('DELETE FROM publication_requests') &&
+            phase === 'before'
+          )
+            fail();
+        }),
+      ),
+    ).rejects.toThrow('failed operation');
+    expect(await row(data.id)).toBeNull();
+    await empty();
+  });
 });
 afterAll(async () => {
   await mf?.dispose();
