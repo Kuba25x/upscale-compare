@@ -34,6 +34,13 @@ Provider HTTP/transport/JSON/timeout failures refuse publication; a success-shap
 body on an error status is never accepted. See [local sharing validation](LOCAL_SHARING_VALIDATION.md)
 for tested production paths and the distinction from real-provider verification.
 
+Accepted original files are stored and served byte-for-byte. Public filenames are
+generated from their validated media type; embedded EXIF/ICC/ancillary metadata is
+retained. Manifest image order, labels, metadata and all view settings survive
+publication after shared-schema text normalization. See [fidelity evidence and
+restoration semantics](ORIGINAL_FIDELITY.md), including Fit/DPR and unsupported
+orientation/format boundaries.
+
 The upload reader accepts at most six parts and 4 KiB of headers per part.
 File and aggregate ceilings remain 20 MiB and 40 MiB. Images with more than
 4,096 PNG/WebP chunks or JPEG outer marker segments are rejected. Body receiving

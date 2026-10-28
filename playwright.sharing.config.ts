@@ -29,7 +29,7 @@ export default defineConfig({
     {
       name: 'sharing-mobile',
       testIgnore: /missing-key/,
-      grep: /publishes after consent|expired verification|lost success response/,
+      grep: /publishes after consent|expired verification|lost success response|restores publication snapshot|restores original pixels/,
       use: {
         viewport: { width: 390, height: 844 },
         deviceScaleFactor: 2,
@@ -37,6 +37,12 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    ...[1.25, 2].map((deviceScaleFactor) => ({
+      name: `sharing-dpr-${deviceScaleFactor}`,
+      testMatch: /restoration/,
+      grep: /restores publication snapshot|restores original pixels/,
+      use: { viewport: { width: 1280, height: 800 }, deviceScaleFactor },
+    })),
     {
       name: 'sharing-missing-key',
       testMatch: /missing-key/,

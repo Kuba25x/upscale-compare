@@ -28,6 +28,12 @@ Image structure is limited to 4,096 PNG/WebP chunks or JPEG outer marker segment
 
 Original EXIF and other ancillary metadata are retained. Users must remove private data before publishing. Public link IDs are discovery-resistant, not authentication; links must not be treated as confidential storage.
 
+The [original-fidelity checks](docs/ORIGINAL_FIDELITY.md) compare SHA-256 and bytes
+through local R2/HTTP, including embedded metadata and 16-bit/alpha inputs. They
+do not certify browser codec completeness, cross-display color accuracy or
+production-provider behavior. No metadata stripping or silent orientation
+normalization is performed.
+
 Rate limiting trusts Cloudflare's `CF-Connecting-IP` at the public edge. Local development uses a shared fallback identity. Fixed windows allow bursts around boundaries, and per-IP controls do not stop a distributed attack. Turnstile, operator budgets, Cloudflare edge rules, resource quotas, and monitored abuse contact complement these controls. IP hashes are unsalted and must still be treated as pseudonymous personal data.
 
 New-code quota reservation and pending-row insertion share one D1 statement and trigger. Cleanup uses conditional claims, bounded fair batches and retry backoff; interrupted operations retain private markers and reservations. Abandoned uploads have an extra one-hour cleanup grace, so public inaccessibility can precede final physical deletion. D1/R2 are still separate services: arbitrary late commits, existing legacy quota drift and real provider failure semantics require operational verification. See [publication recovery](docs/PUBLICATION_RECOVERY.md). Storage reservations fail closed; these controls do not cap billing.

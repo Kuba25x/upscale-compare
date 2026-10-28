@@ -40,6 +40,12 @@ Selected files become browser object URLs and are decoded locally. Failed batche
 
 The publish dialog snapshots labels, metadata, mode, selection, divider, source center and zoom. Original file data is sent as multipart form data. The Worker ignores original filenames and serves generated safe filenames. It does not transcode image data.
 
+The [original-fidelity matrix](ORIGINAL_FIDELITY.md) verifies source/R2/HTTP byte
+identity and reconstruction from the production bundle, including mixed formats,
+embedded metadata, 16-bit PNG, alpha, physical-pixel zoom and viewport-dependent
+Fit. Browser decoding/color management is distinct from preservation of the
+encoded original.
+
 ## Persistence and failure behavior
 
 Upload parsing and validation use bounded resources: one multipart buffer per

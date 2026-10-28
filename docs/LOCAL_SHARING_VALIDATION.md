@@ -24,7 +24,8 @@ or manually running API is needed. The test command:
    Miniflare API on `127.0.0.1:8788`, all four migrations and explicit local test
    allowances. `ENVIRONMENT=production` retains server-side verification.
 4. Runs Chromium desktop, selected mobile-emulation cases and the missing-key
-   build. The fixture disposes each API and Playwright stops its preview servers.
+   build. Stage 6 also runs the restoration/pixel matrix at DPR 1.25 and 2. The
+   fixture disposes each API and Playwright stops its preview servers.
 
 An occupied port fails startup; tests do not reuse an unrelated server. Output is
 separate from normal builds: `dist/` and deployment configuration are not replaced.
@@ -73,6 +74,9 @@ The browser cases exercise:
   exceptions, with publication remaining controlled and local comparison intact.
 - Missing frontend key, missing backend secret, disabled uploads, an emergency
   stop after a healthy readiness response, and a disallowed frontend CORS origin.
+- Stage-6 [original-file and restoration coverage](ORIGINAL_FIDELITY.md): mixed
+  PNG/JPEG/WebP, byte/decoded-pixel hashes, metadata, full view settings,
+  immutable visitor changes, public 100% pixels and missing-source errors.
 
 The production Worker integration suite additionally rejects wrong hostname or
 action, non-boolean success, HTTP failure carrying a success-shaped body, malformed
@@ -107,7 +111,7 @@ callback/response contract locally, rather than waiting for a real challenge.
 
 ## Executed results
 
-On 2026-10-28, the final production build/typechecks and all four local suites
+At the stage-5 checkpoint on 2026-10-28, the final production build/typechecks and all four local suites
 passed: **245 unit/API + 45 regular browser + 20 production-sharing browser +
 31 production-demo = 341 cases**. This stage adds 10 API and 20 browser cases.
 The five baseline regressions above were executed red before the production
@@ -126,5 +130,6 @@ billing or physical-device/Safari behavior. No new CPU/memory benchmark is made.
 
 Stage-1 resource ceilings, stage-2 cleanup, stage-3 recovery and stage-4 budgets/
 stop controls stay in force. Production remains paused/zero-budget with uploads
-disabled until separate approval. Stage 6's broader image-fidelity/settings matrix
-and later deployment/operations stages are not started by this work.
+disabled until separate approval. Stage 6's broader matrix is recorded separately
+in [original fidelity](ORIGINAL_FIDELITY.md); later deployment/operations stages
+are not started by this work.

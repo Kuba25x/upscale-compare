@@ -134,6 +134,12 @@ the repository subpath, retries and owner deletion. See [local sharing validatio
 for setup, coverage and the limits of this evidence. It does not contact real
 Turnstile or enable any production service.
 
+Original bytes and comparison restoration are covered by a generated PNG/JPEG/WebP
+matrix, SHA-256 round trips and production browser checks at multiple display
+densities. See [original fidelity and restoration](docs/ORIGINAL_FIDELITY.md) for
+the exact guarantees, remaining color/device limits and real-screenshot acceptance
+checklist.
+
 ## Privacy and deletion
 
 Unpublished images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. Private publication/deletion keys are saved in browser storage before uploading; download a backup and keep it private. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. Keys are not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](docs/PRIVACY.md).

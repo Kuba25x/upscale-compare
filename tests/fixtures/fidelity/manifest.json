@@ -1,0 +1,78 @@
+{
+  "generator": "scripts/generate-fidelity-fixtures.py",
+  "pillow": "12.3.0",
+  "files": [
+    {
+      "name": "rgba-metadata.png",
+      "type": "image/png",
+      "width": 96,
+      "height": 72,
+      "size": 1860,
+      "sha256": "530d6a1b3ebd386043765cb11b0f6e9e19f81276b51780e6a878005a0ae11ed1",
+      "features": ["RGBA8", "partial transparency", "ICC", "EXIF orientation 1", "text", "DPI"]
+    },
+    {
+      "name": "rgb16.png",
+      "type": "image/png",
+      "width": 73,
+      "height": 49,
+      "size": 21160,
+      "sha256": "d786c782ecf8afa6074bf1f524eb677ebe7995f4323763608724cdc537ffeab7",
+      "features": ["RGB16", "sRGB"]
+    },
+    {
+      "name": "indexed-alpha.png",
+      "type": "image/png",
+      "width": 67,
+      "height": 53,
+      "size": 1660,
+      "sha256": "4f1ddfd9f182e8086e31e4a0fe10f8a9bcb65a4157a02416ddebbc0659c72f9a",
+      "features": ["indexed8", "tRNS transparency"]
+    },
+    {
+      "name": "baseline.jpg",
+      "type": "image/jpeg",
+      "width": 91,
+      "height": 61,
+      "size": 8136,
+      "sha256": "6a208ee80ce6e3de24a0146f6d264ca3e21e14586fef21793d21651e8653d5ce",
+      "features": ["baseline JPEG", "lossy source", "ICC", "EXIF orientation 1"]
+    },
+    {
+      "name": "progressive.jpg",
+      "type": "image/jpeg",
+      "width": 89,
+      "height": 59,
+      "size": 3409,
+      "sha256": "b7e0567441b7df6e0a4008e21a1d14e9381e2ab8a480d823f0636ce8abeb11a2",
+      "features": ["progressive JPEG", "lossy source", "EXIF orientation 1"]
+    },
+    {
+      "name": "lossy.webp",
+      "type": "image/webp",
+      "width": 87,
+      "height": 57,
+      "size": 3074,
+      "sha256": "8a96a95a9835726b4c07bee3fce260af65bb4d79c07139396c1d27275a026e66",
+      "features": ["VP8 lossy", "ICC", "EXIF orientation 1"]
+    },
+    {
+      "name": "lossless-alpha.webp",
+      "type": "image/webp",
+      "width": 83,
+      "height": 55,
+      "size": 838,
+      "sha256": "44c1bae9f7f6f8289d4b12c3126d3f615e66cabb3b23ff471354566563a008a1",
+      "features": ["VP8L lossless", "partial transparency", "ICC", "EXIF orientation 1"]
+    },
+    {
+      "name": "uhd.png",
+      "type": "image/png",
+      "width": 3840,
+      "height": 2160,
+      "size": 36218,
+      "sha256": "c72510d8a2856cd6d9af494c67bdb9731711b873ecce70b0eeb41d757c99a2c1",
+      "features": ["RGB8", "3840x2160", "generated grid"]
+    }
+  ]
+}

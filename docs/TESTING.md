@@ -20,6 +20,7 @@ Node.js 24 and system Chromium are used in the managed development environment. 
 Stage-3 retry behavior and its limits are documented in [recoverable retries](PUBLICATION_RETRIES.md).
 Stage-4 policy/accounting, stop/restart and billing limits are documented in [cost controls](COST_CONTROLS.md).
 The production-build browser flow with offline verification is documented in [local sharing validation](LOCAL_SHARING_VALIDATION.md).
+The original-file SHA-256, format/metadata and multi-DPR reconstruction matrix is documented in [original fidelity](ORIGINAL_FIDELITY.md), with the requested real-asset/device acceptance checklist.
 
 - Geometry and schema: fit without cropping, DPR 1/1.25/2/3 source-pixel scaling, physical origin rounding, cursor anchor, shared pan deltas, bounded zoom and strict manifests.
 - Image-content validation: full valid PNG, CRC corruption, truncation, trailing data, dimensions, pixel/file limits, decompression mismatch, spoofed HTML/SVG/GIF, actual generated JPEG/WebP fixtures and rotated EXIF rejection.
@@ -73,7 +74,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 63 full-stack browser cases, 20 local-production sharing cases and 49 demo cases, in addition to 245 unit/API tests and 7 diagnostic browser cases (384 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary. The new local-production sharing suite itself uses Chromium desktop/mobile emulation.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 63 full-stack browser cases, 37 local-production sharing cases and 49 demo cases, in addition to 277 unit/API tests and 7 diagnostic browser cases (433 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary. The local-production sharing suite itself uses Chromium desktop/mobile emulation and DPR 1.25/2 restoration projects.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -161,3 +162,13 @@ On 2026-10-28, full production build/typechecks, **245 unit/API cases**, **45 Ch
 The new `npm run test:sharing:local` target builds two optimized production frontends (dummy site key/missing key) at `/upscale-compare/`, using the real Worker in production mode, fresh local D1/R2 and test-only verification transports. Browser cases cover consent, verification expiry/retry and SDK failure/lifecycle recovery, readiness/CORS/stop failures, lost-response/refresh recovery, private key backup, public redirect/refresh and owner deletion. API cases reject invalid provider status, schema, hostname/action, malformed/failed/timed-out responses and unavailable verification configuration without creating publication state. Two SDK and three API/readiness regressions were observed failing on the stage-4 implementation before the fixes.
 
 See [the local validation guide](LOCAL_SHARING_VALIDATION.md) for isolation details and evidence boundaries. This is not live Turnstile, account-permission, edge/DNS/TLS, production billing/CPU or actual-device validation. No new CPU/memory benchmark, local Firefox/diagnostic run or subsequent-stage fidelity matrix is claimed; hosted CI results belong to the PR.
+
+## Original files and comparison restoration (stage 6)
+
+On 2026-10-28, final production build/typechecks, **277 unit/API**, **45 regular Chromium/HiDPI/mobile E2E**, **37 production-sharing browser** and **31 production-demo cases** passed: **390 local cases**. Formatting and `git diff --check` passed. The stage adds 32 API and 17 browser cases; all application/Worker code remained unchanged because the tested preservation/restoration paths already passed.
+
+Eight generated source files (76,355 bytes total) cover RGBA/indexed/16-bit/4K PNG, baseline/progressive JPEG and lossy/lossless WebP, with transparency, ICC, EXIF orientation 1 and text. API tests assert golden SHA-256 and exact source/R2/HTTP bytes, metadata/order for 2–4 mixed originals, safe GET/HEAD headers and sizes/quota. A 12-case configuration matrix preserves full numeric precision, Fit/explicit zoom, mode, boundary divider and selected indices. Nine orientation cases refuse publication without creating storage state. Fixture regeneration reproduced the same hashes/catalog.
+
+Production browser cases compare encoded-byte and decoded-RGBA hashes, entered labels/metadata, real image geometry and public 100% screenshot pixels across desktop DPR 1/1.25/2 and mobile emulation. Panned Fit and explicit views survive canonical-link navigation and refresh; visitor changes leave the public manifest unchanged, and a missing original refuses partial restoration. Existing 40 MiB original-byte and 8K raster validation remain passing.
+
+See [the fidelity contract and acceptance checklist](ORIGINAL_FIDELITY.md). No real user screenshots, physical devices, new local Firefox/diagnostic runs, production provider checks, colorimetric/HDR verification or CPU/memory/billing benchmarks are claimed. Hosted CI is reported separately on the PR; no next stage or deployment was started.
