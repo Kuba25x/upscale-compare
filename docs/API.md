@@ -14,7 +14,12 @@ This endpoint does not prove storage health or deployment readiness.
 
 ## POST /api/comparisons
 
-Requires an allowlisted `Origin` and `multipart/form-data`:
+Requires an allowlisted `Origin`, both private publication headers below, and `multipart/form-data`:
+
+- `Idempotency-Key`: `<13-digit-epoch-ms>.<64-lowercase-hex>` with a cryptographically random 256-bit suffix.
+- `Authorization`: `Bearer <64-lowercase-hex>` containing an independently generated private deletion key.
+
+Generate and durably save these credentials before sending any images. Keep them out of URLs and logs. Their timestamp allows a 24-hour retry window, with at most five minutes of future clock skew. Missing/malformed credentials return 400; expired identifiers return 410. Old clients must update.
 
 - `manifest`: JSON, at most 16,000 characters.
 - `images`: two to four files in the same order as the manifest entries.
@@ -57,13 +62,21 @@ A successful response has status 201:
 
 ```json
 {
+  "status": "active",
   "id": "0123456789abcdef",
-  "shareUrl": "https://api.example/s/0123456789abcdef",
-  "deleteToken": "a-private-64-character-hex-token"
+  "shareUrl": "https://api.example/s/0123456789abcdef"
 }
 ```
 
-The deletion token is returned once. The API cannot recover it. Public comparisons do not expire automatically.
+The API never returns or stores the plaintext deletion key. The client already saved it. Public comparisons do not expire automatically.
+
+Repeating the same identifier, key and normalized manifest/originals returns the same active result (201) or `{ "status": "pending" }` (202, `Retry-After: 3`). Only the first request reserves quota and writes R2. A matching retry does not consume Turnstile again. Changed images/order/media type/labels/settings return 409. Wrong credentials return 404. Failed/deleted/expired-pending operations return 410 and cannot be recreated with that identifier. Publishing still requires enabled uploads and consumes its per-IP allowance, including repeats. Use result recovery for checks.
+
+## POST /api/publications/result
+
+Requires an allowlisted `Origin` and the same two private headers. No request body, image files or challenge is needed. Returns the existing active result (200), 202 pending with `Retry-After: 3`, 404 for an unknown identifier or wrong key, or 410 for a terminal/expired attempt. This endpoint works while uploads are disabled, uses a separate per-IP limit of 20 requests per minute, and never creates a comparison. It does not disclose raw credentials, fingerprints, storage keys or deletion digests. See [recoverable retries](PUBLICATION_RETRIES.md) for retention and failure semantics.
+
+CORS allows `Content-Type`, `Authorization`, and `Idempotency-Key`; `Retry-After` is exposed. Clients must reset a used challenge and obtain a fresh token before a new upload if a result check reports no operation. Avoid automatic polling or blindly resending images.
 
 ## GET /api/comparisons/:id
 
@@ -83,15 +96,17 @@ Use `Authorization: Bearer <private-deletion-key>`. The operator's separate admi
 
 ## Important status codes
 
-| Code | Meaning                                                                     |
-| ---- | --------------------------------------------------------------------------- |
-| 400  | Invalid metadata, selection, file count or multipart data                   |
-| 403  | Disallowed origin, verification failure or invalid deletion key             |
-| 404  | Invalid, missing or deleted comparison/image                                |
-| 405  | Unsupported method                                                          |
-| 408  | Upload body receive deadline exceeded                                       |
-| 413  | Request/file/total size limit exceeded                                      |
-| 415  | Unsupported media type or invalid image content                             |
-| 429  | Per-IP rate limit exceeded (`Retry-After` included)                         |
-| 503  | Disabled/unconfigured publishing, busy isolate or temporary backend failure |
-| 507  | Global storage or comparison quota reached                                  |
+| Code | Meaning                                                                            |
+| ---- | ---------------------------------------------------------------------------------- |
+| 400  | Invalid publication credentials, metadata, selection, file count or multipart data |
+| 403  | Disallowed origin, verification failure or invalid deletion key                    |
+| 404  | Invalid, missing or deleted comparison/image                                       |
+| 405  | Unsupported method                                                                 |
+| 408  | Upload body receive deadline exceeded                                              |
+| 409  | Publication identifier reused with different images or settings                    |
+| 410  | Publication retry is terminal or outside its recovery window                       |
+| 413  | Request/file/total size limit exceeded                                             |
+| 415  | Unsupported media type or invalid image content                                    |
+| 429  | Per-IP rate limit exceeded (`Retry-After` included)                                |
+| 503  | Disabled/unconfigured publishing, busy isolate or temporary backend failure        |
+| 507  | Global storage or comparison quota reached                                         |

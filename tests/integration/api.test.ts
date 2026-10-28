@@ -3,6 +3,12 @@ import { migrateTestDatabase } from '../fixtures/database';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { PNG } from 'pngjs';
 import { emptyMetadata, emptyImageMetadata } from '../../shared/model';
+import {
+  testDeletionToken,
+  testPublicationCredentials,
+  testPublicationHeaders,
+} from '../fixtures/publication';
+import { publicationHeaders, PUBLICATION_RETRY_MS } from '../../shared/publication';
 let mf: Miniflare;
 const origin = 'http://localhost:5173';
 const png = (() => {
@@ -39,7 +45,7 @@ async function upload(
 async function sendForm(form: FormData, extra: Record<string, string> = {}) {
   const request = new Request('http://localhost/api/comparisons', {
     method: 'POST',
-    headers: { Origin: origin, ...extra },
+    headers: { Origin: origin, ...testPublicationHeaders(), ...extra },
     body: form,
   });
   return mf.dispatchFetch(request.url, {
@@ -75,8 +81,174 @@ beforeAll(async () => {
 beforeEach(async () => {
   const db = await mf.getD1Database('DB');
   await db.exec(
-    'DELETE FROM comparisons; DELETE FROM rate_limits; UPDATE quota SET used_bytes = 0, comparisons = 0;',
+    'DELETE FROM comparisons; DELETE FROM publication_requests; DELETE FROM rate_limits; UPDATE quota SET used_bytes = 0, comparisons = 0;',
   );
+});
+describe('recoverable publication protocol', () => {
+  const recover = (headers: Record<string, string>) =>
+    mf.dispatchFetch('http://localhost/api/publications/result', {
+      method: 'POST',
+      headers: { Origin: origin, ...headers },
+    });
+  it('recovers a discarded response with no images or challenge and repeats the same result', async () => {
+    const credentials = testPublicationCredentials(),
+      headers = publicationHeaders(credentials);
+    expect((await recover(headers)).status).toBe(404);
+    const original = await upload(manifest(), png, 'image/png', headers);
+    const result = await original.json();
+    const recovered = await recover(headers);
+    expect(recovered.status).toBe(200);
+    expect(await recovered.json()).toEqual(result);
+    expect(await (await upload(manifest(), png, 'image/png', headers)).json()).toEqual(result);
+    expect(
+      await (await mf.getD1Database('DB')).prepare('SELECT comparisons FROM quota').first(),
+    ).toEqual({ comparisons: 1 });
+    expect((await (await mf.getR2Bucket('IMAGES')).list()).objects).toHaveLength(2);
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain(credentials.key);
+    expect(serialized).not.toContain(credentials.deleteToken);
+    const stored = JSON.stringify(
+      (await (await mf.getD1Database('DB')).prepare('SELECT * FROM publication_requests').all())
+        .results,
+    );
+    expect(stored).not.toContain(credentials.key);
+    expect(stored).not.toContain(credentials.deleteToken);
+  });
+  it('normalizes metadata and ignores transport filenames and challenge tokens on matching retries', async () => {
+    const headers = testPublicationHeaders();
+    const first = await (await upload(manifest(), png, 'image/png', headers)).json();
+    const data = manifest();
+    data.images[0].label = '  DLSS custom  ';
+    const form = new FormData();
+    form.set('manifest', JSON.stringify(data));
+    form.set('challenge', 'different-single-use-token');
+    for (let i = 0; i < 2; i++)
+      form.append(
+        'images',
+        new File([new Uint8Array(png)], 'renamed-file.png', { type: 'image/png' }),
+      );
+    expect(await (await sendForm(form, headers)).json()).toEqual(first);
+  });
+  it.each(['metadata', 'configuration', 'label', 'image bytes', 'media type', 'image order'])(
+    'rejects reuse for changed %s without changing the first publication',
+    async (change) => {
+      const headers = testPublicationHeaders();
+      const first = (await (await upload(manifest(), png, 'image/png', headers)).json()) as any;
+      const modified = manifest();
+      let content = png,
+        type = 'image/png';
+      if (change === 'metadata') modified.metadata.game = 'Different';
+      if (change === 'configuration') modified.config = { ...config, divider: 0.6 };
+      if (change === 'label') modified.images[0].label = 'Different';
+      if (change === 'image bytes') content = Buffer.concat([png, Buffer.from([1])]);
+      if (change === 'media type') type = 'image/jpeg';
+      if (change === 'image order') modified.images.reverse();
+      expect((await upload(modified, content, type, headers)).status).toBe(409);
+      expect((await mf.dispatchFetch('http://localhost/api/comparisons/' + first.id)).status).toBe(
+        200,
+      );
+      expect(
+        await (await mf.getD1Database('DB')).prepare('SELECT comparisons FROM quota').first(),
+      ).toEqual({ comparisons: 1 });
+    },
+  );
+  it('does not expose a result to an identifier without its private deletion key', async () => {
+    const headers = testPublicationHeaders();
+    await upload(manifest(), png, 'image/png', headers);
+    expect((await recover({ ...headers, Authorization: 'Bearer ' + 'cd'.repeat(32) })).status).toBe(
+      404,
+    );
+    expect(
+      (
+        await upload(manifest(), png, 'image/png', {
+          ...headers,
+          Authorization: 'Bearer ' + 'cd'.repeat(32),
+        })
+      ).status,
+    ).toBe(404);
+    expect((await recover({ 'Idempotency-Key': headers['Idempotency-Key'] })).status).toBe(400);
+  });
+  it('returns pending without activating or rewriting an interrupted upload', async () => {
+    const headers = testPublicationHeaders();
+    const { id } = (await (await upload(manifest(), png, 'image/png', headers)).json()) as any;
+    await (
+      await mf.getD1Database('DB')
+    )
+      .prepare("UPDATE comparisons SET status = 'pending' WHERE id = ?")
+      .bind(id)
+      .run();
+    const result = await recover(headers);
+    expect(result.status).toBe(202);
+    expect(result.headers.get('retry-after')).toBe('3');
+    expect(await result.json()).toEqual({ status: 'pending' });
+    expect((await upload(manifest(), png, 'image/png', headers)).status).toBe(202);
+    expect((await mf.dispatchFetch('http://localhost/api/comparisons/' + id)).status).toBe(404);
+  });
+  it('keeps a tombstone after deletion and refuses resurrection with the same identifier', async () => {
+    const credentials = testPublicationCredentials(),
+      headers = publicationHeaders(credentials);
+    const { id } = (await (await upload(manifest(), png, 'image/png', headers)).json()) as any;
+    await mf.dispatchFetch('http://localhost/api/comparisons/' + id, { method: 'DELETE', headers });
+    expect((await recover(headers)).status).toBe(410);
+    expect((await upload(manifest(), png, 'image/png', headers)).status).toBe(410);
+    expect(
+      await (
+        await mf.getD1Database('DB')
+      )
+        .prepare('SELECT used_bytes, comparisons FROM quota')
+        .first(),
+    ).toEqual({ used_bytes: 0, comparisons: 0 });
+    expect(
+      (await (await mf.getD1Database('DB')).prepare('SELECT * FROM publication_requests').all())
+        .results,
+    ).toHaveLength(1);
+  });
+  it.each(['missing', 'invalid', 'expired', 'future'])(
+    'refuses %s credentials before storage reservation',
+    async (kind) => {
+      const headers = testPublicationHeaders();
+      if (kind === 'missing') headers['Idempotency-Key'] = '';
+      if (kind === 'invalid') headers['Idempotency-Key'] = 'abc';
+      if (kind === 'expired')
+        headers['Idempotency-Key'] = `${Date.now() - PUBLICATION_RETRY_MS - 1}.${'ef'.repeat(32)}`;
+      if (kind === 'future')
+        headers['Idempotency-Key'] = `${Date.now() + 3600000}.${'ef'.repeat(32)}`;
+      expect((await upload(manifest(), png, 'image/png', headers)).status).toBe(
+        kind === 'expired' ? 410 : 400,
+      );
+      expect(
+        await (await mf.getD1Database('DB')).prepare('SELECT comparisons FROM quota').first(),
+      ).toEqual({ comparisons: 0 });
+    },
+  );
+  it('requires an allowed origin for recovery and allows both private headers in CORS', async () => {
+    expect(
+      (
+        await mf.dispatchFetch('http://localhost/api/publications/result', {
+          method: 'POST',
+          headers: testPublicationHeaders(),
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (await recover({ ...testPublicationHeaders(), Origin: 'https://evil.example' })).status,
+    ).toBe(403);
+    const response = await mf.dispatchFetch('http://localhost/api/publications/result', {
+      method: 'OPTIONS',
+      headers: { Origin: origin },
+    });
+    expect(response.headers.get('access-control-allow-headers')).toContain('Idempotency-Key');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+  it('limits recovery separately so exhausted upload attempts cannot block recovery', async () => {
+    const headers = testPublicationHeaders();
+    const expected = await (await upload(manifest(), png, 'image/png', headers)).json();
+    for (let i = 0; i < 9; i++) await upload(manifest(), new Uint8Array([1]), 'image/png');
+    expect((await upload(manifest(), png, 'image/png', headers)).status).toBe(429);
+    expect(await (await recover(headers)).json()).toEqual(expected);
+    for (let i = 1; i < 20; i++) expect((await recover(headers)).status).toBe(200);
+    expect((await recover(headers)).status).toBe(429);
+  });
 });
 afterAll(async () => {
   await mf?.dispose();
@@ -91,7 +263,7 @@ describe('Cloudflare Worker with real local D1 and R2', () => {
       shareUrl: string;
     };
     expect(published.id).toMatch(/^[a-f0-9]{16}$/);
-    expect(published.deleteToken).toHaveLength(64);
+    expect(published.deleteToken).toBeUndefined();
     const restored = (await (
       await mf.dispatchFetch(`http://localhost/api/comparisons/${published.id}`)
     ).json()) as any;
@@ -117,7 +289,8 @@ describe('Cloudflare Worker with real local D1 and R2', () => {
     expect(html).toContain('og:image');
   });
   it('requires the deletion key, removes images and releases quota', async () => {
-    const { id, deleteToken } = (await (await upload()).json()) as any;
+    const { id } = (await (await upload()).json()) as any;
+    const deleteToken = testDeletionToken;
     expect(
       (
         await mf.dispatchFetch(`http://localhost/api/comparisons/${id}`, {
@@ -205,7 +378,11 @@ describe('Cloudflare Worker with real local D1 and R2', () => {
       (
         await mf.dispatchFetch('http://localhost/api/comparisons', {
           method: 'POST',
-          headers: { Origin: origin, 'Content-Type': 'application/json' },
+          headers: {
+            Origin: origin,
+            ...testPublicationHeaders(),
+            'Content-Type': 'application/json',
+          },
           body: '{}',
         })
       ).status,
@@ -214,7 +391,11 @@ describe('Cloudflare Worker with real local D1 and R2', () => {
   it('enforces actual request size before multipart parsing', async () => {
     const response = await mf.dispatchFetch('http://localhost/api/comparisons', {
       method: 'POST',
-      headers: { Origin: origin, 'Content-Type': 'multipart/form-data; boundary=x' },
+      headers: {
+        Origin: origin,
+        ...testPublicationHeaders(),
+        'Content-Type': 'multipart/form-data; boundary=x',
+      },
       body: 'x'.repeat(70000),
     });
     expect(response.status).toBe(413);
@@ -254,7 +435,8 @@ describe('Cloudflare Worker with real local D1 and R2', () => {
     );
   });
   it('does not double-release quota on concurrent deletions', async () => {
-    const { id, deleteToken } = (await (await upload()).json()) as any;
+    const { id } = (await (await upload()).json()) as any;
+    const deleteToken = testDeletionToken;
     const deletes = await Promise.all(
       [0, 1].map(() =>
         mf.dispatchFetch(`http://localhost/api/comparisons/${id}`, {

@@ -115,6 +115,13 @@ Set `UPLOADS_ENABLED` to `true` in your generated production config and redeploy
 
 ## Free-tier and cost limitations
 
+For the retry protocol, apply migration 0003 before the new Worker and coordinate
+the frontend update; legacy publish requests without private operation headers
+now receive 400. Follow the [maintenance/drain precautions](PUBLICATION_RECOVERY.md#migration-and-rollback).
+The private result endpoint stays available with uploads disabled and needs no
+Turnstile token. Verify a lost-response/reload recovery and owner deletion during
+an approved smoke test; see [recoverable retries](PUBLICATION_RETRIES.md).
+
 Cloudflare's allowances and pricing change; check the current Workers, D1, R2 and Turnstile pricing before enabling resources. This repository makes no promise of free hosting at arbitrary traffic levels.
 
 - Workers Free has a strict CPU allowance. Structural validation and full PNG CRC/decompression for large screenshots can exceed it. Local workerd tests do not enforce production billing/CPU limits. Benchmark approved real workloads; lower file/pixel limits or obtain approval for a suitable plan.
@@ -123,6 +130,7 @@ Cloudflare's allowances and pricing change; check the current Workers, D1, R2 an
 - R2 free allowances are not a spending limit. This application does not pay for or enable an external image transformation service.
 - Every image response checks deletion state and uses `no-store`. This favors reliable takedown over aggressive CDN caching and increases reads.
 - Per-IP limits and Turnstile reduce abuse but do not guarantee protection against distributed traffic. Add Cloudflare edge rules, provider limits, budget alerts, monitoring and an upload kill switch before opening a high-traffic service.
+- Publication recovery adds hashed retry metadata, a request fingerprint, indexed D1 writes, result lookups and hashing CPU. Expired markers are removed at most 100 per hourly run. Monitor marker count/expiry backlog as well as original storage; distributed create/delete traffic can exceed this purge rate. The 24-hour retry window and 20-per-minute per-IP recovery limit do not cap global billing.
 
 ## Moderation and maintenance
 

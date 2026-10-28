@@ -16,6 +16,8 @@ Node.js 24 and system Chromium are used in the managed development environment. 
 
 ## Coverage
 
+Stage-3 retry behavior and its limits are documented in [recoverable retries](PUBLICATION_RETRIES.md).
+
 - Geometry and schema: fit without cropping, DPR 1/1.25/2/3 source-pixel scaling, physical origin rounding, cursor anchor, shared pan deltas, bounded zoom and strict manifests.
 - Image-content validation: full valid PNG, CRC corruption, truncation, trailing data, dimensions, pixel/file limits, decompression mismatch, spoofed HTML/SVG/GIF, actual generated JPEG/WebP fixtures and rotated EXIF rejection.
 - Worker with real local D1/R2: publication, original byte identity, manifest restoration, safe headers/filenames, escaped social metadata, subpath redirect, deletion authorization, operator moderation, deletion/quota release, CORS/origin checks, spoofed MIME, malformed JSON/manifests, image counts, multipart/request limits, full storage, throttling, unknown IDs, production fail-closed behavior, concurrent quota reservation and concurrent deletion.
@@ -68,7 +70,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 55 full-stack browser cases and 49 demo cases, in addition to 158 unit/API tests and 7 diagnostic browser cases (269 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 63 full-stack browser cases and 49 demo cases, in addition to 189 unit/API tests and 7 diagnostic browser cases (308 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -132,3 +134,11 @@ Validation on 2026-10-27: full build and typechecks passed; 121 unit/API, 37 Chr
 [Publication recovery](PUBLICATION_RECOVERY.md) describes the migration, state machine and remaining cross-service boundaries. The dedicated integration suite wraps real local D1/R2 calls to fail before execution or after a successful commit. It tests failed insert/reservation triggers, capacity races and ID collisions, lost acknowledgments, all four R2 write positions, failed compensating deletion, atomic quota release rollback, missing ledger, legacy migration/accounting, stale candidates, late-object grace, concurrent cleanup and fairness with a persistently failing full batch at the next hourly run. No production fault-injection endpoint is added.
 
 On 2026-10-28, build/typechecks, 158 unit/API cases (37 new), 37 Chromium/HiDPI/mobile E2E cases and 31 production-demo cases passed. Fresh migrations were also applied with local Wrangler in an isolated state directory. The stage-1 40 MiB original-byte round trip remains part of the passing API suite. Production failure semantics, CPU/cost, Firefox and diagnostic browser cases were not revalidated here.
+
+## Recoverable publication retries (stage 3)
+
+On 2026-10-28, full build/typechecks, **189 unit/API cases** (31 new), **45 Chromium/HiDPI/mobile E2E cases** (8 new), and **31 production-demo cases** passed: 265 local suite cases. The eight retry E2E cases passed again against the final result protocol. Formatting and `git diff --check` passed. Migrations 0001–0003 also passed through fresh isolated local Wrangler storage; the existing legacy-row upgrade test applies all migrations and preserves manifests, deletion hashes, states and quota.
+
+Real local D1/R2 fault coverage includes lost INSERT/activation acknowledgments, marker-trigger rollback, concurrent same-operation callers (one R2 writer/reservation), full-capacity retries, failed/deleted tombstones, conflicting content/capabilities and bounded expiry cleanup. API checks cover normalized metadata/transport exclusions, malformed/expired/future identifiers, pending status, CORS and separate recovery throttling. Browser checks intercept lost success responses and blocked/failing storage, recover after a landing-page refresh, retry an unreceived upload with the same identifier, avoid pending reuploads, retain unresolved keys and require consent for a new terminal-state operation.
+
+Production-style single-use challenge cases use a **local transport fake**: first publication verifies, an identical retry/result check does not reverify, a new operation cannot reuse the consumed token, an unrecorded attempt can retry with a fresh token, and result recovery works with uploads and verification disabled. No actual Turnstile endpoint/account is contacted. The 40 MiB original-byte round trip remains passing. No new CPU/memory benchmark, production provider verification, Firefox/diagnostic browser execution or hosted-CI success is claimed here.

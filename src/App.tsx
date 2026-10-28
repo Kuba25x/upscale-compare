@@ -22,6 +22,8 @@ import { GestureDiagnostics } from './components/GestureDiagnostics';
 import { Modal } from './components/Modal';
 import { MetadataEditor } from './components/MetadataEditor';
 import { readDeletionKey, ShareDialog, type Published } from './components/ShareDialog';
+import { PublicationRecoveryDialog } from './components/PublicationRecoveryDialog';
+import { JOURNAL_CHANGED, pendingPublications } from './lib/publication-journal';
 
 const SOURCE = 'https://github.com/Kuba25x/upscale-compare';
 const initialConfig: Config = {
@@ -35,9 +37,9 @@ export default function App() {
   const [images, setImages] = useState<LocalImage[]>([]);
   const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
   const [config, setConfig] = useState<Config>(initialConfig);
-  const [modal, setModal] = useState<'upload' | 'metadata' | 'share' | 'help' | 'privacy' | null>(
-    null,
-  );
+  const [modal, setModal] = useState<
+    'upload' | 'metadata' | 'share' | 'help' | 'privacy' | 'recovery' | null
+  >(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -45,6 +47,19 @@ export default function App() {
   const [published, setPublished] = useState<Published>();
   const [publishedSnapshot, setPublishedSnapshot] = useState('');
   const [readOnly, setReadOnly] = useState(false);
+  const [pendingCount, setPendingCount] = useState(() =>
+    DEMO_MODE ? 0 : pendingPublications().length,
+  );
+  useEffect(() => {
+    if (DEMO_MODE) return;
+    const update = () => setPendingCount(pendingPublications().length);
+    window.addEventListener(JOURNAL_CHANGED, update);
+    window.addEventListener('storage', update);
+    return () => {
+      window.removeEventListener(JOURNAL_CHANGED, update);
+      window.removeEventListener('storage', update);
+    };
+  }, []);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadAction = useRef<UploadAction>({ kind: 'all' });
   const currentImages = useRef(images);
@@ -429,6 +444,14 @@ export default function App() {
           </footer>
         </main>
       )}
+      {!DEMO_MODE && pendingCount > 0 && (
+        <aside className="recovery-notice">
+          <button onClick={() => setModal('recovery')}>Recover publication ({pendingCount})</button>
+        </aside>
+      )}
+      {modal === 'recovery' && !DEMO_MODE && (
+        <PublicationRecoveryDialog onClose={() => setModal(null)} />
+      )}
       {loading && (
         <div className="loading-indicator" role="status">
           <LoaderCircle size={17} className="spinner" />
@@ -620,9 +643,10 @@ export default function App() {
                 </p>
                 <h3>Stay in control</h3>
                 <p>
-                  A private deletion key is saved in this browser and can be downloaded after
-                  publishing. Keep it private. Deleted links stop working, but copies already saved
-                  by other people cannot be removed.
+                  A private key is saved in this browser before uploading. Recover publication can
+                  check an interrupted attempt for 24 hours, even after refresh. Download a backup
+                  and keep it private: clearing browser data removes saved keys. Deleted links stop
+                  working, but copies already saved by other people cannot be removed.
                 </p>
                 <h3>Service protection</h3>
                 <p>

@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, Download, Globe, Link, ShieldCheck, Trash2 } from 'lucide-react';
 import type { LocalImage, Manifest } from '../../shared/model';
-import { apiFetch, API_URL, publish } from '../lib/api';
+import { apiFetch, ApiError, API_URL, publish, recoverPublication } from '../lib/api';
+import {
+  completePublication,
+  preparePublication,
+  type PublicationAttempt,
+} from '../lib/publication-journal';
 import { Modal } from './Modal';
 export interface Published {
   id: string;
@@ -58,6 +63,9 @@ export function ShareDialog({
   const [deleted, setDeleted] = useState(existing?.deleted || false);
   const challengeElement = useRef<HTMLDivElement>(null);
   const widget = useRef<string | undefined>(undefined);
+  const attempt = useRef<PublicationAttempt | undefined>(undefined);
+  const forceNew = useRef(false);
+  const [terminal, setTerminal] = useState(false);
   useEffect(() => {
     if (readOnly || existing) return;
     let active = true;
@@ -116,29 +124,54 @@ export function ShareDialog({
       widget.current = undefined;
     };
   }, [health?.verificationRequired, Boolean(published)]);
-  const share = async () => {
+  const share = async (checkOnly = false) => {
     setBusy(true);
     setError('');
     try {
-      const result = await publish(images, manifest, challenge);
+      const current =
+        attempt.current || (await preparePublication(images, manifest, forceNew.current));
+      attempt.current = current;
+      let result;
+      try {
+        result = await recoverPublication(current);
+      } catch (reason) {
+        if (checkOnly || !(reason instanceof ApiError) || reason.status !== 404) throw reason;
+        try {
+          result = await publish(images, manifest, challenge, current);
+        } catch (failure) {
+          // A successful commit may have lost its HTTP response. Read its
+          // result once; never automatically resend image bytes.
+          try {
+            result = await recoverPublication(current);
+          } catch {
+            throw failure;
+          }
+        }
+      }
+      if (result.status === 'pending')
+        throw new Error(
+          'Publication is still processing. Check its result again in a few seconds; your private key is saved.',
+        );
+      const publishedResult = { ...result, deleteToken: current.deleteToken };
       let storageSaved = true;
       try {
-        localStorage.setItem(`upscale-compare:delete:${API_URL}:${result.id}`, result.deleteToken);
+        completePublication(current, result.id);
       } catch {
         storageSaved = false;
       }
-      setPublished(result);
-      setDeleteToken(result.deleteToken);
-      onPublished(result);
+      setPublished(publishedResult);
+      setDeleteToken(current.deleteToken);
+      onPublished(publishedResult);
       if (!storageSaved)
         setError(
           'Your browser could not save the deletion key. Download it now to keep control of this comparison.',
         );
     } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 410) setTerminal(true);
       setError((reason as Error).message);
+    } finally {
       if (widget.current && window.turnstile) window.turnstile.reset(widget.current);
       setChallenge('');
-    } finally {
       setBusy(false);
     }
   };
@@ -314,6 +347,27 @@ export function ShareDialog({
             </p>
           )}
           <div className="modal-actions">
+            {terminal && (
+              <button
+                disabled={busy}
+                onClick={() => {
+                  attempt.current = undefined;
+                  forceNew.current = true;
+                  setTerminal(false);
+                  setConsent(false);
+                  setError(
+                    'A new publication needs your consent. The previous recovery key is retained; an expired attempt may still have a public link.',
+                  );
+                }}
+              >
+                Start a new publication
+              </button>
+            )}
+            {attempt.current && (
+              <button disabled={busy} onClick={() => void share(true)}>
+                Check publication result
+              </button>
+            )}
             <button disabled={busy} onClick={onClose}>
               Cancel
             </button>
@@ -321,6 +375,7 @@ export function ShareDialog({
               className="primary"
               disabled={
                 busy ||
+                terminal ||
                 !consent ||
                 !health?.uploadsEnabled ||
                 (health.verificationRequired && !challenge)

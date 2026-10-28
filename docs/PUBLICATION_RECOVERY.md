@@ -1,7 +1,8 @@
 # Publication and cleanup recovery
 
-This is Share Comparison stage 2. It requires migration
-0002_publication_recovery.sql and does not enable public uploads.
+This is the Share Comparison stage-2 cleanup foundation. It requires migration
+0002_publication_recovery.sql and does not enable public uploads. Stage 3 adds
+[recoverable publication retries](PUBLICATION_RETRIES.md) and migration 0003.
 
 ## Invariants
 
@@ -24,8 +25,8 @@ This is Share Comparison stage 2. It requires migration
   compensation: an ID collision belongs to another publisher, and an ambiguous
   commit may have left an accessible-to-maintenance pending record.
 - An activation whose response was lost is not compensated if D1 reports the row
-  as active. The response can still be 503; recovering the publication result and
-  private deletion key belongs to stage 3.
+  as active. The response can still be 503; stage 3 recovers its result using the
+  private key already saved by the client, without another image writer.
 
 D1 documents transactional rollback for a failed batch:
 [D1 database API](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch).
@@ -51,11 +52,12 @@ Failures defer that record with exponential backoff from one minute to one hour.
 If the retry update also fails, the persisted lease is the fallback. Independent
 records are processed before an aggregate error marks the run failed; raw storage
 errors, manifests and private capabilities are not logged. Failure of expired
-rate-counter cleanup also does not prevent comparison cleanup. A D1 outage during
+rate-counter or stage-3 retry-marker cleanup also does not prevent comparison cleanup. A D1 outage during
 candidate selection can still prevent that run.
 
 The batch size keeps comparison work bounded. The worst normal failure path is
-three D1 calls and one R2 call per row, plus the two initial D1 calls. Backoff and
+three D1 calls and one R2 call per row, plus three initial D1 calls including
+stage-3 marker expiry (at most 43 calls for a full failure batch). Backoff and
 bounded batches are recovery controls, not spending limits.
 
 ## Interrupted writes and retention
@@ -122,5 +124,6 @@ failure fairness, concurrent cleanup and late objects during grace.
 
 Original-byte, manifest-restoration, upload-resource and browser regressions
 remain in the existing suites. Local tests do not establish production provider
-failure semantics or billing/CPU suitability. Publication idempotency, key
-recovery, global cost controls and production rollout remain outside stage 2.
+failure semantics or billing/CPU suitability. Publication idempotency and key
+recovery are documented in stage 3. Global cost controls and production rollout
+remain separately authorized later work.

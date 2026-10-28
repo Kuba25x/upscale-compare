@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stage 1 is merged through PR #10 at `cb695c2`. Stage 2, **Harden publication and cleanup recovery**, is implemented on `fix/publication-cleanup-recovery` from that main revision. It adds atomic reservation/pending insertion, guarded activation/compensation, retryable cleanup and migration 0002. See [publication recovery](docs/PUBLICATION_RECOVERY.md) for state, grace, migration/rollback and verification boundaries. Only this stage is authorized; no subsequent stage or deployment has been started.
+Share Comparison stages 1 and 2 are merged through PRs #10/#11; current work starts from `origin/main` at `4d5dfc0`. Stage 3, **Make publication retries recoverable**, is implemented on `fix/recoverable-publication-retries`. It saves client credentials before upload, atomically binds an operation to its request, recovers results without images or another challenge, and retains expiring retry tombstones with migration 0003. See [recoverable retries](docs/PUBLICATION_RETRIES.md) and the [cleanup foundation](docs/PUBLICATION_RECOVERY.md). Only stage 3 is authorized; no subsequent stage, merge or deployment has been started.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -63,6 +63,14 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Share Comparison stage 3, 2026-10-28:
+
+- 189 unit/API cases passed (31 new), including actual local D1/R2 failures with committed INSERT/activation acknowledgments lost, transactional marker rollback, concurrent same-operation writers, full-capacity retries, conflict/private-key checks, canonical request matching and bounded marker expiry.
+- 45 Chromium/HiDPI/mobile E2E cases passed (8 new), including credentials saved before upload, a lost success response without reupload, reload/landing recovery and deletion, same-identity retry, pending checks, blocked/full storage, changed settings and renewed consent after a terminal result.
+- Full production build/typechecks and 31 production-demo browser cases passed (265 cases across the unit/API, full E2E and demo suites). All eight retry browser cases passed again against the final result protocol. Formatting and `git diff --check` passed; migrations 0001–0003 passed through fresh isolated local Wrangler storage.
+- Production-style verification tests use a local single-use transport fake, including an already-consumed challenge and recovery with uploads/verification disabled. No real Turnstile or Cloudflare account was contacted.
+- The existing 40 MiB original-byte round trip and stage-1/2 recovery/resource cases remain passing. No new CPU/memory benchmark or production provider/Firefox verification is claimed. Global cost controls remain a later stage.
 
 Share Comparison stage 2, 2026-10-28:
 

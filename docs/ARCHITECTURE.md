@@ -52,7 +52,16 @@ for ceilings, overload behavior and production verification boundaries.
 2. Atomically insert the pending record and reserve byte/count quota through its D1 trigger.
 3. Write originals sequentially, checking the pending deadline/state before each write.
 4. Conditionally activate only the still-pending record after all originals are stored.
-5. Return a short public share URL and the separate deletion capability.
+5. Return a short public share URL. The client generated and saved the separate deletion capability before upload.
+
+Publication attempts have a timestamped random identifier and a private deletion
+key, carried only in request headers. A unique D1 retry marker is inserted in the
+same transaction as the pending row/quota; it binds normalized metadata and
+ordered original-byte hashes. Concurrent retries return pending/active state
+without another writer. The browser persists a small private recovery journal
+before the first request, checks results without image uploads, and restores the
+owner UI after refresh. See [recoverable retries](PUBLICATION_RETRIES.md) for the
+24-hour window, migration 0003, tombstones and explicit terminal-state handling.
 
 Readers only see active records. Compensation targets all four possible R2 keys,
 then releases quota and removes the marker in one D1 transaction. An ambiguous
