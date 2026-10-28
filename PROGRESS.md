@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stages 1 and 2 are merged through PRs #10/#11; current work starts from `origin/main` at `4d5dfc0`. Stage 3, **Make publication retries recoverable**, is implemented on `fix/recoverable-publication-retries`. It saves client credentials before upload, atomically binds an operation to its request, recovers results without images or another challenge, and retains expiring retry tombstones with migration 0003. See [recoverable retries](docs/PUBLICATION_RETRIES.md) and the [cleanup foundation](docs/PUBLICATION_RECOVERY.md). Only stage 3 is authorized; no subsequent stage, merge or deployment has been started.
+Share Comparison stages 1–3 are merged through PRs #10–#12. Stage 4, **Add cost controls and emergency publishing stop**, starts from `origin/main` at `266ed73` on `feat/publishing-cost-controls`. Migration 0004 adds atomic D1 daily budgets, a persistent generation-fenced publishing stop and private operator status. Production defaults remain closed; no budget or paid plan is selected for the owner. See [cost controls](docs/COST_CONTROLS.md), [recoverable retries](docs/PUBLICATION_RETRIES.md) and the [cleanup foundation](docs/PUBLICATION_RECOVERY.md). Only stage 4 is authorized; no subsequent stage, merge or deployment has been started.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -64,13 +64,20 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 
 ## Tests executed
 
+Share Comparison stage 4, 2026-10-28:
+
+- 235 unit/API cases passed (46 new): real local D1/R2 concurrent admissions/reservations, zero/invalid limits, conservative non-refunds, UTC reset, stop authorization/durability, generation fences after intake/before insertion/at activation, D1 failure/missing control, public-read/R2 budgets, HEAD/size checks and aggregate retention. Configuration tests keep production closed and refuse invalid optional paid CPU settings/remote local-bootstrap arguments.
+- 45 Chromium/HiDPI/mobile E2E cases passed with the explicit isolated local policy bootstrap. The 40 MiB original-byte round trip, stage-2 cleanup and stage-3 result/key recovery remain passing.
+- Full build/typechecks, 31 production-demo cases, formatting and whitespace checks passed: 311 cases across the main local suites. All four migrations passed through fresh isolated local Wrangler state. Production config packaging passed with dummy IDs using `wrangler deploy --dry-run`; no deployment/resource operation was performed.
+- Provider pricing/allowances and alert semantics were checked against official documentation; recommendations are not applied budgets or paid-service authorization. No new CPU/memory/billing benchmark or provider/edge deployment is claimed.
+
 Share Comparison stage 3, 2026-10-28:
 
 - 189 unit/API cases passed (31 new), including actual local D1/R2 failures with committed INSERT/activation acknowledgments lost, transactional marker rollback, concurrent same-operation writers, full-capacity retries, conflict/private-key checks, canonical request matching and bounded marker expiry.
 - 45 Chromium/HiDPI/mobile E2E cases passed (8 new), including credentials saved before upload, a lost success response without reupload, reload/landing recovery and deletion, same-identity retry, pending checks, blocked/full storage, changed settings and renewed consent after a terminal result.
 - Full production build/typechecks and 31 production-demo browser cases passed (265 cases across the unit/API, full E2E and demo suites). All eight retry browser cases passed again against the final result protocol. Formatting and `git diff --check` passed; migrations 0001–0003 passed through fresh isolated local Wrangler storage.
 - Production-style verification tests use a local single-use transport fake, including an already-consumed challenge and recovery with uploads/verification disabled. No real Turnstile or Cloudflare account was contacted.
-- The existing 40 MiB original-byte round trip and stage-1/2 recovery/resource cases remain passing. No new CPU/memory benchmark or production provider/Firefox verification is claimed. Global cost controls remain a later stage.
+- The existing 40 MiB original-byte round trip and stage-1/2 recovery/resource cases remain passing. No new CPU/memory benchmark or production provider/Firefox verification was claimed at the stage-3 checkpoint; cost controls were still later work at that point.
 
 Share Comparison stage 2, 2026-10-28:
 

@@ -1,4 +1,4 @@
-import type { D1Database, R2Bucket, ScheduledEvent } from '@cloudflare/workers-types';
+import type { D1Database, R2Bucket, R2ObjectBody, ScheduledEvent } from '@cloudflare/workers-types';
 import {
   MAX_DIMENSION,
   MAX_FILE_BYTES,
@@ -8,7 +8,24 @@ import {
 } from '../../shared/model';
 import { validateImage } from './image-validation';
 import { comparisonErrorPage } from './error-page';
-import { MAX_UPLOAD_BYTES, readUpload, UploadError, UploadGate } from './upload';
+import {
+  MAX_UPLOAD_BYTES,
+  MULTIPART_OVERHEAD_BYTES,
+  readUpload,
+  uploadCapacity,
+  UploadError,
+  UploadGate,
+} from './upload';
+import {
+  admitImage,
+  admitRead,
+  admitUpload,
+  assertPublishingGeneration,
+  readControl,
+  publishingAvailable,
+  stopPublishing,
+  utcDay,
+} from './cost-controls';
 import { publicationFingerprint, sha256 } from '../../shared/publication';
 import { findPublication, readPublicationCredentials } from './publication-retry';
 import {
@@ -50,8 +67,12 @@ class HttpError extends Error {
 const fail = (status: number, message: string): never => {
   throw new HttpError(status, message);
 };
-const numeric = (value: string | undefined, fallback: number) =>
-  value && /^\d+$/.test(value) && Number(value) > 0 ? Number(value) : fallback;
+const numeric = (value: string | undefined, fallback: number) => {
+  if (value === undefined) return fallback;
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)))
+    return fail(503, 'The sharing service limits are not configured correctly.');
+  return Number(value);
+};
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 const escapeHtml = (value: string) =>
   value.replace(
@@ -82,14 +103,15 @@ async function throttle(
   limit: number,
   windowSeconds: number,
 ) {
+  if (limit < 1) fail(429, 'Too many requests. Please try again later.');
   const now = Math.floor(Date.now() / 1000),
     period = Math.floor(now / windowSeconds);
   const ip = request.headers.get('CF-Connecting-IP') || 'local';
   const key = `${category}:${period}:${await hash(ip)}`;
   const result = await env.DB.prepare(
-    'INSERT INTO rate_limits (key, hits, expires_at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET hits = hits + 1 RETURNING hits',
+    'INSERT INTO rate_limits (key, hits, expires_at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET hits = hits + 1 WHERE hits < ? RETURNING hits',
   )
-    .bind(key, (period + 1) * windowSeconds)
+    .bind(key, (period + 1) * windowSeconds, limit)
     .first<{ hits: number }>();
   if (!result || result.hits > limit) fail(429, 'Too many requests. Please try again later.');
 }
@@ -127,11 +149,16 @@ async function publish(request: Request, env: Env) {
     fail(503, 'Public uploads are currently disabled. Local comparisons still work.');
   if (env.ENVIRONMENT !== 'development' && !env.TURNSTILE_SECRET)
     fail(503, 'Publishing is not configured.');
-  await throttle(env, request, 'publish', numeric(env.PUBLISHES_PER_HOUR, 10), 3600);
   const intent = await readPublicationCredentials(request);
   const totalLimit = Math.min(numeric(env.MAX_TOTAL_BYTES, MAX_UPLOAD_BYTES), MAX_UPLOAD_BYTES);
   const fileLimit = Math.min(numeric(env.MAX_FILE_BYTES, MAX_FILE_BYTES), MAX_FILE_BYTES);
+  const generation = await admitUpload(
+    env.DB,
+    uploadCapacity(request, totalLimit + MULTIPART_OVERHEAD_BYTES),
+  );
+  await throttle(env, request, 'publish', numeric(env.PUBLISHES_PER_HOUR, 10), 3600);
   const form = await readUpload(request, { maxFileBytes: fileLimit, maxTotalBytes: totalLimit });
+  await assertPublishingGeneration(env.DB, generation);
   const raw = form.manifest;
   let parsed: unknown;
   try {
@@ -189,6 +216,7 @@ async function publish(request: Request, env: Env) {
       maxComparisons: numeric(env.MAX_COMPARISONS, 1000),
     },
     intent,
+    generation,
   );
   return publicationResponse(saved, request);
 }
@@ -207,12 +235,37 @@ async function route(request: Request, env: Env): Promise<Response> {
   const origins = env.ALLOWED_ORIGINS.split(',').map((value) => value.trim());
   if (origin && !origins.includes(origin)) fail(403, 'This origin is not allowed.');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
-  if (url.pathname === '/api/health' && request.method === 'GET')
+  if (url.pathname.startsWith('/api/admin/')) {
+    const token = request.headers.get('Authorization')?.replace(/^Bearer /, '') || '';
+    if (
+      !env.ADMIN_TOKEN ||
+      !token ||
+      token.length > 256 ||
+      !(await secureEqual(token, env.ADMIN_TOKEN))
+    )
+      fail(403, 'Operator authorization is required.');
+    if (url.pathname === '/api/admin/publishing/stop' && request.method === 'POST')
+      return json(await stopPublishing(env.DB));
+    if (url.pathname === '/api/admin/costs' && request.method === 'GET') {
+      const day = utcDay();
+      const control = await readControl(env.DB);
+      const usage = await env.DB.prepare('SELECT * FROM daily_usage WHERE day = ?')
+        .bind(day)
+        .first();
+      const quota = await env.DB.prepare(
+        'SELECT used_bytes, comparisons FROM quota WHERE id = 1',
+      ).first();
+      return json({ day, control, usage, quota });
+    }
+    return fail(404, 'Operator endpoint not found.');
+  }
+  if (url.pathname === '/api/health' && request.method === 'GET') {
     return json({
       status: 'ok',
-      uploadsEnabled: env.UPLOADS_ENABLED === 'true',
+      uploadsEnabled: env.UPLOADS_ENABLED === 'true' && (await publishingAvailable(env.DB)),
       verificationRequired: env.ENVIRONMENT !== 'development',
     });
+  }
   if (url.pathname === '/api/comparisons' && request.method === 'POST') {
     if (!origin || !origins.includes(origin))
       fail(403, 'Publishing requires an allowed website origin.');
@@ -236,6 +289,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (!['GET', 'HEAD', 'DELETE'].includes(request.method)) fail(405, 'Method not allowed.');
   if (request.method === 'DELETE' && (prefix !== 'api/comparisons' || index !== undefined))
     fail(405, 'Method not allowed.');
+  if (request.method !== 'DELETE') await admitRead(env.DB);
   await throttle(
     env,
     request,
@@ -264,9 +318,24 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (index !== undefined) {
     const image = comparison.images[Number(index)];
     if (!image) fail(404, 'Image not found.');
-    const object = await env.IMAGES.get(imageKey(id, Number(index)));
+    await admitImage(env.DB, request.method === 'HEAD' ? 0 : image!.size);
+    const object =
+      request.method === 'HEAD'
+        ? await env.IMAGES.head(imageKey(id, Number(index)))
+        : await env.IMAGES.get(imageKey(id, Number(index)));
     if (!object) fail(404, 'Image not found.');
-    return new Response(request.method === 'HEAD' ? null : object!.body, {
+    if (object!.size !== image!.size) {
+      if (request.method !== 'HEAD')
+        await (object as R2ObjectBody).body.cancel().catch(() => undefined);
+      fail(503, 'The stored image is temporarily unavailable.');
+    }
+    // Both workerd and the local fault harness use native Web Streams. Their
+    // declaration files differ when the Worker is also checked with DOM types.
+    const body =
+      request.method === 'HEAD'
+        ? null
+        : ((object as R2ObjectBody).body as unknown as ReadableStream);
+    return new Response(body, {
       headers: {
         'Content-Type': image!.type,
         'Content-Length': String(image!.size),

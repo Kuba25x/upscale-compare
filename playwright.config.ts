@@ -87,7 +87,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: `npm run db:local -- --persist-to ${testState} && npm run dev:api -- --persist-to ${testState}`,
+      command: `npm run db:local -- --persist-to ${testState} && npm run costs:local -- --persist-to ${testState} && npm run dev:api -- --persist-to ${testState}`,
       url: 'http://localhost:8787/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 60000,

@@ -37,6 +37,7 @@ Requires Node.js 22.12 or later (Node.js 24 is used in CI) and npm. No Cloudflar
 npm ci
 cp .env.example .env
 npm run db:local
+npm run costs:local # Generous local-only test limits; never a production policy
 npm run dev:api
 ```
 
@@ -121,6 +122,11 @@ Publication attempts also save their private key before uploading and support
 24-hour result recovery without resending images. Interrupted attempts appear
 under **Recover publication**, including after a refresh. See [recoverable retries](docs/PUBLICATION_RETRIES.md)
 for identifier binding, migration 0003 and remaining limitations.
+
+Migration 0004 adds shared daily admissions, publication and image-read budgets,
+plus a persistent emergency publishing stop without redeployment. New production
+policy defaults to paused with zero daily limits. See [cost controls and the stop runbook](docs/COST_CONTROLS.md)
+for accounting, budget recommendations, closed hostnames and remaining billing risks.
 
 ## Privacy and deletion
 

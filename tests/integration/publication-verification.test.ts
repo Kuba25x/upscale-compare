@@ -3,7 +3,7 @@ import { Miniflare, Response as LocalResponse, convertV4MiniflareOptions } from 
 import { emptyImageMetadata, emptyMetadata } from '../../shared/model';
 import { publicationHeaders } from '../../shared/publication';
 import { testPublicationCredentials } from '../fixtures/publication';
-import { migrateTestDatabase } from '../fixtures/database';
+import { configureTestCostControls, migrateTestDatabase } from '../fixtures/database';
 import { rasterPng } from '../fixtures/png';
 
 let mf: Miniflare,
@@ -76,6 +76,7 @@ beforeAll(async () => {
   await migrateTestDatabase(await mf.getD1Database('DB'));
 });
 beforeEach(async () => {
+  await configureTestCostControls(await mf.getD1Database('DB'));
   verificationCalls = 0;
   consumed.clear();
   await mf.setOptions(options());

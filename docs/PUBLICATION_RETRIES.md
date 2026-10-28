@@ -93,7 +93,9 @@ normal frontend publication also adds a result lookup. Recovery has its own
 20-per-minute fixed-window per-IP limit and does not consume the upload allowance.
 It still consumes Worker/D1 operations. Bounded cleanup/journals and existing
 storage quotas are not global spending caps. Distributed creation/deletion can
-grow the marker backlog; global cost controls/monitoring remain a later stage.
+grow the marker backlog. [Stage-4 cost controls](COST_CONTROLS.md) now bound daily
+admissions/publication reservations and public R2 reads; provider monitoring and
+account-wide billing safeguards are still necessary.
 There is no new CPU/memory benchmark or claim of Workers Free suitability.
 
 ## Migration and verification boundary

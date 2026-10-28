@@ -10,3 +10,11 @@ export async function migrateTestDatabase(db: { exec: (sql: string) => Promise<u
     await db.exec(sql);
   }
 }
+export async function configureTestCostControls(db: { exec: (sql: string) => Promise<unknown> }) {
+  await db.exec(
+    'DELETE FROM daily_usage; ' +
+      (await readFile('worker/local-controls.sql', 'utf8'))
+        .replace(/--[^\n]*/g, '')
+        .replace(/\n/g, ' '),
+  );
+}

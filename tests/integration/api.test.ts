@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { migrateTestDatabase } from '../fixtures/database';
+import { configureTestCostControls, migrateTestDatabase } from '../fixtures/database';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { PNG } from 'pngjs';
 import { emptyMetadata, emptyImageMetadata } from '../../shared/model';
@@ -79,6 +79,7 @@ beforeAll(async () => {
   await migrateTestDatabase(await mf.getD1Database('DB'));
 });
 beforeEach(async () => {
+  await configureTestCostControls(await mf.getD1Database('DB'));
   const db = await mf.getD1Database('DB');
   await db.exec(
     'DELETE FROM comparisons; DELETE FROM publication_requests; DELETE FROM rate_limits; UPDATE quota SET used_bytes = 0, comparisons = 0;',
