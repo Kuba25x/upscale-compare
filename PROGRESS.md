@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stages 1–4 are merged through PRs #10–#13. Stage 5, **Validate production sharing flow locally**, starts from `origin/main` at `305ec97` on `test/production-sharing-flow`. It adds built-production subpath browser tests against a production-mode local Worker with offline verification doubles, plus regressions/fixes for SDK loading/retry and strict server verification/readiness. See [local sharing validation](docs/LOCAL_SHARING_VALIDATION.md). Existing resource, cleanup, retry and cost controls stay in force. Only stage 5 is authorized; no subsequent stage, merge, deployment, paid service or production budget activation has been started.
+Share Comparison stages 1–5 are merged through PRs #10–#14. Stage 6, **Verify original files and comparison restoration**, starts from `origin/main` at `bd6966b` on `test/originals-and-restoration`. It extends the production-mode local harness with a generated original-file/metadata matrix, source/R2/HTTP SHA-256 checks and multi-DPR browser reconstruction/pixel checks. See [original fidelity and acceptance](docs/ORIGINAL_FIDELITY.md). Existing resource, cleanup, retry, cost and verification controls stay in force. Only stage 6 is authorized; no subsequent stage, merge, deployment, paid service or production budget activation has been started.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -63,6 +63,14 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Share Comparison stage 6, 2026-10-28:
+
+- Full production build and frontend/Worker typechecks passed. Final local suites passed **277 unit/API**, **45 Chromium/HiDPI/mobile E2E**, **37 production-sharing browser** and **31 production-demo cases**: **390 cases**, including 32 new API and 17 new browser cases. Formatting and `git diff --check` passed.
+- Eight generated fixtures cover PNG RGBA/indexed/16-bit/4K, baseline/progressive JPEG and lossy/lossless WebP, including alpha, ICC, EXIF orientation 1 and text. Actual source/R2/HTTP bytes and SHA-256, safe headers/names, original sizes/quota, mixed 2–4-file order/metadata, full-precision configuration and orientation rejection all passed. Regeneration reproduced the same eight hashes/catalog entries.
+- The production bundle restores known UI-entered labels/metadata, swapped A/B, divider, both modes and panned Fit/explicit views after canonical-link navigation and refresh. Original byte/decoded-RGBA hashes, actual geometry and public 100% screenshot pixels passed at DPR 1/1.25/2 and mobile emulation. Visitor changes remain local; a missing source prevents partial reconstruction.
+- No application/Worker code fix was needed for the tested matrix. Existing complete 40 MiB original-byte, 8K validation, resource/cleanup/retry/cost/verification checks remain passing. The new evidence and exact real-screenshot/physical-device checklist are in [original fidelity](docs/ORIGINAL_FIDELITY.md).
+- Real user screenshots, physical devices, colorimetric/HDR accuracy, live Cloudflare behavior and new CPU/memory/billing benchmarks were not tested. No new local Firefox/diagnostic execution or hosted-CI success is claimed; hosted results are separate. No subsequent stage, merge, deployment, paid activation or public-upload opening was started.
 
 Share Comparison stage 5, 2026-10-28:
 
