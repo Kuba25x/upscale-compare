@@ -109,6 +109,10 @@ Defaults: 2–4 images, 20 MiB per file, 40 MiB total per publication, 36 megapi
 
 Production sharing requires an allowed HTTPS frontend origin, private R2, initialized D1, a Turnstile challenge, and operator-configured moderation. Deployment workflows are manual and require a `DEPLOY` confirmation. The API workflow deploys with public uploads **disabled**. No paid resources are created automatically. See [deployment and free-tier limitations](docs/DEPLOYMENT.md) before enabling uploads.
 
+Upload parsing and image validation also enforce fixed structural and memory
+ceilings. See [resource limits](docs/RESOURCE_LIMITS.md) for details, overload
+behavior and the remaining production verification requirements.
+
 ## Privacy and deletion
 
 Unpublished images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. A private deletion key is saved in browser storage; download a backup after publishing. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. A key is not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](docs/PRIVACY.md).

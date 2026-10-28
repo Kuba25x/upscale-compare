@@ -20,6 +20,13 @@ Requires an allowlisted `Origin` and `multipart/form-data`:
 - `images`: two to four files in the same order as the manifest entries.
 - `challenge`: a fresh production Turnstile token, with action `publish`.
 
+The upload reader accepts at most six parts and 4 KiB of headers per part.
+File and aggregate ceilings remain 20 MiB and 40 MiB. Images with more than
+4,096 PNG/WebP chunks or JPEG outer marker segments are rejected. Body receiving
+has a 120-second deadline after admission; expiry returns 408. Each isolate runs
+one publication and queues at most two others without reading their bodies;
+further requests receive 503. See [resource limits](RESOURCE_LIMITS.md).
+
 Example manifest:
 
 ```json
@@ -76,14 +83,15 @@ Use `Authorization: Bearer <private-deletion-key>`. The operator's separate admi
 
 ## Important status codes
 
-| Code | Meaning                                                         |
-| ---- | --------------------------------------------------------------- |
-| 400  | Invalid metadata, selection, file count or multipart data       |
-| 403  | Disallowed origin, verification failure or invalid deletion key |
-| 404  | Invalid, missing or deleted comparison/image                    |
-| 405  | Unsupported method                                              |
-| 413  | Request/file/total size limit exceeded                          |
-| 415  | Unsupported media type or invalid image content                 |
-| 429  | Per-IP rate limit exceeded (`Retry-After` included)             |
-| 503  | Disabled/unconfigured publishing or temporary backend failure   |
-| 507  | Global storage or comparison quota reached                      |
+| Code | Meaning                                                                     |
+| ---- | --------------------------------------------------------------------------- |
+| 400  | Invalid metadata, selection, file count or multipart data                   |
+| 403  | Disallowed origin, verification failure or invalid deletion key             |
+| 404  | Invalid, missing or deleted comparison/image                                |
+| 405  | Unsupported method                                                          |
+| 408  | Upload body receive deadline exceeded                                       |
+| 413  | Request/file/total size limit exceeded                                      |
+| 415  | Unsupported media type or invalid image content                             |
+| 429  | Per-IP rate limit exceeded (`Retry-After` included)                         |
+| 503  | Disabled/unconfigured publishing, busy isolate or temporary backend failure |
+| 507  | Global storage or comparison quota reached                                  |

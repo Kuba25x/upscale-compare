@@ -11,6 +11,9 @@ export interface ImageInfo {
 const bad = (message = 'Invalid or unsupported image content.'): never => {
   throw new Error(message);
 };
+// Bound structural work independently of file size and decoded dimensions.
+export const MAX_IMAGE_CHUNKS = 4096;
+export const PNG_INPUT_BYTES = 8192;
 const ascii = (data: Uint8Array, start: number, length: number) =>
   String.fromCharCode(...data.subarray(start, start + length));
 const table = Uint32Array.from({ length: 256 }, (_, value) => {
@@ -62,9 +65,11 @@ async function png(data: Uint8Array, limits: ImageLimits): Promise<ImageInfo> {
     ended = false,
     idatEnded = false,
     palette = false,
-    indexed = false;
+    indexed = false,
+    chunks = 0;
   const compressed: Uint8Array[] = [];
   while (offset < data.length) {
+    if (++chunks > MAX_IMAGE_CHUNKS) bad('Image contains too many chunks or segments.');
     if (offset + 12 > data.length) bad('Truncated PNG chunk.');
     const length = view.getUint32(offset),
       kind = ascii(data, offset + 4, 4),
@@ -112,12 +117,29 @@ async function png(data: Uint8Array, limits: ImageLimits): Promise<ImageInfo> {
   }
   if (!ended || !width) bad();
   // Validate the complete compressed raster without allocating a decoded image.
-  const stream = new ReadableStream<BufferSource>({
-    start(controller) {
-      for (const chunk of compressed) controller.enqueue(chunk as Uint8Array<ArrayBuffer>);
-      controller.close();
+  let chunkIndex = 0,
+    chunkOffset = 0;
+  const stream = new ReadableStream<BufferSource>(
+    {
+      pull(controller) {
+        // Empty IDATs are legal. Skip them without creating stream queue entries.
+        while (chunkIndex < compressed.length) {
+          const chunk = compressed[chunkIndex];
+          if (chunkOffset === chunk.length) {
+            chunkIndex++;
+            chunkOffset = 0;
+            continue;
+          }
+          const end = Math.min(chunk.length, chunkOffset + PNG_INPUT_BYTES);
+          controller.enqueue(chunk.subarray(chunkOffset, end) as Uint8Array<ArrayBuffer>);
+          chunkOffset = end;
+          return;
+        }
+        controller.close();
+      },
     },
-  });
+    { highWaterMark: 0 },
+  );
   const reader = stream.pipeThrough(new DecompressionStream('deflate')).getReader();
   let total = 0;
   try {
@@ -143,8 +165,10 @@ function jpeg(data: Uint8Array, limits: ImageLimits): ImageInfo {
     width = 0,
     height = 0,
     scan = false,
-    ended = false;
+    ended = false,
+    segments = 0;
   while (offset < data.length) {
+    if (++segments > MAX_IMAGE_CHUNKS) bad('Image contains too many chunks or segments.');
     if (data[offset++] !== 0xff) bad('Malformed JPEG marker.');
     while (data[offset] === 0xff) offset++;
     const marker = data[offset++];
@@ -205,8 +229,10 @@ function webp(data: Uint8Array, limits: ImageLimits): ImageInfo {
     width = 0,
     height = 0,
     rasterWidth = 0,
-    rasterHeight = 0;
+    rasterHeight = 0,
+    chunks = 0;
   while (offset < data.length) {
+    if (++chunks > MAX_IMAGE_CHUNKS) bad('Image contains too many chunks or segments.');
     if (offset + 8 > data.length) bad();
     const kind = ascii(data, offset, 4),
       size = view.getUint32(offset + 4, true),

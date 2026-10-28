@@ -9,7 +9,7 @@ Do not include secrets, deletion keys, private screenshots, or active exploit UR
 - Anonymous publishing is an explicit action, preceded by a public-visibility acknowledgment.
 - Strict allowed-origin checks on publishing; exact-origin CORS without credentials; no authentication cookies.
 - Production Turnstile verification with expected frontend hostname and `publish` action; development bypass is confined to the local configuration.
-- Size-limited request streaming, 2–4 file constraints, per-file and total-byte limits, dimension and pixel limits, bounded metadata, and strict schema validation.
+- A bounded single-buffer multipart reader, header/part limits, a receive deadline, per-isolate publication admission, 2–4 file constraints, hard byte/dimension/pixel ceilings, bounded metadata, and strict schema validation.
 - Image-content validation independent of filename and claimed MIME. PNG chunk ordering, CRC checks and bounded complete raster decompression; JPEG markers, frame dimensions, scans and termination; static WebP RIFF/chunk consistency and dimensions. Animated images and interlaced PNG publishing are rejected. Images with rotated or mirrored EXIF orientation must be normalized before publishing.
 - Originals stored under generated keys in a private R2 bucket. No client R2 credentials, presigned unrestricted uploads, remote URL ingestion, SVG rendering, or HTML upload support.
 - Parameterized SQL. React text rendering and escaped HTML metadata. Safe server-generated download filenames and `nosniff` headers.
@@ -23,6 +23,8 @@ Do not include secrets, deletion keys, private screenshots, or active exploit UR
 ## Boundaries and operations
 
 Image validation is not antivirus scanning or a formal proof that every browser codec will accept a JPEG/WebP. These formats are structurally checked, not fully decoded on the server. PNG decompression is checked without allocating a complete raster. Keep browser/runtime/dependencies updated. R2 never executes uploaded content.
+
+Image structure is limited to 4,096 PNG/WebP chunks or JPEG outer marker segments. PNG compressed input is pulled in pieces of at most 8 KiB. Unusually fragmented valid files may be rejected. One buffered publication runs per isolate, with at most two waiting requests; this is a memory guard, not a global rate or billing limit. See [resource limits and verification boundaries](docs/RESOURCE_LIMITS.md).
 
 Original EXIF and other ancillary metadata are retained. Users must remove private data before publishing. Public link IDs are discovery-resistant, not authentication; links must not be treated as confidential storage.
 
