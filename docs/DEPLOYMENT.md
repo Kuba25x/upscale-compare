@@ -51,6 +51,8 @@ After approval, create a private R2 bucket and a D1 database named `upscale-comp
 Create a narrowly scoped API token for deploying the Worker and accessing only the intended D1/R2 resources. Keep it in GitHub environment secrets or your local secret manager, never in this repository. Create a Cloudflare Turnstile widget restricted to your frontend hostname, and provide the public site key to the frontend build.
 
 No credentials are needed for `npm run db:local`, `npm run dev:api`, or the test suite.
+After local migrations, run `npm run costs:local` before starting the emulator.
+This applies generous local-only budgets, not a production policy.
 
 ## 2. Prepare production configuration
 
@@ -62,6 +64,23 @@ node scripts/prepare-production.mjs
 ```
 
 This generates an ignored `worker/wrangler.production.json` and creates no resources. It defaults to `ENVIRONMENT=production`, exact allowed frontend origin, a 5 GiB storage cap, 1,000 comparisons, five publish attempts per IP per hour, 240 reads per IP per minute, and `UPLOADS_ENABLED=false`. Review and lower limits as appropriate. Do not deploy `worker/wrangler.jsonc`: that configuration is for local development and bypasses Turnstile.
+
+Stage 4 additionally disables workers.dev, preview URLs and Worker observability.
+No public route is generated: a custom route with reviewed edge rules must be
+configured in a separately approved rollout. This avoids an alternate hostname
+bypassing those rules. Migration 0004 starts the D1 policy paused with all seven
+daily limits zero, including public-read budgets. Configure owner-approved read
+allowances before restoring existing public readers. See [cost controls](COST_CONTROLS.md)
+for accounting, recommendation profiles and emergency procedures; never apply
+`worker/local-controls.sql` to production.
+
+No plan is selected or upgraded. For an already approved Paid account, an explicit
+`APPROVED_PAID_CPU_MS` value (1–1000 ms) adds a per-invocation CPU cap to the
+generated config; the protected GitHub environment can supply that variable.
+Absent/empty means no override, suitable for Free's provider-controlled limit.
+Verify the real account plan and measured CPU needs before any deployment; the
+script does not infer a safe paid budget. Billing alerts are notifications, not
+spending caps. No such provider configuration is performed by repository tests.
 
 After authorization, follow the [publication recovery migration precautions](PUBLICATION_RECOVERY.md#migration-and-rollback), including pausing deletion/cron and draining writers. Then apply migrations before deploying the disabled API:
 
@@ -111,7 +130,12 @@ The manual **Deploy Cloudflare API** workflow requires `DEPLOY`, runs build/test
 
 Before enabling public uploads, publish the operator's privacy/security/abuse contacts and review the limits. Verify real Turnstile behavior on the production frontend, secret bindings, private bucket permissions, allowlisted origins, byte identity, public-link refresh, owner deletion, admin moderation and scheduled cleanup. These production checks cannot be established by local emulation.
 
-Set `UPLOADS_ENABLED` to `true` in your generated production config and redeploy only after authorization. A missing Turnstile secret still fails closed. Keep an immediate shutdown path: set it back to `false` and redeploy. Existing published comparisons remain readable when uploads are disabled.
+After the owner's approval, configure the D1 daily limits, increment generation
+and resume that policy, then set `UPLOADS_ENABLED=true` and redeploy as separately
+authorized. A missing Turnstile secret still fails closed. For an emergency use
+the authenticated persistent stop endpoint or D1 fallback without waiting for a
+deployment; the environment flag remains an additional gate. Existing published
+comparisons remain readable subject to their read budgets. See [the stop/restart runbook](COST_CONTROLS.md#emergency-stop-and-restart).
 
 ## Free-tier and cost limitations
 
@@ -130,7 +154,7 @@ Cloudflare's allowances and pricing change; check the current Workers, D1, R2 an
 - R2 free allowances are not a spending limit. This application does not pay for or enable an external image transformation service.
 - Every image response checks deletion state and uses `no-store`. This favors reliable takedown over aggressive CDN caching and increases reads.
 - Per-IP limits and Turnstile reduce abuse but do not guarantee protection against distributed traffic. Add Cloudflare edge rules, provider limits, budget alerts, monitoring and an upload kill switch before opening a high-traffic service.
-- Publication recovery adds hashed retry metadata, a request fingerprint, indexed D1 writes, result lookups and hashing CPU. Expired markers are removed at most 100 per hourly run. Monitor marker count/expiry backlog as well as original storage; distributed create/delete traffic can exceed this purge rate. The 24-hour retry window and 20-per-minute per-IP recovery limit do not cap global billing.
+- Publication recovery adds hashed retry metadata, a request fingerprint, indexed D1 writes, result lookups and hashing CPU. Expired markers are removed at most 100 per hourly run. Monitor marker count/expiry backlog as well as original storage. Stage-4 daily admissions/reservations bound new work but do not cap account billing; private recovery and other exempt paths still consume operations.
 
 ## Moderation and maintenance
 

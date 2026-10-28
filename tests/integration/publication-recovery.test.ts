@@ -1,3 +1,4 @@
+import { instrumentStorage, type Hook } from '../fixtures/storage';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
@@ -13,7 +14,7 @@ import {
   type Storage,
 } from '../../worker/src/publication-store';
 import { emptyImageMetadata, emptyMetadata, type PublicComparison } from '../../shared/model';
-import { migrateTestDatabase } from '../fixtures/database';
+import { configureTestCostControls, migrateTestDatabase } from '../fixtures/database';
 import { rasterPng } from '../fixtures/png';
 import { findPublication, type PublicationIntent } from '../../worker/src/publication-retry';
 import { randomHex, PUBLICATION_RETRY_MS } from '../../shared/publication';
@@ -64,63 +65,8 @@ async function hidden(id: string) {
     expect((await mf.dispatchFetch('http://localhost' + path)).status).toBe(404);
 }
 
-type Hook = (operation: string, sql: string, phase: 'before' | 'after') => void | Promise<void>;
-// Inject transport faults around REAL local D1/R2 operations; no mock SQL engine
-// and no test-only route or failure switch in the production Worker.
-function faulty(hook: Hook): Storage {
-  const raw = new WeakMap<object, object>();
-  function statement(target: object, sql: string): object {
-    const wrapped = new Proxy(target, {
-      get(target, property) {
-        const value = Reflect.get(target, property);
-        if (property === 'bind')
-          return (...args: unknown[]) => statement(value.apply(target, args), sql);
-        if (['first', 'all', 'run'].includes(String(property)))
-          return async (...args: unknown[]) => {
-            await hook(String(property), sql, 'before');
-            const result = await value.apply(target, args);
-            await hook(String(property), sql, 'after');
-            return result;
-          };
-        return typeof value === 'function' ? value.bind(target) : value;
-      },
-    });
-    raw.set(wrapped, target);
-    return wrapped;
-  }
-  return {
-    DB: new Proxy(storage.DB, {
-      get(target, property) {
-        if (property === 'prepare') return (sql: string) => statement(target.prepare(sql), sql);
-        if (property === 'batch')
-          return async (statements: object[]) => {
-            await hook('batch', '', 'before');
-            const result = await target.batch(
-              statements.map((item) => raw.get(item) || item) as Parameters<typeof target.batch>[0],
-            );
-            await hook('batch', '', 'after');
-            return result;
-          };
-        const value = Reflect.get(target, property);
-        return typeof value === 'function' ? value.bind(target) : value;
-      },
-    }),
-    IMAGES: new Proxy(storage.IMAGES, {
-      get(target, property) {
-        const value = Reflect.get(target, property);
-        if (property === 'put' || property === 'delete')
-          return async (...args: unknown[]) => {
-            const key = String(args[0]);
-            await hook(String(property), key, 'before');
-            const result = await value.apply(target, args);
-            await hook(String(property), key, 'after');
-            return result;
-          };
-        return typeof value === 'function' ? value.bind(target) : value;
-      },
-    }),
-  };
-}
+const faulty = (hook: Hook) => instrumentStorage(storage, hook);
+
 const fail = () => {
   throw new Error('Injected storage transport failure');
 };
@@ -158,6 +104,7 @@ beforeAll(async () => {
   await migrateTestDatabase(storage.DB);
 });
 beforeEach(async () => {
+  await configureTestCostControls(storage.DB);
   await storage.DB.exec(
     'DROP TRIGGER IF EXISTS test_insert_failure; DROP TRIGGER IF EXISTS test_quota_failure; DROP TRIGGER IF EXISTS test_delete_failure; DROP TRIGGER IF EXISTS test_request_failure; DELETE FROM comparisons; DELETE FROM publication_requests; DELETE FROM rate_limits; INSERT OR IGNORE INTO quota (id) VALUES (1); UPDATE quota SET used_bytes = 0, comparisons = 0;',
   );
@@ -353,7 +300,7 @@ afterAll(async () => {
 });
 
 describe('atomic publication reservation', () => {
-  it('upgrades legacy rows without recharging them and tolerates the old reservation SQL', async () => {
+  it('upgrades legacy rows without recharging them and fences old publication writers', async () => {
     const legacy = await mf.getD1Database('LEGACY');
     await legacy.exec(
       (await readFile('worker/migrations/0001_initial.sql', 'utf8')).replace(/\n/g, ' '),
@@ -386,27 +333,38 @@ describe('atomic publication reservation', () => {
       .bind('b'.repeat(16))
       .first();
     expect(pending!.cleanup_after).toBe(Date.parse('2026-01-01T01:00:00.000Z'));
-    // Old Worker code omits cleanup_after and already performs this reservation.
-    await legacy
-      .prepare('UPDATE quota SET used_bytes = used_bytes + 7, comparisons = comparisons + 1')
-      .run();
-    await legacy
-      .prepare(
-        'INSERT INTO comparisons (id, payload, delete_hash, bytes, created_at) VALUES (?, ?, ?, ?, ?)',
-      )
-      .bind('d'.repeat(16), '{}', 'legacy-digest', 7, new Date().toISOString())
-      .run();
+    expect(
+      (await legacy.prepare('SELECT publishing_paused FROM service_control').first())!
+        .publishing_paused,
+    ).toBe(1);
+    // Old code has no generation. Even when publishing is explicitly resumed,
+    // it cannot bypass the stage-4 insertion/activation fences.
+    await configureTestCostControls(legacy);
+    await expect(
+      legacy
+        .prepare(
+          'INSERT INTO comparisons (id, payload, delete_hash, bytes, created_at) VALUES (?, ?, ?, ?, ?)',
+        )
+        .bind('d'.repeat(16), '{}', 'legacy-digest', 7, new Date().toISOString())
+        .run(),
+    ).rejects.toThrow('Publishing is stopped');
+    await expect(
+      legacy
+        .prepare("UPDATE comparisons SET status = 'active' WHERE id = ?")
+        .bind('b'.repeat(16))
+        .run(),
+    ).rejects.toThrow('Publishing is stopped');
     expect(await legacy.prepare('SELECT used_bytes, comparisons FROM quota').first()).toEqual({
-      used_bytes: 607,
-      comparisons: 4,
+      used_bytes: 600,
+      comparisons: 3,
     });
     await sweepComparisons({ DB: legacy as unknown as Storage['DB'], IMAGES: storage.IMAGES });
     expect(
       (await legacy
         .prepare('SELECT status FROM comparisons WHERE id = ?')
-        .bind('d'.repeat(16))
+        .bind('a'.repeat(16))
         .first())!.status,
-    ).toBe('pending');
+    ).toBe('active');
   });
   it('rolls back quota when inserting the pending row fails', async () => {
     await storage.DB.exec(

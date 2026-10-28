@@ -24,7 +24,9 @@ const config = {
   name: 'upscale-compare-api',
   main: 'src/index.ts',
   compatibility_date: '2026-07-01',
-  workers_dev: true,
+  workers_dev: false,
+  preview_urls: false,
+  observability: { enabled: false },
   vars: {
     ENVIRONMENT: 'production',
     UPLOADS_ENABLED: 'false',
@@ -50,7 +52,21 @@ const config = {
   r2_buckets: [{ binding: 'IMAGES', bucket_name: BUCKET }],
   triggers: { crons: ['17 * * * *'] },
 };
+// An explicit cap for an already approved Paid account; this does not choose,
+// activate or upgrade a Cloudflare plan. Free has its own fixed CPU limit.
+const cpuLimit = process.env.APPROVED_PAID_CPU_MS;
+if (cpuLimit) {
+  if (
+    !/^[1-9]\d*$/.test(cpuLimit) ||
+    !Number.isSafeInteger(Number(cpuLimit)) ||
+    Number(cpuLimit) > 1000
+  )
+    throw new Error(
+      'APPROVED_PAID_CPU_MS must be an explicit integer from 1 to 1000 milliseconds.',
+    );
+  config.limits = { cpu_ms: Number(cpuLimit) };
+}
 await writeFile('worker/wrangler.production.json', `${JSON.stringify(config, null, 2)}\n`);
 console.log(
-  'Prepared production configuration. Public uploads are disabled. No resources were created.',
+  'Prepared production configuration. Uploads, workers.dev, preview URLs and Worker observability are disabled. No resources were created or plans selected.',
 );

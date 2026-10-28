@@ -36,6 +36,7 @@ jobs:
           D1_ID: ${{ vars.CLOUDFLARE_D1_ID }}
           BUCKET: ${{ vars.CLOUDFLARE_R2_BUCKET }}
           FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          APPROVED_PAID_CPU_MS: ${{ vars.APPROVED_PAID_CPU_MS }}
         run: node scripts/prepare-production.mjs
       - name: Apply schema and deploy with public uploads disabled
         env:

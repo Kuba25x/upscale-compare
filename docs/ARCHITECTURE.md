@@ -77,6 +77,16 @@ storage succeeds. See [publication recovery](PUBLICATION_RECOVERY.md) for the st
 machine, migration, retention and operational boundaries. D1/R2 writes are not a
 cross-service atomic transaction.
 
+## Cost controls
+
+Stage 4 adds `service_control` and UTC-keyed `daily_usage`. Conditional admissions
+charge body capacity before receiving uploads and public reads before per-IP
+writes/lookups/R2. Daily pending-publication charges join the existing insert
+transaction. A private operator endpoint stops publishing without deployment;
+the stored generation is checked after intake, before writes, and by D1 INSERT/
+activation triggers. Resume cannot revive older admissions. See [cost controls](COST_CONTROLS.md)
+for all counters, exemptions, non-refunds, defaults and billing boundaries.
+
 ## URLs and privacy
 
 The canonical public link is `https://api-host/s/<16-hex-id>`. Its server-generated HTML includes escaped Open Graph metadata and redirects to `FRONTEND_URL#c/<id>`. GitHub Pages serves the same static entry point for every hash route, including repository subpaths. Social services receive an original selected image, not a generated composite; provider caching and preview support vary.

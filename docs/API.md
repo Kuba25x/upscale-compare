@@ -10,7 +10,9 @@ Returns service readiness information:
 { "status": "ok", "uploadsEnabled": true, "verificationRequired": false }
 ```
 
-This endpoint does not prove storage health or deployment readiness.
+`uploadsEnabled` also reflects the unpaused D1 policy and remaining current-day
+admission/publication budgets. It does not prove storage health, sufficient bytes
+for a particular request, production verification configuration or deployment readiness.
 
 ## POST /api/comparisons
 
@@ -31,6 +33,15 @@ File and aggregate ceilings remain 20 MiB and 40 MiB. Images with more than
 has a 120-second deadline after admission; expiry returns 408. Each isolate runs
 one publication and queues at most two others without reading their bodies;
 further requests receive 503. See [resource limits](RESOURCE_LIMITS.md).
+
+The shared D1 policy additionally charges a daily upload attempt and the complete
+body capacity before reading it. A known validated `Content-Length` reserves that
+size; an unknown length reserves the configured aggregate ceiling plus 64 KiB.
+Invalid/failed/cancelled attempts are not refunded. New pending reservations also
+charge daily publication count/original bytes atomically with storage quota and
+the retry marker. Limits apply across IPs/isolates; exhausted/paused/missing
+policy returns 503. Matching upload replays still consume body admission; use the
+private result endpoint for recovery without those charges.
 
 Example manifest:
 
@@ -86,6 +97,12 @@ Returns `id`, `createdAt`, `metadata`, `config`, and `images`. Each image includ
 
 Returns the exact original bytes for indices 0–3 if the comparison is active and the image exists. Headers include the verified MIME, original size, safe inline filename, R2 ETag, and `no-store`. No resize or image-transformation parameters are supported. HEAD omits the response body.
 
+Public GET/HEAD paths also require daily read admission. An image request reserves
+one R2 operation before accessing storage; GET additionally reserves the full
+original size, while HEAD uses R2 `head()` with zero response-byte reservation.
+Failures/cancelled downloads are not refunded. Exhausted budgets return 503
+without R2 access. Policy defaults are zero until explicitly configured.
+
 ## GET or HEAD /s/:id
 
 Returns social preview HTML with Open Graph title/description/image and a browser redirect to the frontend hash route. User strings are HTML-escaped. Deleted IDs return 404 rather than a stale preview page. Third-party preview caches cannot be controlled by this application.
@@ -93,6 +110,26 @@ Returns social preview HTML with Open Graph title/description/image and a browse
 ## DELETE /api/comparisons/:id
 
 Use `Authorization: Bearer <private-deletion-key>`. The operator's separate admin secret is also accepted. No public-link knowledge alone allows deletion. Returns 204 after deletion. Invalid keys return 403; unknown IDs return 404. Once the deleting transition commits, the comparison becomes inaccessible. Interrupted cleanup retains a private marker and reservation for maintenance retries. A still-pending upload also has a grace period before final physical removal; 204 does not promise that abandoned in-flight storage operations have already settled. See [publication recovery](PUBLICATION_RECOVERY.md).
+
+## Operator controls
+
+`POST /api/admin/publishing/stop` requires `Authorization: Bearer <ADMIN_TOKEN>`
+and no body. It returns `{ "publishingPaused": true, "generation": 123 }` after
+persisting the stop, without redeployment. No origin header is required for an
+operator API client; a supplied origin must still be allowlisted. Missing/wrong
+authorization returns 403 before D1 access. A failed acknowledgement can return
+503 even if the stop committed: check status or repeat the stop.
+
+`GET /api/admin/costs` requires the same operator authorization and returns
+`day`, `control`, `usage` (null before a current-day charge) and `quota`, all
+private and `no-store`. It exposes no image content, user metadata or credentials.
+This operational view is not the Cloudflare invoice.
+
+There is no HTTP resume/reset endpoint. Resume requires an approved D1 policy
+change and a generation increment, preserving usage counters. Stops do not
+disable active public reads (which retain their budgets), private recovery,
+deletion or scheduled cleanup. Already-issued I/O may finish, while older
+writers cannot activate. See [the stop/restart runbook](COST_CONTROLS.md).
 
 ## Important status codes
 

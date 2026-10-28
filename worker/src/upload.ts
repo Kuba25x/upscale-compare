@@ -97,13 +97,18 @@ function find(
   return -1;
 }
 
-async function readBody(request: Request, maxBytes: number) {
-  if (request.signal.aborted) throw new UploadError(408, 'The upload was cancelled.');
+export function uploadCapacity(request: Request, maxBytes: number) {
   const declared = request.headers.get('content-length');
   if (declared !== null && (!/^\d+$/.test(declared) || !Number.isSafeInteger(Number(declared))))
     invalid();
   const capacity = declared === null ? maxBytes : Number(declared);
   if (capacity > maxBytes) tooLarge();
+  return capacity;
+}
+async function readBody(request: Request, maxBytes: number) {
+  if (request.signal.aborted) throw new UploadError(408, 'The upload was cancelled.');
+  const declared = request.headers.get('content-length');
+  const capacity = uploadCapacity(request, maxBytes);
   if (!request.body) invalid();
   // A single allocation avoids growing buffers, per-network-chunk objects and
   // native FormData/File copies. Unknown lengths reserve the bounded maximum.

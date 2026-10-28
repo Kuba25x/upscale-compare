@@ -17,6 +17,7 @@ Node.js 24 and system Chromium are used in the managed development environment. 
 ## Coverage
 
 Stage-3 retry behavior and its limits are documented in [recoverable retries](PUBLICATION_RETRIES.md).
+Stage-4 policy/accounting, stop/restart and billing limits are documented in [cost controls](COST_CONTROLS.md).
 
 - Geometry and schema: fit without cropping, DPR 1/1.25/2/3 source-pixel scaling, physical origin rounding, cursor anchor, shared pan deltas, bounded zoom and strict manifests.
 - Image-content validation: full valid PNG, CRC corruption, truncation, trailing data, dimensions, pixel/file limits, decompression mismatch, spoofed HTML/SVG/GIF, actual generated JPEG/WebP fixtures and rotated EXIF rejection.
@@ -70,7 +71,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 63 full-stack browser cases and 49 demo cases, in addition to 189 unit/API tests and 7 diagnostic browser cases (308 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 63 full-stack browser cases and 49 demo cases, in addition to 235 unit/API tests and 7 diagnostic browser cases (354 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -142,3 +143,11 @@ On 2026-10-28, full build/typechecks, **189 unit/API cases** (31 new), **45 Chro
 Real local D1/R2 fault coverage includes lost INSERT/activation acknowledgments, marker-trigger rollback, concurrent same-operation callers (one R2 writer/reservation), full-capacity retries, failed/deleted tombstones, conflicting content/capabilities and bounded expiry cleanup. API checks cover normalized metadata/transport exclusions, malformed/expired/future identifiers, pending status, CORS and separate recovery throttling. Browser checks intercept lost success responses and blocked/failing storage, recover after a landing-page refresh, retry an unreceived upload with the same identifier, avoid pending reuploads, retain unresolved keys and require consent for a new terminal-state operation.
 
 Production-style single-use challenge cases use a **local transport fake**: first publication verifies, an identical retry/result check does not reverify, a new operation cannot reuse the consumed token, an unrecorded attempt can retry with a fresh token, and result recovery works with uploads and verification disabled. No actual Turnstile endpoint/account is contacted. The 40 MiB original-byte round trip remains passing. No new CPU/memory benchmark, production provider verification, Firefox/diagnostic browser execution or hosted-CI success is claimed here.
+
+## Cost controls and emergency publishing stop (stage 4)
+
+On 2026-10-28, **235 unit/API cases** (46 new), **45 Chromium/HiDPI/mobile E2E cases** and **31 production-demo cases** passed: 311 local suite cases. Full production build, frontend/Worker typechecks, formatting and `git diff --check` passed. Migrations 0001–0004 passed through fresh isolated local Wrangler state. Production configuration packaging with dummy IDs also passed using `wrangler deploy --dry-run`, without deployment or resource creation.
+
+The 37 cost-control cases use actual local D1/R2. New HTTP fault tests call the real handler in Node with instrumented bindings; existing API tests also exercise the budgeted path inside workerd. Checks include default zero/paused policy, invalid/zero existing limits, concurrent global admissions/byte caps, UTC boundaries, non-refunded invalid/failing work, publication/quota/retry atomicity, failed/deleted reservations, authorization before D1, lost stop/admission acknowledgements, fences during body intake and image writes, stop/resume before insertion/activation, missing state/D1 failure, private recovery/deletion during exhaustion, R2 GET/HEAD accounting, corrupt object sizes and independent retention cleanup. Nine production/local configuration cases keep public hostnames/logging/uploads disabled, reject invalid optional paid CPU caps and refuse remote arguments to the local bootstrap.
+
+Existing stage-1 resource ceilings and complete 40 MiB original-byte round trip remain passing, along with stage-2 cleanup and stage-3 recovery behavior. The browser server now explicitly configures only its isolated local policy; production budgets are not selected by tests. No new CPU/memory/billing benchmark, hosted-CI success, Firefox/diagnostic execution, live edge rule, provider outage test, notification setup or paid plan activation is claimed.

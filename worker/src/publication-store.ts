@@ -3,6 +3,7 @@ import type { PublicComparison } from '../../shared/model';
 import type { UploadImage } from './upload';
 import { findPublication, type PublicationIntent } from './publication-retry';
 import { PublicationError } from './publication-error';
+import { requirePublishing } from './cost-controls';
 export { PublicationError } from './publication-error';
 
 export interface ComparisonRow {
@@ -106,13 +107,15 @@ export async function saveComparison(
   images: UploadImage[],
   limits: { maxStorageBytes: number; maxComparisons: number },
   intent?: PublicationIntent,
+  admissionGeneration?: number,
 ) {
+  const generation = admissionGeneration ?? (await requirePublishing(storage.DB));
   const bytes = images.reduce((sum, image) => sum + image.bytes.byteLength, 0);
   // The trigger and conditional INSERT are one transaction: no reservation can
   // exist without its pending row. Do not compensate an unconfirmed INSERT;
   // a collision belongs to another publisher, and an ambiguous commit is durable.
   const reserved = await storage.DB.prepare(
-    "INSERT INTO comparisons (id, payload, delete_hash, bytes, created_at, cleanup_after, publication_key, request_hash, retry_until) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? FROM quota WHERE id = 1 AND used_bytes + ? <= ? AND comparisons < ? AND NOT EXISTS (SELECT 1 FROM publication_requests WHERE key_hash = ?) AND (? = 0 OR ? > CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)) RETURNING id",
+    "INSERT INTO comparisons (id, payload, delete_hash, bytes, created_at, cleanup_after, publication_key, request_hash, retry_until, publish_generation) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM quota WHERE id = 1 AND used_bytes + ? <= ? AND comparisons < ? AND NOT EXISTS (SELECT 1 FROM publication_requests WHERE key_hash = ?) AND (? = 0 OR ? > CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)) RETURNING id",
   )
     .bind(
       comparison.id,
@@ -124,6 +127,7 @@ export async function saveComparison(
       intent?.keyHash ?? null,
       intent?.requestHash ?? null,
       intent?.expiresAt ?? 0,
+      generation,
       bytes,
       limits.maxStorageBytes,
       limits.maxComparisons,
@@ -146,7 +150,7 @@ export async function saveComparison(
   try {
     for (let i = 0; i < images.length; i++) {
       const pending = await storage.DB.prepare(
-        "SELECT id FROM comparisons WHERE id = ? AND delete_hash = ? AND status = 'pending' AND cleanup_after > ?",
+        "SELECT id FROM comparisons WHERE id = ? AND delete_hash = ? AND status = 'pending' AND cleanup_after > ? AND EXISTS (SELECT 1 FROM service_control WHERE id = 1 AND publishing_paused = 0 AND generation = comparisons.publish_generation)",
       )
         .bind(comparison.id, digest, Date.now())
         .first();
@@ -175,6 +179,15 @@ export async function sweepComparisons(storage: Storage, now = Date.now()) {
   try {
     await storage.DB.prepare('DELETE FROM rate_limits WHERE expires_at < ?')
       .bind(Math.floor(now / 1000))
+      .run();
+  } catch {
+    failures++;
+  }
+  try {
+    await storage.DB.prepare(
+      'DELETE FROM daily_usage WHERE day IN (SELECT day FROM daily_usage WHERE day < ? ORDER BY day LIMIT 100)',
+    )
+      .bind(new Date(now - 35 * 86400000).toISOString().slice(0, 10))
       .run();
   } catch {
     failures++;

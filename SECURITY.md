@@ -36,6 +36,21 @@ Publication/deletion credentials are independently generated with 256 bits of ra
 
 No production endpoint has been deployed or penetration-tested as part of local development. Enabling public uploads requires operator review, real Turnstile verification, restricted secrets, a deletion/moderation smoke test, provider quota/budget review, and explicit deployment authorization.
 
+Stage-4 shared D1 daily budgets gate upload bodies, new publication reservations
+and public read/R2 work across isolates. Defaults are paused with zero limits;
+missing state or failed checks refuse work. Charges are conservative and are not
+refunded after failures/deletion. The operator-only emergency stop changes a
+persisted generation; INSERT/activation triggers prevent older writers from
+activating even after restart. In-flight network work may still finish. Private
+recovery, deletion, health, controls and maintenance remain outside public-read
+budgets, so rejected/exempt requests and database checks can still incur costs.
+See [cost controls](docs/COST_CONTROLS.md) for precise semantics, provider/edge
+fallbacks, zero-budget bootstrap and remaining denial-of-wallet risks. No
+application control is a hard account-wide dollar cap. Production-generated
+workers.dev/preview URLs and Worker observability are disabled; alternate
+hostnames must not bypass an approved edge policy. An optional paid CPU cap is
+configuration only and never authorizes a plan upgrade.
+
 ## Frontend-only demo
 
 The demo build does not expose an upload endpoint and never invokes the sharing API or Turnstile. Public route loading and API helpers fail locally with an explanation. Existing Cloudflare security controls remain part of the full deployment. The manual Pages workflow defaults to demo mode and still requires explicit `DEPLOY` confirmation; no Cloudflare resources are created or changed by demo deployment.

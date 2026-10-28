@@ -56,8 +56,8 @@ rate-counter or stage-3 retry-marker cleanup also does not prevent comparison cl
 candidate selection can still prevent that run.
 
 The batch size keeps comparison work bounded. The worst normal failure path is
-three D1 calls and one R2 call per row, plus three initial D1 calls including
-stage-3 marker expiry (at most 43 calls for a full failure batch). Backoff and
+three D1 calls and one R2 call per row, plus four initial D1 calls including
+stage-3 marker expiry and stage-4 daily-counter retention (at most 44 calls for a full failure batch). Backoff and
 bounded batches are recovery controls, not spending limits.
 
 ## Interrupted writes and retention
@@ -125,5 +125,5 @@ failure fairness, concurrent cleanup and late objects during grace.
 Original-byte, manifest-restoration, upload-resource and browser regressions
 remain in the existing suites. Local tests do not establish production provider
 failure semantics or billing/CPU suitability. Publication idempotency and key
-recovery are documented in stage 3. Global cost controls and production rollout
-remain separately authorized later work.
+recovery are documented in stage 3, and [daily budgets/emergency stop](COST_CONTROLS.md)
+in stage 4. Production rollout still needs separate authorization.
