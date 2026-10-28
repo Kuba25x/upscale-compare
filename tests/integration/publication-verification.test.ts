@@ -1,16 +1,20 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
-import { Miniflare, Response as LocalResponse, convertV4MiniflareOptions } from 'miniflare';
+import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
+import {
+  LOCAL_VERIFICATION_SECRET,
+  VerificationService,
+  type VerificationMode,
+} from '../fixtures/verification';
 import { emptyImageMetadata, emptyMetadata } from '../../shared/model';
 import { publicationHeaders } from '../../shared/publication';
 import { testPublicationCredentials } from '../fixtures/publication';
 import { configureTestCostControls, migrateTestDatabase } from '../fixtures/database';
 import { rasterPng } from '../fixtures/png';
 
-let mf: Miniflare,
-  verificationCalls = 0;
+let mf: Miniflare;
+const verification = new VerificationService('localhost');
 const origin = 'http://localhost:5173';
-const consumed = new Set<string>();
-const options = (enabled = true) =>
+const options = (enabled = true, secret = LOCAL_VERIFICATION_SECRET) =>
   convertV4MiniflareOptions({
     modules: true,
     scriptPath: 'worker/dist/index.js',
@@ -22,20 +26,9 @@ const options = (enabled = true) =>
       UPLOADS_ENABLED: String(enabled),
       ALLOWED_ORIGINS: origin,
       FRONTEND_URL: origin,
-      ...(enabled ? { TURNSTILE_SECRET: 'local-test-secret' } : {}),
+      ...(enabled && secret ? { TURNSTILE_SECRET: secret } : {}),
     },
-    // Local transport fake, not the real Turnstile service or a production bypass.
-    outboundService: async (request) => {
-      expect(request.url).toBe('https://challenges.cloudflare.com/turnstile/v0/siteverify');
-      verificationCalls++;
-      const token = String((await request.formData()).get('response'));
-      const success = token.startsWith('fresh-') && !consumed.has(token);
-      consumed.add(token);
-      return new LocalResponse(
-        JSON.stringify({ success, hostname: 'localhost', action: 'publish' }),
-        { headers: { 'Content-Type': 'application/json' } },
-      );
-    },
+    outboundService: verification.fetch,
   });
 async function upload(headers: Record<string, string>, token: string) {
   const body = new FormData();
@@ -77,9 +70,11 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await configureTestCostControls(await mf.getD1Database('DB'));
-  verificationCalls = 0;
-  consumed.clear();
+  verification.reset();
   await mf.setOptions(options());
+  const bucket = await mf.getR2Bucket('IMAGES');
+  const objects = (await bucket.list()).objects;
+  if (objects.length) await bucket.delete(objects.map((object) => object.key));
   await (
     await mf.getD1Database('DB')
   ).exec(
@@ -91,31 +86,88 @@ afterAll(async () => {
 });
 it('requires verification for a new publication but not for result recovery or matching retries', async () => {
   const headers = publicationHeaders(testPublicationCredentials());
-  const response = await upload(headers, 'fresh-once');
+  const response = await upload(headers, 'valid-once');
   expect(response.status).toBe(201);
   const result = await response.json();
   expect(await (await recover(headers)).json()).toEqual(result);
-  expect(await (await upload(headers, 'fresh-once')).json()).toEqual(result);
-  expect(verificationCalls).toBe(1);
+  expect(await (await upload(headers, 'valid-once')).json()).toEqual(result);
+  expect(verification.requests.length).toBe(1);
   expect(
-    (await upload(publicationHeaders(testPublicationCredentials()), 'fresh-once')).status,
+    (await upload(publicationHeaders(testPublicationCredentials()), 'valid-once')).status,
   ).toBe(403);
-  expect(verificationCalls).toBe(2);
+  expect(verification.requests.length).toBe(2);
 });
 it('can retry a rejected challenge with the same identity and a fresh token', async () => {
   const headers = publicationHeaders(testPublicationCredentials());
   expect((await upload(headers, 'expired')).status).toBe(403);
   expect((await recover(headers)).status).toBe(404);
-  expect((await upload(headers, 'fresh-retry')).status).toBe(201);
-  expect(verificationCalls).toBe(2);
+  expect((await upload(headers, 'valid-retry')).status).toBe(201);
+  expect(verification.requests.length).toBe(2);
 });
 it('allows private result recovery while uploads and production verification are disabled', async () => {
   const headers = publicationHeaders(testPublicationCredentials());
-  const response = await upload(headers, 'fresh-disabled');
+  const response = await upload(headers, 'valid-disabled');
   expect(response.status).toBe(201);
   const result = await response.json();
   await mf.setOptions(options(false));
   expect(await (await recover(headers)).json()).toEqual(result);
-  expect((await upload(headers, 'fresh-disabled')).status).toBe(503);
-  expect(verificationCalls).toBe(1);
+  expect((await upload(headers, 'valid-disabled')).status).toBe(503);
+  expect(verification.requests.length).toBe(1);
+});
+
+it.each<[VerificationMode, number]>([
+  ['wrong-host', 403],
+  ['wrong-action', 403],
+  ['not-boolean', 403],
+  ['http-error', 503],
+  ['malformed', 503],
+  ['network-error', 503],
+  ['timeout', 503],
+])(
+  'fails closed for provider result %s without storing originals or markers',
+  async (mode, status) => {
+    verification.mode = mode;
+    expect(
+      (await upload(publicationHeaders(testPublicationCredentials()), 'valid-guard')).status,
+    ).toBe(status);
+    const db = await mf.getD1Database('DB');
+    expect(await db.prepare('SELECT used_bytes, comparisons FROM quota').first()).toEqual({
+      used_bytes: 0,
+      comparisons: 0,
+    });
+    expect((await db.prepare('SELECT * FROM comparisons').all()).results).toHaveLength(0);
+    expect((await db.prepare('SELECT * FROM publication_requests').all()).results).toHaveLength(0);
+    expect((await (await mf.getR2Bucket('IMAGES')).list()).objects).toHaveLength(0);
+    expect(verification.requests).toHaveLength(1);
+    expect(verification.requests[0].correctSecret).toBe(true);
+  },
+);
+it('refuses an empty token before contacting the provider', async () => {
+  expect((await upload(publicationHeaders(testPublicationCredentials()), '')).status).toBe(403);
+  expect(verification.requests).toHaveLength(0);
+});
+it('reports publishing disabled when its production verification secret is missing', async () => {
+  await mf.setOptions(options(true, ''));
+  expect(await (await mf.dispatchFetch('http://localhost/api/health')).json()).toMatchObject({
+    verificationRequired: true,
+    uploadsEnabled: false,
+  });
+  expect(
+    (await upload(publicationHeaders(testPublicationCredentials()), 'valid-unconfigured')).status,
+  ).toBe(503);
+  expect(verification.requests).toHaveLength(0);
+});
+it('rejects a disallowed production origin before verification and upload accounting', async () => {
+  expect(
+    (
+      await upload(
+        { ...publicationHeaders(testPublicationCredentials()), Origin: 'https://other.example' },
+        'valid-origin',
+      )
+    ).status,
+  ).toBe(403);
+  expect(verification.requests).toHaveLength(0);
+  expect(
+    (await (await mf.getD1Database('DB')).prepare('SELECT * FROM daily_usage').all()).results,
+  ).toHaveLength(0);
 });

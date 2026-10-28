@@ -128,6 +128,12 @@ plus a persistent emergency publishing stop without redeployment. New production
 policy defaults to paused with zero daily limits. See [cost controls and the stop runbook](docs/COST_CONTROLS.md)
 for accounting, budget recommendations, closed hostnames and remaining billing risks.
 
+`npm run test:sharing:local` validates the built production sharing flow with a
+production-mode local Worker, D1/R2 and offline verification doubles, including
+the repository subpath, retries and owner deletion. See [local sharing validation](docs/LOCAL_SHARING_VALIDATION.md)
+for setup, coverage and the limits of this evidence. It does not contact real
+Turnstile or enable any production service.
+
 ## Privacy and deletion
 
 Unpublished images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. Private publication/deletion keys are saved in browser storage before uploading; download a backup and keep it private. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. Keys are not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](docs/PRIVACY.md).

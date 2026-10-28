@@ -12,7 +12,7 @@ Screenshots selected on your device are read into browser memory and displayed u
 
 ## Explicit publication
 
-The Share Comparison dialog explains public visibility and requires an acknowledgment before uploading. A production publish may load Cloudflare Turnstile, which processes verification and network information according to Cloudflare's policies. Successful publishing uploads unmodified screenshot files and the comparison manifest to the configured Worker, D1, and private R2 storage.
+The Share Comparison dialog explains public visibility and requires an acknowledgment before uploading. Opening an available, configured production publish dialog may load Cloudflare Turnstile before that acknowledgment; the provider processes verification and network information according to its policies. The application does not send screenshots to Turnstile. Disabled/unconfigured publishing does not load the widget. Successful publishing uploads unmodified screenshot files and the comparison manifest to the configured Worker, D1, and private R2 storage.
 
 Anyone with the public link can access or download published screenshots without registering. Links are not authentication and can be forwarded, indexed indirectly, or cached by social platforms. Published files retain embedded metadata such as EXIF; remove private information before sharing.
 

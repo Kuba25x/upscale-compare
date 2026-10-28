@@ -1,0 +1,8 @@
+{
+  "basePath": "/upscale-compare/",
+  "frontendOrigin": "http://127.0.0.1:4176",
+  "missingKeyOrigin": "http://127.0.0.1:4177",
+  "apiOrigin": "http://127.0.0.1:8788",
+  "siteKey": "local-only-public-widget-key",
+  "outputRoot": ".wrangler/sharing-frontend"
+}

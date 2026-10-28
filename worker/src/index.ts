@@ -130,6 +130,7 @@ async function challenge(env: Env, request: Request, token: string) {
     body: form,
     signal: AbortSignal.timeout(10000),
   });
+  if (!response.ok) fail(503, 'Verification is temporarily unavailable. Please try again later.');
   const result = (await response.json()) as {
     success?: boolean;
     hostname?: string;
@@ -137,7 +138,7 @@ async function challenge(env: Env, request: Request, token: string) {
   };
   const hosts = env.ALLOWED_ORIGINS.split(',').map((origin) => new URL(origin.trim()).hostname);
   if (
-    !result.success ||
+    result.success !== true ||
     !result.hostname ||
     !hosts.includes(result.hostname) ||
     result.action !== 'publish'
@@ -262,7 +263,10 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (url.pathname === '/api/health' && request.method === 'GET') {
     return json({
       status: 'ok',
-      uploadsEnabled: env.UPLOADS_ENABLED === 'true' && (await publishingAvailable(env.DB)),
+      uploadsEnabled:
+        env.UPLOADS_ENABLED === 'true' &&
+        (env.ENVIRONMENT === 'development' || Boolean(env.TURNSTILE_SECRET)) &&
+        (await publishingAvailable(env.DB)),
       verificationRequired: env.ENVIRONMENT !== 'development',
     });
   }

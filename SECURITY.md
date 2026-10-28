@@ -36,6 +36,14 @@ Publication/deletion credentials are independently generated with 256 bits of ra
 
 No production endpoint has been deployed or penetration-tested as part of local development. Enabling public uploads requires operator review, real Turnstile verification, restricted secrets, a deletion/moderation smoke test, provider quota/budget review, and explicit deployment authorization.
 
+The local production sharing suite uses built frontend bundles and the real
+production Worker branch with emulator bindings. Verification doubles live only
+in tests; there is no new production bypass or alternate verification URL.
+Siteverify requires HTTP success plus literal boolean success and the existing
+hostname/action checks. SDK load failure/timeout and widget exceptions leave an
+explicit retry with no automatic image upload. See [local validation](docs/LOCAL_SHARING_VALIDATION.md)
+for the tested contract and remaining real-provider verification requirements.
+
 Stage-4 shared D1 daily budgets gate upload bodies, new publication reservations
 and public read/R2 work across isolates. Defaults are paused with zero limits;
 missing state or failed checks refuse work. Charges are conservative and are not

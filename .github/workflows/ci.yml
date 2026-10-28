@@ -25,6 +25,8 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm run test:e2e
+      - name: Validate production sharing locally with verification doubles
+        run: npm run test:sharing:local
       - name: Build and test frontend-only Pages demo
         run: npm run test:demo
       - name: Test opt-in local diagnostics

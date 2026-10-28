@@ -128,6 +128,11 @@ The manual **Deploy Cloudflare API** workflow requires `DEPLOY`, runs build/test
 
 ## 5. Enable uploads after verification and approval
 
+First run `npm run test:sharing:local` for the [offline production sharing flow](LOCAL_SHARING_VALIDATION.md).
+It builds normal production frontends and exercises production-mode local storage
+and verification branches without real credentials. It is a CI check, not an
+account/DNS/TLS/real-Turnstile deployment test or authorization to open uploads.
+
 Before enabling public uploads, publish the operator's privacy/security/abuse contacts and review the limits. Verify real Turnstile behavior on the production frontend, secret bindings, private bucket permissions, allowlisted origins, byte identity, public-link refresh, owner deletion, admin moderation and scheduled cleanup. These production checks cannot be established by local emulation.
 
 After the owner's approval, configure the D1 daily limits, increment generation

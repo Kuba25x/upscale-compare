@@ -11,8 +11,9 @@ Returns service readiness information:
 ```
 
 `uploadsEnabled` also reflects the unpaused D1 policy and remaining current-day
-admission/publication budgets. It does not prove storage health, sufficient bytes
-for a particular request, production verification configuration or deployment readiness.
+admission/publication budgets, and production requires a nonempty verification
+secret. It does not prove storage health, sufficient bytes for a particular
+request, validity of verification keys/account settings or deployment readiness.
 
 ## POST /api/comparisons
 
@@ -26,6 +27,12 @@ Generate and durably save these credentials before sending any images. Keep them
 - `manifest`: JSON, at most 16,000 characters.
 - `images`: two to four files in the same order as the manifest entries.
 - `challenge`: a fresh production Turnstile token, with action `publish`.
+
+Production verification requires an OK Siteverify HTTP response, literal boolean
+`success: true`, the allowlisted frontend hostname and exact `publish` action.
+Provider HTTP/transport/JSON/timeout failures refuse publication; a success-shaped
+body on an error status is never accepted. See [local sharing validation](LOCAL_SHARING_VALIDATION.md)
+for tested production paths and the distinction from real-provider verification.
 
 The upload reader accepts at most six parts and 4 KiB of headers per part.
 File and aggregate ceilings remain 20 MiB and 40 MiB. Images with more than
