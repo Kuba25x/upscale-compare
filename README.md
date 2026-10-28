@@ -113,6 +113,10 @@ Upload parsing and image validation also enforce fixed structural and memory
 ceilings. See [resource limits](docs/RESOURCE_LIMITS.md) for details, overload
 behavior and the remaining production verification requirements.
 
+Publication now reserves quota together with its pending record and retains
+cleanup markers after interrupted storage operations. See [publication recovery](docs/PUBLICATION_RECOVERY.md)
+for retry behavior, deletion grace and migration requirements.
+
 ## Privacy and deletion
 
 Unpublished images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. A private deletion key is saved in browser storage; download a backup after publishing. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. A key is not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](docs/PRIVACY.md).

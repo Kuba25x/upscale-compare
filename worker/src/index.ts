@@ -9,6 +9,13 @@ import {
 import { validateImage } from './image-validation';
 import { comparisonErrorPage } from './error-page';
 import { MAX_UPLOAD_BYTES, readUpload, UploadError, UploadGate } from './upload';
+import {
+  eraseComparison,
+  PublicationError,
+  saveComparison,
+  sweepComparisons,
+  type ComparisonRow,
+} from './publication-store';
 
 const uploadGate = new UploadGate();
 
@@ -29,14 +36,6 @@ export interface Env {
   READS_PER_MINUTE: string;
   TURNSTILE_SECRET?: string;
   ADMIN_TOKEN?: string;
-}
-interface Row {
-  id: string;
-  payload: string;
-  delete_hash: string;
-  bytes: number;
-  status: string;
-  created_at: string;
 }
 class HttpError extends Error {
   constructor(
@@ -143,7 +142,6 @@ async function publish(request: Request, env: Env) {
   const uploads = form.images;
   if (uploads.length !== manifest.images.length)
     fail(400, 'Upload between two and four matching image files.');
-  const bytes = uploads.reduce((sum, file) => sum + file.bytes.byteLength, 0);
   await challenge(env, request, form.challenge);
   const stored: PublicComparison['images'] = [];
   // Validate sequentially to bound memory usage. Original bytes are never re-encoded.
@@ -173,63 +171,11 @@ async function publish(request: Request, env: Env) {
     deleteToken = random(32),
     createdAt = new Date().toISOString();
   const payload: PublicComparison = { id, createdAt, ...manifest, images: stored };
-  const reserved = await env.DB.prepare(
-    'UPDATE quota SET used_bytes = used_bytes + ?, comparisons = comparisons + 1 WHERE id = 1 AND used_bytes + ? <= ? AND comparisons < ? RETURNING id',
-  )
-    .bind(
-      bytes,
-      bytes,
-      numeric(env.MAX_STORAGE_BYTES, 5 * 1024 ** 3),
-      numeric(env.MAX_COMPARISONS, 1000),
-    )
-    .first();
-  if (!reserved)
-    fail(
-      507,
-      'The sharing service has reached its storage limit. Please contact the site operator.',
-    );
-  try {
-    await env.DB.prepare(
-      'INSERT INTO comparisons (id, payload, delete_hash, bytes, created_at) VALUES (?, ?, ?, ?, ?)',
-    )
-      .bind(id, JSON.stringify(payload), await hash(deleteToken), bytes, createdAt)
-      .run();
-    for (let i = 0; i < uploads.length; i++)
-      await env.IMAGES.put(imageKey(id, i), uploads[i].bytes, {
-        httpMetadata: { contentType: stored[i].type },
-        customMetadata: { comparison: id },
-      });
-    await env.DB.prepare("UPDATE comparisons SET status = 'active' WHERE id = ?").bind(id).run();
-  } catch {
-    // Keep the pending record and reservation if cleanup fails, so maintenance can retry.
-    try {
-      await env.IMAGES.delete(uploads.map((_, i) => imageKey(id, i)));
-      await env.DB.batch([
-        env.DB.prepare('DELETE FROM comparisons WHERE id = ?').bind(id),
-        env.DB.prepare(
-          'UPDATE quota SET used_bytes = MAX(0, used_bytes - ?), comparisons = MAX(0, comparisons - 1) WHERE id = 1',
-        ).bind(bytes),
-      ]);
-    } catch {
-      /* The scheduled janitor retries abandoned pending records. */
-    }
-    return fail(503, 'Publishing could not finish. Please try again later.');
-  }
+  await saveComparison(env, payload, await hash(deleteToken), uploads, {
+    maxStorageBytes: numeric(env.MAX_STORAGE_BYTES, 5 * 1024 ** 3),
+    maxComparisons: numeric(env.MAX_COMPARISONS, 1000),
+  });
   return json({ id, deleteToken, shareUrl: `${new URL(request.url).origin}/s/${id}` }, 201);
-}
-async function erase(env: Env, row: Row) {
-  await env.DB.prepare("UPDATE comparisons SET status = 'deleting' WHERE id = ?")
-    .bind(row.id)
-    .run();
-  const comparison = JSON.parse(row.payload) as PublicComparison;
-  await env.IMAGES.delete(comparison.images.map((_, i) => imageKey(row.id, i)));
-  // Deletion and quota release must happen together and exactly once.
-  await env.DB.batch([
-    env.DB.prepare(
-      'UPDATE quota SET used_bytes = MAX(0, used_bytes - COALESCE((SELECT bytes FROM comparisons WHERE id = ?), 0)), comparisons = MAX(0, comparisons - (SELECT COUNT(*) FROM comparisons WHERE id = ?)) WHERE id = 1',
-    ).bind(row.id, row.id),
-    env.DB.prepare('DELETE FROM comparisons WHERE id = ?').bind(row.id),
-  ]);
 }
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url),
@@ -264,7 +210,9 @@ async function route(request: Request, env: Env): Promise<Response> {
     request.method === 'DELETE' ? 20 : numeric(env.READS_PER_MINUTE, 240),
     60,
   );
-  const row = await env.DB.prepare('SELECT * FROM comparisons WHERE id = ?').bind(id).first<Row>();
+  const row = await env.DB.prepare('SELECT * FROM comparisons WHERE id = ?')
+    .bind(id)
+    .first<ComparisonRow>();
   if (!row || (request.method !== 'DELETE' && row.status !== 'active'))
     fail(404, 'Comparison not found. It may have been deleted or the link is invalid.');
   if (request.method === 'DELETE') {
@@ -276,7 +224,7 @@ async function route(request: Request, env: Env): Promise<Response> {
         !(env.ADMIN_TOKEN && (await secureEqual(token, env.ADMIN_TOKEN))))
     )
       fail(403, 'A valid private deletion key is required.');
-    await erase(env, row!);
+    await eraseComparison(env, row!);
     return new Response(null, { status: 204 });
   }
   const comparison = JSON.parse(row!.payload) as PublicComparison;
@@ -318,7 +266,10 @@ export default {
     try {
       response = await route(request, env);
     } catch (error) {
-      const expected = error instanceof HttpError || error instanceof UploadError;
+      const expected =
+        error instanceof HttpError ||
+        error instanceof UploadError ||
+        error instanceof PublicationError;
       const status = expected ? error.status : 503;
       const message = expected
         ? error.message
@@ -358,14 +309,6 @@ export default {
     return new Response(response.body, { status: response.status, headers });
   },
   async scheduled(_event: ScheduledEvent, env: Env) {
-    await env.DB.prepare('DELETE FROM rate_limits WHERE expires_at < ?')
-      .bind(Math.floor(Date.now() / 1000))
-      .run();
-    const abandoned = await env.DB.prepare(
-      "SELECT * FROM comparisons WHERE status != 'active' AND created_at < ? LIMIT 20",
-    )
-      .bind(new Date(Date.now() - 3600000).toISOString())
-      .all<Row>();
-    for (const row of abandoned.results) await erase(env, row);
+    await sweepComparisons(env);
   },
 };

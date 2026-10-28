@@ -13,6 +13,7 @@
 | `worker/src/index.ts`               | Worker routing, validation pipeline, quota/rate control, persistence, deletion and share HTML |
 | `worker/src/image-validation.ts`    | Bounded image-content validation without file re-encoding                                     |
 | `worker/src/upload.ts`              | Bounded multipart buffer, field parsing and per-isolate publication admission                 |
+| `worker/src/publication-store.ts`   | Atomic quota/pending records, guarded activation, deletion and scheduled recovery             |
 | `worker/migrations`                 | D1 schema migrations                                                                          |
 | `tests`                             | Geometry/schema, image-content, real local Worker integration, browser/pixel/touch coverage   |
 
@@ -48,15 +49,24 @@ buffer slices through sequential R2 writes. See [resource limits](RESOURCE_LIMIT
 for ceilings, overload behavior and production verification boundaries.
 
 1. Require uploads enabled, allowed origin, request rate limit, bounded multipart, valid manifest, production verification, and valid file content.
-2. Atomically reserve byte/count capacity in D1.
-3. Create a pending comparison with a deletion-key digest.
-4. Upload originals sequentially to private R2 keys.
-5. Mark the comparison active only after all objects are stored.
-6. Return a short public share URL and the separate deletion capability.
+2. Atomically insert the pending record and reserve byte/count quota through its D1 trigger.
+3. Write originals sequentially, checking the pending deadline/state before each write.
+4. Conditionally activate only the still-pending record after all originals are stored.
+5. Return a short public share URL and the separate deletion capability.
 
-Readers only see active records. On a failed upload, rollback removes all possible object keys and releases the reservation. If cleanup also fails, the pending record remains available to the hourly janitor. A failure before initial record creation can conservatively leak a quota reservation; reconciliation is an operator procedure described in deployment docs. Cross-service writes are not presented as an atomic R2/D1 transaction.
+Readers only see active records. Compensation targets all four possible R2 keys,
+then releases quota and removes the marker in one D1 transaction. An ambiguous
+activation result never erases a record which is already active. Failed cleanup
+retains a non-public marker and its reservation for scheduled retry.
 
-Deletion first makes a record inaccessible, then deletes its objects, then releases quota and removes the record in one D1 batch. The quota decrement uses the current database row so concurrent/retried deletion cannot double-release capacity. If object deletion fails, the deleting record is retried by the janitor.
+The janitor processes up to 10 due records per hourly run with conditional claims,
+five-minute leases, retry backoff and priority for less-attempted records. One
+record's failure does not stop independent cleanup. Expired pending uploads retain
+an extra one-hour deleting marker/reservation and are swept again before release
+so late writes can be removed. Normal active deletion finalizes immediately when
+storage succeeds. See [publication recovery](PUBLICATION_RECOVERY.md) for the state
+machine, migration, retention and operational boundaries. D1/R2 writes are not a
+cross-service atomic transaction.
 
 ## URLs and privacy
 
