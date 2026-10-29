@@ -120,6 +120,7 @@ it.each<[VerificationMode, number]>([
   ['wrong-action', 403],
   ['not-boolean', 403],
   ['http-error', 503],
+  ['redirect', 503],
   ['malformed', 503],
   ['network-error', 503],
   ['timeout', 503],

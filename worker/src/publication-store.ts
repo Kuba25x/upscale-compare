@@ -25,6 +25,7 @@ export const PENDING_LIFETIME_MS = 3600000;
 export const CLEANUP_LEASE_MS = 300000;
 export const ABANDONED_UPLOAD_GRACE_MS = 3600000;
 export const CLEANUP_BATCH_SIZE = 10;
+export const RATE_RETENTION_BATCH_SIZE = 100;
 const imageKey = (id: string, index: number) => 'comparisons/' + id + '/' + index;
 const imageKeys = (id: string) => [0, 1, 2, 3].map((index) => imageKey(id, index));
 
@@ -177,8 +178,10 @@ export async function sweepComparisons(storage: Storage, now = Date.now()) {
   let failures = 0,
     completed = 0;
   try {
-    await storage.DB.prepare('DELETE FROM rate_limits WHERE expires_at < ?')
-      .bind(Math.floor(now / 1000))
+    await storage.DB.prepare(
+      'DELETE FROM rate_limits WHERE key IN (SELECT key FROM rate_limits WHERE expires_at < ? ORDER BY expires_at LIMIT ?)',
+    )
+      .bind(Math.floor(now / 1000), RATE_RETENTION_BATCH_SIZE)
       .run();
   } catch {
     failures++;

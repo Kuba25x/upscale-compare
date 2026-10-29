@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
-    if: inputs.confirmation == 'DEPLOY' && (inputs.deployment_mode == 'demo' || inputs.deployment_mode == 'production')
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'DEPLOY' && (inputs.deployment_mode == 'demo' || inputs.deployment_mode == 'production')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -36,6 +36,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Enforce Free-only readiness for production sharing frontend
+        if: inputs.deployment_mode == 'production'
+        run: node scripts/production-readiness.mjs
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Select Playwright Chromium
@@ -49,7 +52,7 @@ jobs:
           VITE_TURNSTILE_SITE_KEY: ''
       - name: Verify sharing backend locally
         if: inputs.deployment_mode == 'production'
-        run: npm test && npm run test:e2e
+        run: npm test && npm run test:e2e && npm run test:sharing:local
       - name: Validate production configuration
         if: inputs.deployment_mode == 'production'
         env:

@@ -129,6 +129,7 @@ async function challenge(env: Env, request: Request, token: string) {
     method: 'POST',
     body: form,
     signal: AbortSignal.timeout(10000),
+    redirect: 'manual',
   });
   if (!response.ok) fail(503, 'Verification is temporarily unavailable. Please try again later.');
   const result = (await response.json()) as {

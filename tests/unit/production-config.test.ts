@@ -34,24 +34,15 @@ it('generates a closed production configuration without public bypass hostnames,
     workers_dev: false,
     preview_urls: false,
     observability: { enabled: false },
+    triggers: { crons: [] },
     vars: { ENVIRONMENT: 'production', UPLOADS_ENABLED: 'false' },
   });
   expect(config.limits).toBeUndefined();
   expect(config.usage_model).toBeUndefined();
   expect(config.routes).toBeUndefined();
 });
-it('only writes a paid CPU cap when explicitly supplied, without selecting a plan', () => {
-  const { result, directory } = generate('50');
-  expect(result.status).toBe(0);
-  const config = JSON.parse(
-    readFileSync(join(directory, 'worker/wrangler.production.json'), 'utf8'),
-  );
-  expect(config.limits).toEqual({ cpu_ms: 50 });
-  expect(config.vars.UPLOADS_ENABLED).toBe('false');
-  expect(config.usage_model).toBeUndefined();
-});
-it.each(['0', '-1', '1001', 'NaN', '1.5', '9007199254740992'])(
-  'refuses an invalid paid CPU cap: %s',
+it.each(['50', '0', '-1', '1001', 'NaN', '1.5', '9007199254740992'])(
+  'refuses every paid CPU override under the Free-only policy: %s',
   (cap) => {
     expect(generate(cap).result.status).not.toBe(0);
   },

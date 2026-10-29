@@ -62,8 +62,13 @@ See [cost controls](docs/COST_CONTROLS.md) for precise semantics, provider/edge
 fallbacks, zero-budget bootstrap and remaining denial-of-wallet risks. No
 application control is a hard account-wide dollar cap. Production-generated
 workers.dev/preview URLs and Worker observability are disabled; alternate
-hostnames must not bypass an approved edge policy. An optional paid CPU cap is
-configuration only and never authorizes a plan upgrade.
+hostnames must not bypass an approved edge policy. Stage 7 enforces a Free-only,
+zero-charge release lock: production deployment stays blocked, paid CPU overrides
+are rejected and generated cron is off. Rate-row expiry deletion is now bounded
+to 100 per maintenance run; backlog may extend physical retention. Siteverify
+redirects are refused without following them. See [operations](docs/OPERATIONS.md)
+and [resource/billing blockers](docs/FREE_TIER_OPERATIONS.md). Local evidence does
+not establish 10 ms edge CPU, peak 128 MB isolate memory or a zero-overage R2 cap.
 
 ## Frontend-only demo
 

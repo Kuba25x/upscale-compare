@@ -1,4 +1,10 @@
 import { writeFile } from 'node:fs/promises';
+if (process.argv.length !== 2)
+  throw new Error('Production config preparation accepts no arguments.');
+if (process.env.APPROVED_PAID_CPU_MS || process.env.WORKERS_PAID)
+  throw new Error(
+    'Workers Paid and paid CPU overrides are forbidden by the Free-only project policy.',
+  );
 const { D1_ID, BUCKET, FRONTEND_URL } = process.env;
 if (
   !D1_ID ||
@@ -50,23 +56,9 @@ const config = {
     },
   ],
   r2_buckets: [{ binding: 'IMAGES', bucket_name: BUCKET }],
-  triggers: { crons: ['17 * * * *'] },
+  triggers: { crons: [] },
 };
-// An explicit cap for an already approved Paid account; this does not choose,
-// activate or upgrade a Cloudflare plan. Free has its own fixed CPU limit.
-const cpuLimit = process.env.APPROVED_PAID_CPU_MS;
-if (cpuLimit) {
-  if (
-    !/^[1-9]\d*$/.test(cpuLimit) ||
-    !Number.isSafeInteger(Number(cpuLimit)) ||
-    Number(cpuLimit) > 1000
-  )
-    throw new Error(
-      'APPROVED_PAID_CPU_MS must be an explicit integer from 1 to 1000 milliseconds.',
-    );
-  config.limits = { cpu_ms: Number(cpuLimit) };
-}
 await writeFile('worker/wrangler.production.json', `${JSON.stringify(config, null, 2)}\n`);
 console.log(
-  'Prepared production configuration. Uploads, workers.dev, preview URLs and Worker observability are disabled. No resources were created or plans selected.',
+  'Prepared production configuration. Uploads, workers.dev, preview URLs and Worker observability and cron are disabled. Deployment is locked by the Free-only operations gate. No resources were created or plans selected.',
 );

@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stages 1–5 are merged through PRs #10–#14. Stage 6, **Verify original files and comparison restoration**, starts from `origin/main` at `bd6966b` on `test/originals-and-restoration`. It extends the production-mode local harness with a generated original-file/metadata matrix, source/R2/HTTP SHA-256 checks and multi-DPR browser reconstruction/pixel checks. See [original fidelity and acceptance](docs/ORIGINAL_FIDELITY.md). Existing resource, cleanup, retry, cost and verification controls stay in force. Only stage 6 is authorized; no subsequent stage, merge, deployment, paid service or production budget activation has been started.
+Share Comparison stages 1–6 are merged through PRs #10–#15. Stage 7, **Prepare guarded production operations**, starts from `origin/main` at `92d079c` on `chore/guarded-production-operations`. The owner requires zero Cloudflare charges using Workers/D1 Free and included R2 Standard usage. Production deployment is explicitly locked until resource suitability and zero-overage R2 protection are established. The stage adds operations/decision/runbook documentation, workflow/config safeguards, bounded rate retention, non-following verification, local diagnostics and guard/resource tests. Only stage 7 is authorized; stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not started.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -63,6 +63,14 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Share Comparison stage 7, 2026-10-29:
+
+- Final build/typechecks, **300 unit/API cases** (23 new), **45 regular E2E**, **37 production-sharing** and **31 demo cases** passed: **413 local cases**. Formatting and `git diff --check` passed. Closed config generation and offline Wrangler dry-run packaging passed using dummy IDs; no remote operation was performed.
+- Production readiness is deliberately blocked under the owner-selected zero-charge Free-only policy. Guard tests refuse JSON/env/CLI assertions as approval/evidence, ensure main-only workflow gating before remote actions, retain demo independence and remove automatic D1 migrations. Paid CPU overrides are rejected; generated uploads/cron/observability/public hostnames stay off.
+- Bounded rate expiry was reproduced red on the former unbounded DELETE and green with 100-row indexed batches, preserving the expiry cutoff and independent comparison cleanup. Local real-binding tests keep four-file publication paths plus a verification reserve within 50 calls and full cleanup/fault batches within 44; the read-only aggregate SQL does not expose manifests, capabilities or network identifiers. Production verification rejects redirects without following them.
+- The offline Node diagnostic measured 4K PNG validation at 60.545–107.977 ms process CPU, 8K at 237.671–294.839 ms, and a valid 20 MiB PNG with ancillary padding at 80.436–83.185 ms, in one three-round run. These are component diagnostics, not provider CPU or peak isolate-memory evidence. Full samples and a real-resource measurement/monitoring plan are in [Free-tier operations](docs/FREE_TIER_OPERATIONS.md).
+- Official limits/pricing/alert behavior were rechecked. The R2 free range is not a hard spending cap, and the current large-original pipeline is not certified for 10 ms/128 MB/50 calls. Deployment remains locked; owner decisions and maintenance/stop/backup/restore procedures are in [operations](docs/OPERATIONS.md). No new local Firefox/diagnostic-browser execution, real provider/resource/billing/device verification or hosted-CI success is claimed. Stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads remain untouched.
 
 Share Comparison stage 6, 2026-10-28:
 
