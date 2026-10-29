@@ -42,6 +42,12 @@ The three new fields are internal and never added to public manifests:
 | cleanup_attempts  | Number of claimed cleanup attempts                              |
 | delete_not_before | Earliest time an abandoned upload's reservation may be released |
 
+Stage-7 production preparation leaves cron disabled until its Free CPU/row budget
+and retention behavior are approved. The following describes the configured
+handler; an actual upload service needs an enabled, monitored schedule before
+opening. Rate-row expiry is bounded to 100 per run, alongside the existing marker
+and aggregate retention batches. Backlog can extend physical retention.
+
 The hourly handler selects at most 10 due records, ordered by attempt count, due
 time and ID. Less-attempted records take priority so a failed batch cannot
 continually block later work at subsequent hourly runs. A conditional update

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "status": "blocked",
+  "policy": {
+    "maximumChargeUsd": 0,
+    "workersPlan": "Free",
+    "d1Plan": "Free",
+    "r2StorageClass": "Standard",
+    "workersCpuMs": 10,
+    "workersMemoryMb": 128,
+    "subrequestsPerInvocation": 50
+  },
+  "blockers": [
+    {
+      "id": "free-worker-resources",
+      "reason": "The full production HTTP and scheduled paths have no approved Free-edge CPU/memory evidence. Current 20 MiB files, 40 MiB publications and 36 MP PNG validation cannot be assumed to fit 10 ms CPU or 128 MB per isolate."
+    },
+    {
+      "id": "r2-zero-overage",
+      "reason": "R2 Standard's included monthly usage is not a provider hard spending cap. Existing application daily counters do not meter all account-wide Class A/B operations or storage. No enforceable zero-overage arrangement is established."
+    },
+    {
+      "id": "provider-usage-and-emergency-drill",
+      "reason": "Account-wide usage baselines, D1 row/index/trigger costs, monthly R2 accounting, monitoring and the edge shutdown path remain unverified."
+    },
+    {
+      "id": "owner-decisions-and-acceptance",
+      "reason": "Hostname/account/resource approval, retention/backup/privacy contacts, final limits and real-screenshot/device acceptance are pending."
+    }
+  ]
+}

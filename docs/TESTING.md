@@ -21,6 +21,7 @@ Stage-3 retry behavior and its limits are documented in [recoverable retries](PU
 Stage-4 policy/accounting, stop/restart and billing limits are documented in [cost controls](COST_CONTROLS.md).
 The production-build browser flow with offline verification is documented in [local sharing validation](LOCAL_SHARING_VALIDATION.md).
 The original-file SHA-256, format/metadata and multi-DPR reconstruction matrix is documented in [original fidelity](ORIGINAL_FIDELITY.md), with the requested real-asset/device acceptance checklist.
+Stage-7 [guarded operations](OPERATIONS.md) and [Free-only resource evidence](FREE_TIER_OPERATIONS.md) describe the deliberate deployment lock, expected failing readiness command and offline diagnostic.
 
 - Geometry and schema: fit without cropping, DPR 1/1.25/2/3 source-pixel scaling, physical origin rounding, cursor anchor, shared pan deltas, bounded zoom and strict manifests.
 - Image-content validation: full valid PNG, CRC corruption, truncation, trailing data, dimensions, pixel/file limits, decompression mismatch, spoofed HTML/SVG/GIF, actual generated JPEG/WebP fixtures and rotated EXIF rejection.
@@ -74,7 +75,7 @@ RUN_FIREFOX=true npm run test:e2e
 RUN_FIREFOX=true npm run test:demo
 ```
 
-CI enables Firefox automatically. With Firefox enabled, the suites contain 63 full-stack browser cases, 37 local-production sharing cases and 49 demo cases, in addition to 277 unit/API tests and 7 diagnostic browser cases (433 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary. The local-production sharing suite itself uses Chromium desktop/mobile emulation and DPR 1.25/2 restoration projects.
+CI enables Firefox automatically. With Firefox enabled, the suites contain 63 full-stack browser cases, 37 local-production sharing cases and 49 demo cases, in addition to 300 unit/API tests and 7 diagnostic browser cases (456 configured cases; this is not a new hosted execution result). The managed development environment could not download Firefox because its official download domains are blocked; use the PR's hosted CI result as the evidence for Firefox execution. `FIREFOX_PATH` can optionally select a Playwright-compatible Firefox binary. The local-production sharing suite itself uses Chromium desktop/mobile emulation and DPR 1.25/2 restoration projects.
 
 [Hosted Validate run #8](https://github.com/Kuba25x/upscale-compare/actions/runs/40410027435) passed all 94 cases on code commit `7ccd7a4`, including all four Firefox panning regressions against both the normal viewer and production demo.
 
@@ -172,3 +173,13 @@ Eight generated source files (76,355 bytes total) cover RGBA/indexed/16-bit/4K P
 Production browser cases compare encoded-byte and decoded-RGBA hashes, entered labels/metadata, real image geometry and public 100% screenshot pixels across desktop DPR 1/1.25/2 and mobile emulation. Panned Fit and explicit views survive canonical-link navigation and refresh; visitor changes leave the public manifest unchanged, and a missing original refuses partial restoration. Existing 40 MiB original-byte and 8K raster validation remain passing.
 
 See [the fidelity contract and acceptance checklist](ORIGINAL_FIDELITY.md). No real user screenshots, physical devices, new local Firefox/diagnostic runs, production provider checks, colorimetric/HDR verification or CPU/memory/billing benchmarks are claimed. Hosted CI is reported separately on the PR; no next stage or deployment was started.
+
+## Guarded Free-only production operations (stage 7)
+
+On 2026-10-29, full production build/typechecks, **300 unit/API** (23 new), **45 regular Chromium/HiDPI/mobile E2E**, **37 production-sharing** and **31 production-demo cases** passed: **413 local cases**. Formatting and `git diff --check` passed. Offline production config generation with dummy IDs and Wrangler `deploy --dry-run` packaging passed; no deployment, remote migration or resource operation was performed.
+
+Twelve new operations-guard cases enforce the zero-charge/Free-only policy, refuse record/environment/CLI overrides, check main-only workflow ordering, keep demo independent and forbid automatic remote migrations. Ten integration cases exercise actual local D1/R2: bounded rate-row deletion with unchanged expiry cutoff/eventual progress, four-original binding-call ceilings with one production-verification reserve, complete 10-candidate cleanup success/failure/lost-ack paths (at most 44 calls), independent cleanup after retention failure and read-only aggregate SQL without manifests, capabilities or network identifiers. The rate-retention regression failed on the former unbounded DELETE (zero expired rows remained instead of 150), then passed with the 100-row batch. A production-mode verifier redirect case passed without following to another host.
+
+`npm run ops:check` returned the required nonzero blocked result. The offline Node probe ran three rounds each on generated 4K, 8K and 20 MiB PNGs; exact CPU samples and memory-evidence limits are in [the resource report](FREE_TIER_OPERATIONS.md#repeatable-local-evidence). This is process-level component evidence, not Cloudflare CPU, full HTTP timing or peak 128 MB isolate certification. No timing thresholds are added to CI. The original 40 MiB byte round trip and prior recovery/cost/fidelity tests remain passing.
+
+Official Free allowances, R2 subscription/pricing and budget-alert semantics were rechecked on 2026-10-29. Provider/account usage, real Free-edge CPU/memory, live notifications, R2 zero-overage protection and real-device/source acceptance remain unverified. No new local Firefox/diagnostic-browser execution or hosted-CI success is claimed; hosted results are separate. No stage 8 or production operation was started.

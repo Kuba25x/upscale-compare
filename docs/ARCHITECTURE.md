@@ -93,6 +93,13 @@ the stored generation is checked after intake, before writes, and by D1 INSERT/
 activation triggers. Resume cannot revive older admissions. See [cost controls](COST_CONTROLS.md)
 for all counters, exemptions, non-refunds, defaults and billing boundaries.
 
+Stage 7 adds a main-only, Free-only production release lock, rejects paid CPU
+overrides and leaves generated production cron disabled. Expired rate rows are
+purged in indexed batches of at most 100; comparison recovery remains independent
+of retention failure. [Operations](OPERATIONS.md) defines maintenance, emergency
+edge shutdown, restore/rollback and owner decisions; [Free-tier evidence](FREE_TIER_OPERATIONS.md)
+records the CPU/memory/R2 blockers. These are not a provider spending cap.
+
 ## URLs and privacy
 
 The canonical public link is `https://api-host/s/<16-hex-id>`. Its server-generated HTML includes escaped Open Graph metadata and redirects to `FRONTEND_URL#c/<id>`. GitHub Pages serves the same static entry point for every hash route, including repository subpaths. Social services receive an original selected image, not a generated composite; provider caching and preview support vary.

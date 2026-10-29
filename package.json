@@ -19,6 +19,8 @@
     "test": "npm run build:worker && vitest run",
     "test:e2e": "playwright test",
     "test:sharing:local": "npm run build:worker && node scripts/build-sharing-test.mjs && playwright test --config playwright.sharing.config.ts",
+    "ops:check": "node scripts/production-readiness.mjs",
+    "probe:resources:local": "node scripts/probe-local-resources.mjs",
     "check": "npm run build && npm test && npm run test:e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -4,6 +4,11 @@ Share Comparison stage 1 bounds application-controlled allocations and structura
 validation work. It does not establish production CPU suitability or a billing cap.
 The frontend comparison tools and original image encoding are unchanged.
 
+Stage 7 now requires zero charges on Workers/D1 Free and included R2 Standard.
+The ceilings below are implementation limits, not certified Free-safe upload
+sizes. Production deployment is locked; see [the Free-only resource plan and
+local diagnostics](FREE_TIER_OPERATIONS.md) before choosing any publication limits.
+
 ## Limits
 
 | Resource                                          | Ceiling                                         |

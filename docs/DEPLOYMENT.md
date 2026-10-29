@@ -40,140 +40,58 @@ npm run test:demo
 
 The preview is served at `http://localhost:4173/upscale-compare/`. Tests use a separate preview server on port 4174, desktop and mobile viewports, and reject unexpected API/external requests. No Cloudflare account or local API server is necessary.
 
-## Full production sharing
+## Production sharing: blocked under the Free-only policy
 
-The following existing Cloudflare setup is only needed when enabling public sharing. Select **production** in the same manual Pages workflow once this configuration is ready. Demo deployment does not depend on it.
+The owner requires Workers Free, D1 Free and included R2 Standard usage with zero
+charges. Do not activate R2, select a paid plan or run remote actions on the basis
+of these documents. Stage 7's [guarded operations runbook](OPERATIONS.md) and
+[Free-tier envelope](FREE_TIER_OPERATIONS.md) supersede earlier paid-capacity
+suggestions and generic provisioning instructions.
 
-## 1. Provision approved Cloudflare resources
+`npm run ops:check` intentionally fails. CPU/memory suitability of the current
+large-original pipeline, complete usage accounting and a zero-overage R2
+arrangement remain unverified. Both production manual workflows require `main`
+and run this release lock before installs, checks or remote actions. A workflow
+confirmation or environment variable cannot override it. The Pages demo remains
+independent and uses the authorized manual procedure above.
 
-After approval, create a private R2 bucket and a D1 database named `upscale-compare`. R2 activation may require billing details even when expected usage is within the free allowance. Do not turn on R2 public bucket access, r2.dev access, or unrestricted client uploads.
+### Offline production package preparation
 
-Create a narrowly scoped API token for deploying the Worker and accessing only the intended D1/R2 resources. Keep it in GitHub environment secrets or your local secret manager, never in this repository. Create a Cloudflare Turnstile widget restricted to your frontend hostname, and provide the public site key to the frontend build.
-
-No credentials are needed for `npm run db:local`, `npm run dev:api`, or the test suite.
-After local migrations, run `npm run costs:local` before starting the emulator.
-This applies generous local-only budgets, not a production policy.
-
-## 2. Prepare production configuration
+This command only writes an ignored local configuration; use dummy IDs when
+reviewing a package without approved resources:
 
 ```bash
-D1_ID=your-database-uuid \
-BUCKET=your-private-bucket \
-FRONTEND_URL=https://your-user.github.io/upscale-compare/ \
+D1_ID=00000000-0000-0000-0000-000000000000 \
+BUCKET=private-review-bucket \
+FRONTEND_URL=https://viewer.example/upscale-compare/ \
 node scripts/prepare-production.mjs
 ```
 
-This generates an ignored `worker/wrangler.production.json` and creates no resources. It defaults to `ENVIRONMENT=production`, exact allowed frontend origin, a 5 GiB storage cap, 1,000 comparisons, five publish attempts per IP per hour, 240 reads per IP per minute, and `UPLOADS_ENABLED=false`. Review and lower limits as appropriate. Do not deploy `worker/wrangler.jsonc`: that configuration is for local development and bypasses Turnstile.
+The generated `worker/wrangler.production.json` has production verification,
+exact allowed frontend origin and the existing application ceilings. Uploads,
+cron, observability, workers.dev and preview URLs are disabled, with no public
+route or paid CPU/plan override. D1's initial policy remains paused/zero. The
+20 MiB/40 MiB/36 MP ceilings are not approved Free-safe limits. The development
+`worker/wrangler.jsonc` is local-only and deliberately omits real verification;
+never deploy it. No credentials are needed for local tests.
 
-Stage 4 additionally disables workers.dev, preview URLs and Worker observability.
-No public route is generated: a custom route with reviewed edge rules must be
-configured in a separately approved rollout. This avoids an alternate hostname
-bypassing those rules. Migration 0004 starts the D1 policy paused with all seven
-daily limits zero, including public-read budgets. Configure owner-approved read
-allowances before restoring existing public readers. See [cost controls](COST_CONTROLS.md)
-for accounting, recommendation profiles and emergency procedures; never apply
-`worker/local-controls.sql` to production.
+The optional **Deploy Cloudflare API** workflow no longer performs remote D1
+migrations. A future authorized release must separately review schema compatibility,
+backup/drain evidence and migration approval. The current release lock prevents
+its deploy step from running. Secret/resource creation, setting keys, schema work,
+hostname exposure, retention cron and upload opening are distinct owner actions,
+not consequences of merging a PR.
 
-No plan is selected or upgraded. For an already approved Paid account, an explicit
-`APPROVED_PAID_CPU_MS` value (1–1000 ms) adds a per-invocation CPU cap to the
-generated config; the protected GitHub environment can supply that variable.
-Absent/empty means no override, suitable for Free's provider-controlled limit.
-Verify the real account plan and measured CPU needs before any deployment; the
-script does not infer a safe paid budget. Billing alerts are notifications, not
-spending caps. No such provider configuration is performed by repository tests.
+Before a future rollout, record the exact account/resources/hostname, Free-plan
+headroom, R2 billing protection, privacy/moderation contacts, retention/backups,
+monitoring and real-resource/source-device acceptance. Follow the runbook for
+maintenance, migration, disabled deployment, smoke tests, incident shutdown,
+restore and compatible rollback. No production sequence is authorized by stage 7.
 
-After authorization, follow the [publication recovery migration precautions](PUBLICATION_RECOVERY.md#migration-and-rollback), including pausing deletion/cron and draining writers. Then apply migrations before deploying the disabled API:
-
-```bash
-npx wrangler d1 migrations apply upscale-compare --remote --config worker/wrangler.production.json
-npx wrangler deploy --config worker/wrangler.production.json
-npx wrangler secret put TURNSTILE_SECRET --config worker/wrangler.production.json
-npx wrangler secret put ADMIN_TOKEN --config worker/wrangler.production.json
-```
-
-Use a fresh random admin secret of at least 32 bytes. Keep it separate from user deletion keys. Rotate it using Wrangler if exposed. These commands require external authentication and are not run during implementation.
-
-## 3. Build and publish the frontend
-
-GitHub repository variables:
-
-| Variable                  | Example                                                  |
-| ------------------------- | -------------------------------------------------------- |
-| `VITE_API_URL`            | `https://upscale-compare-api.your-subdomain.workers.dev` |
-| `VITE_TURNSTILE_SITE_KEY` | Public Turnstile site key                                |
-
-Select GitHub Actions as the Pages source in repository settings. The manual **Deploy frontend to GitHub Pages** workflow builds with `VITE_BASE_PATH=/<repository-name>/`. Choose `deployment_mode=production`, run it only when deployment is approved, and type `DEPLOY`. It runs unit, API and browser tests before publishing. A custom domain hosted at `/` needs `VITE_BASE_PATH=/` instead; adjust the workflow intentionally.
-
-For a manual build:
-
-```bash
-VITE_BASE_PATH=/upscale-compare/ \
-VITE_API_URL=https://your-api.example \
-VITE_TURNSTILE_SITE_KEY=your-public-site-key \
-npm run build
-```
-
-Publish only `dist/`. Hash comparison routes work without a 404 rewrite. Shared social-preview links come from the Worker `/s/<id>` endpoint, because GitHub Pages cannot generate comparison-specific HTML metadata.
-
-GitHub Pages does not let this project set custom response headers. The API sets its own restrictive headers; a frontend host supporting headers can additionally configure a CSP. Allow scripts and frames for `https://challenges.cloudflare.com`, API connections/images, and local blob image URLs when doing so.
-
-## 4. Optional backend workflow
-
-Create a protected GitHub environment named `cloudflare-production`. Configure:
-
-- Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
-- Variables: `CLOUDFLARE_D1_ID`, `CLOUDFLARE_R2_BUCKET`, `FRONTEND_URL` (including repository path and trailing slash).
-
-The manual **Deploy Cloudflare API** workflow requires `DEPLOY`, runs build/tests/browser checks, generates production configuration, applies migrations, and deploys with uploads disabled. It does not provision resources or set Turnstile/admin secrets. Add required reviewers in the GitHub environment if available. Re-running this workflow intentionally disables uploads again; enable them only after operator review.
-
-## 5. Enable uploads after verification and approval
-
-First run `npm run test:sharing:local` for the [offline production sharing flow](LOCAL_SHARING_VALIDATION.md).
-It builds normal production frontends and exercises production-mode local storage
-and verification branches without real credentials. It is a CI check, not an
-account/DNS/TLS/real-Turnstile deployment test or authorization to open uploads.
-
-Before enabling public uploads, publish the operator's privacy/security/abuse contacts and review the limits. Verify real Turnstile behavior on the production frontend, secret bindings, private bucket permissions, allowlisted origins, byte identity, public-link refresh, owner deletion, admin moderation and scheduled cleanup. These production checks cannot be established by local emulation.
-
-After the owner's approval, configure the D1 daily limits, increment generation
-and resume that policy, then set `UPLOADS_ENABLED=true` and redeploy as separately
-authorized. A missing Turnstile secret still fails closed. For an emergency use
-the authenticated persistent stop endpoint or D1 fallback without waiting for a
-deployment; the environment flag remains an additional gate. Existing published
-comparisons remain readable subject to their read budgets. See [the stop/restart runbook](COST_CONTROLS.md#emergency-stop-and-restart).
-
-## Free-tier and cost limitations
-
-For the retry protocol, apply migration 0003 before the new Worker and coordinate
-the frontend update; legacy publish requests without private operation headers
-now receive 400. Follow the [maintenance/drain precautions](PUBLICATION_RECOVERY.md#migration-and-rollback).
-The private result endpoint stays available with uploads disabled and needs no
-Turnstile token. Verify a lost-response/reload recovery and owner deletion during
-an approved smoke test; see [recoverable retries](PUBLICATION_RETRIES.md).
-
-Cloudflare's allowances and pricing change; check the current Workers, D1, R2 and Turnstile pricing before enabling resources. This repository makes no promise of free hosting at arbitrary traffic levels.
-
-- Workers Free has a strict CPU allowance. Structural validation and full PNG CRC/decompression for large screenshots can exceed it. Local workerd tests do not enforce production billing/CPU limits. Benchmark approved real workloads; lower file/pixel limits or obtain approval for a suitable plan.
-- A 5 GiB application cap conservatively bounds active/reserved original data; it does not cap R2 request costs, provider logging/backups, or D1/Worker requests.
-- D1 has read/write/storage limits. Rate counters and per-request visibility checks consume operations. High-traffic links may hit allowances even with few stored images.
-- R2 free allowances are not a spending limit. This application does not pay for or enable an external image transformation service.
-- Every image response checks deletion state and uses `no-store`. This favors reliable takedown over aggressive CDN caching and increases reads.
-- Per-IP limits and Turnstile reduce abuse but do not guarantee protection against distributed traffic. Add Cloudflare edge rules, provider limits, budget alerts, monitoring and an upload kill switch before opening a high-traffic service.
-- Publication recovery adds hashed retry metadata, a request fingerprint, indexed D1 writes, result lookups and hashing CPU. Expired markers are removed at most 100 per hourly run. Monitor marker count/expiry backlog as well as original storage. Stage-4 daily admissions/reservations bound new work but do not cap account billing; private recovery and other exempt paths still consume operations.
-
-## Moderation and maintenance
-
-The admin secret can delete any comparison with `DELETE /api/comparisons/:id` and `Authorization: Bearer <ADMIN_TOKEN>`. Use a secret-aware API client; do not paste credentials into issue comments or command history. No administrator UI or authentication cookies are provided.
-
-The hourly scheduled handler removes expired rate rows and processes up to 10 due non-active comparisons with conditional claims, fair retry ordering and backoff. Abandoned pending uploads retain an extra one-hour grace marker/reservation before final cleanup. See [publication recovery and migration precautions](PUBLICATION_RECOVERY.md). Active comparisons are permanent until explicitly deleted. Monitor failed scheduled runs and storage usage. R2 and D1 should be backed up under your own retention policy; protect backups as public-upload data with private deletion hashes.
-
-New publications reserve quota atomically with their pending row. Legacy reservation gaps or other historical drift can still conservatively over-count usage; migration does not silently reduce the ledger. To reconcile: disable uploads, wait for in-flight requests to stop, run the janitor, inspect pending/deleting records and private bucket objects, and remove any confirmed orphan objects. Then, while uploads remain disabled, reconcile the ledger with the comparison table:
-
-```sql
-UPDATE quota
-SET used_bytes = COALESCE((SELECT SUM(bytes) FROM comparisons), 0),
-    comparisons = (SELECT COUNT(*) FROM comparisons)
-WHERE id = 1;
-```
-
-Do not blindly reconcile during live uploads. Never reduce the ledger below actual retained object storage. Resource deletion, bulk moderation, restoring backups, and migration rollback require a separate reviewed operator procedure.
+GitHub Pages serves hash routes at the selected repository subpath; publish only
+`dist/`. It cannot generate comparison-specific social metadata, which is served
+by the Worker `/s/<id>` route. An approved future production frontend needs an
+HTTPS API URL and public Turnstile site key for the exact reviewed hostname.
+Backend secrets must never enter Vite. GitHub Pages cannot set custom response
+headers; assess a frontend CSP if a different host is selected, without assuming
+another paid product.

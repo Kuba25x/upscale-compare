@@ -3,6 +3,12 @@
 Stage 4 adds migration `0004_cost_controls.sql`. No resources, plans, live budgets,
 notifications or public uploads are activated by this change.
 
+**Stage-7 policy update:** the owner requires zero charges using Workers/D1 Free
+and included R2 Standard usage only. The following counters remain useful, but
+are not sufficient to certify that goal. Production deployment is now locked;
+see [Free-only constraints](FREE_TIER_OPERATIONS.md) and [operations](OPERATIONS.md).
+No paid-plan recommendation in earlier history applies to this rollout.
+
 ## Closed defaults and accounting
 
 The migration initializes `service_control` with publishing paused and **all seven
@@ -60,7 +66,10 @@ Worker/D1 operations. Provider/edge protection must cover them too.
 
 Aggregate daily rows are kept for 35 days, then purged in indexed batches of at
 most 100 per hourly run. Outages/backlog can extend retention. A retention failure
-does not block independent comparison cleanup. A full worst-case maintenance
+does not block independent comparison cleanup. Expired rate rows are now purged in indexed batches of at most 100 too.
+Their previous unbounded DELETE could consume a large D1 write allowance in one
+run. Cleanup backlog can extend effective retention; the expiry cutoff is unchanged.
+A full worst-case maintenance
 batch uses at most 44 D1/R2 API calls, including the new retention call; internal
 SQL trigger/index work is additional database work, not separate binding calls.
 
@@ -107,7 +116,7 @@ There is **no HTTP resume/reset endpoint**. Before a separately authorized resta
 1. Confirm the stop through the private status endpoint or D1. Inspect provider
    usage, daily counters, active/reserved storage and cleanup/expiry backlog.
 2. Identify the cause, apply edge/rate protections, reconcile retained objects
-   only using the stage-2 guarded procedure, and obtain approved limits/plan.
+   only using the stage-2 guarded procedure, and verify approved Free-only limits and remaining account headroom.
 3. Update the chosen D1 limits while paused. Keep the ledger intact; restarting
    or raising a budget must not erase previously charged work.
 4. Increment generation and set `publishing_paused=0` only after review. Keep or
@@ -116,21 +125,21 @@ There is **no HTTP resume/reset endpoint**. Before a separately authorized resta
 
 ## Budget options for the owner
 
-These are recommendations for a future approved beta, **not applied settings or
-authorizations for paid services**. The PR keeps all production daily limits zero.
-Choose the first profile for initial observation and raise limits only after
-measuring real workloads. Byte/count limits are independent: the first reached
+These are historical stage-4 capacity proposals, **not applied settings or
+authorizations for paid services**. Stage 7 keeps all production daily limits zero.
+Neither profile is selected or certified for Free; derive any future pilot from
+real resource/account evidence and a separate owner decision. Byte/count limits are independent: the first reached
 limit wins, so the count is not a promise of that many maximum-size publications.
 
-| Daily allowance                  | Small closed beta (recommended) | Larger beta |
-| -------------------------------- | ------------------------------: | ----------: |
-| Upload attempts                  |                              20 |         100 |
-| Body reservation bytes           |                         512 MiB |       2 GiB |
-| Pending publication reservations |                               5 |          20 |
-| Original publication bytes       |                         100 MiB |     500 MiB |
-| Public read requests             |                           2,000 |      10,000 |
-| R2 image GET/HEAD operations     |                           1,000 |       5,000 |
-| Original response bytes          |                           2 GiB |      10 GiB |
+| Daily allowance                  | Historical small beta | Historical larger beta |
+| -------------------------------- | --------------------: | ---------------------: |
+| Upload attempts                  |                    20 |                    100 |
+| Body reservation bytes           |               512 MiB |                  2 GiB |
+| Pending publication reservations |                     5 |                     20 |
+| Original publication bytes       |               100 MiB |                500 MiB |
+| Public read requests             |                 2,000 |                 10,000 |
+| R2 image GET/HEAD operations     |                 1,000 |                  5,000 |
+| Original response bytes          |                 2 GiB |                 10 GiB |
 
 For the smaller beta, also consider lowering the existing environment storage
 ceiling to 1 GiB and comparison count to 100; neither recommendation is applied
@@ -141,19 +150,19 @@ day. Edge controls and operator monitoring are necessary for availability.
 
 Do not approve a dollar budget solely from these numbers. Workers Free's CPU
 limit can reject large screenshots; local success does not establish suitability.
-Keep uploads disabled until an approved provider benchmark determines whether
-lower image limits suffice or a Paid plan merits a separate decision. A paid
-subscription and any billable R2 activation require the owner's explicit approval.
+Keep uploads disabled until approved provider measurements establish a viable
+Free-only envelope and the R2 zero-overage blocker is resolved. Current large
+originals may require a different bounded architecture; Workers Paid is not an
+accepted fallback. These profiles are historical planning examples, not safe
+Free budgets or authorization for R2 activation.
 
-## Provider prices and hard limits checked on 2026-10-28
+## Free constraints rechecked on 2026-10-29
 
 | Service        | Official allowance/pricing relevant here                                                                                                                                    |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workers Free   | 100,000 requests/day; 10 ms HTTP CPU/invocation                                                                                                                             |
-| Workers Paid   | Minimum $5/account/month; 10 million requests and 30 million CPU ms/month included, then $0.30/million requests and $0.02/million CPU ms                                    |
+| Workers Free   | 100,000 requests/day; 10 ms HTTP/cron CPU, 128 MB/isolate, conservative 50 calls/invocation                                                                                 |
 | R2 Standard    | 10 GB-month, 1 million Class A and 10 million Class B operations/month included; excess $0.015/GB-month, $4.50/million A, $0.36/million B; Internet egress and deletes free |
-| D1 Free        | 5 million rows read/day, 100,000 rows written/day, 5 GB total storage; queries fail after exhausted daily allowances                                                        |
-| D1 Paid        | 25 billion reads and 50 million writes/month, 5 GB included; excess $0.001/million reads, $1/million writes, $0.75/GB-month                                                 |
+| D1 Free        | 5 million rows read/day, 100,000 rows written/day, 500 MB/database and 5 GB total storage; queries fail after exhausted daily allowances                                    |
 | Turnstile Free | Unlimited challenges/verification requests, 20 widgets, 10 hostnames/widget                                                                                                 |
 
 Sources: [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/),
@@ -175,14 +184,11 @@ This implementation cannot guarantee a hard account-wide dollar ceiling.
 The shared daily row is also a serialized write hotspot; local concurrent tests
 do not establish production throughput or D1 availability under attack.
 
-The production generator disables workers.dev, preview URLs and Worker
-observability, leaving custom routes to a later approved configuration so an
-unprotected alternate hostname does not bypass edge rules. On an already approved
-Paid account, explicitly supplying `APPROVED_PAID_CPU_MS` (integer 1–1000) adds a
-per-invocation CPU cap; no cap/plan override is generated by default. Free uses its
-provider limit. This input neither selects nor activates a plan. Verify the actual
-account plan before deployment and choose any paid CPU cap from real measurements;
-the code does not choose a suitable paid budget for the owner.
+The production generator disables workers.dev, preview URLs, observability,
+uploads and cron. It rejects all paid CPU overrides; Workers/D1 must stay Free.
+Both production workflows are main-only and blocked by the stage-7 resource/
+zero-overage release lock. No plan, positive allowance or provider service is
+activated. See [the current operations runbook](OPERATIONS.md).
 
 ## Migration and local verification
 

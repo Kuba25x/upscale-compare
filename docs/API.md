@@ -30,6 +30,8 @@ Generate and durably save these credentials before sending any images. Keep them
 
 Production verification requires an OK Siteverify HTTP response, literal boolean
 `success: true`, the allowlisted frontend hostname and exact `publish` action.
+Siteverify redirects are returned without following and refused as non-OK;
+verification cannot create an unbounded redirect chain of subrequests.
 Provider HTTP/transport/JSON/timeout failures refuse publication; a success-shaped
 body on an error status is never accepted. See [local sharing validation](LOCAL_SHARING_VALIDATION.md)
 for tested production paths and the distinction from real-provider verification.

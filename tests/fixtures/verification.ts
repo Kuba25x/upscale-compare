@@ -7,6 +7,7 @@ export type VerificationMode =
   | 'wrong-action'
   | 'not-boolean'
   | 'http-error'
+  | 'redirect'
   | 'malformed'
   | 'network-error'
   | 'timeout';
@@ -46,6 +47,11 @@ export class VerificationService {
           },
           { once: true },
         );
+      });
+    if (this.mode === 'redirect')
+      return new Response(null, {
+        status: 302,
+        headers: { Location: 'https://unexpected.example/verify' },
       });
     if (this.mode === 'malformed') return new Response('not JSON');
     return new Response(
