@@ -1,0 +1,203 @@
+{
+  "generatedAt": "2026-10-30T12:43:29.672Z",
+  "auditedCommit": "903c1d50ac7e6caf4b0782af218c184e1e43757f",
+  "validationSourceSha256": "6ec0d17fde913b6b742bd19aa3ddd9a0fdab9327dca8cb55277df3a50290b5c0",
+  "node": "v24.19.0",
+  "platform": "linux",
+  "v8": "13.6.233.17-node.51",
+  "zlib": "1.3.2.1-motley-3246f1b",
+  "scope": "Offline Node component process CPU/wall time, five measured rounds after two untimed calls for format validation, one warm-up for isolated hash/CRC/multipart. Not edge CPU, peak isolate memory, whole-request timing, p95/p99 or Free certification. Generated zero/padding cases are adversarial synthetic fixtures, not representative screenshots. The multipart payload tests parsing only, not image validation.",
+  "productionCodeChanged": false,
+  "cloudflareFreeCertified": false,
+  "peakIsolateMemoryBytes": null,
+  "crcEquivalence": [
+    {
+      "length": 0,
+      "crc32": 0
+    },
+    {
+      "length": 1,
+      "crc32": 3161057642
+    },
+    {
+      "length": 9,
+      "crc32": 1940015584
+    },
+    {
+      "length": 256,
+      "crc32": 1571656337
+    },
+    {
+      "length": 65536,
+      "crc32": 748352364
+    },
+    {
+      "length": 1048576,
+      "crc32": 675854820
+    }
+  ],
+  "inputs": [
+    {
+      "name": "4k-noise.jpg",
+      "bytes": 4232768,
+      "sha256": "1fbd7544194c84fc94aba28911c44bde2568a1db3709eb964e5751c8fa749829"
+    },
+    {
+      "name": "8k-noise.jpg",
+      "bytes": 16931313,
+      "sha256": "b9de9a8aa6a4306af4ec3e1a46942061c4968a9e9107ee4745f2992abb64a260"
+    },
+    {
+      "name": "4k-noise.webp",
+      "bytes": 4614770,
+      "sha256": "d99117b8bde86f4196c6c109de1e03453a0df1f1de1960c14d442b9507e7051a"
+    },
+    {
+      "name": "8k-noise.webp",
+      "bytes": 18540450,
+      "sha256": "03c57ee191efa3984154618a36c27aa5d4d50e2a1f6e61daedfc5bd30d41d983"
+    }
+  ],
+  "samples": [
+    {
+      "name": "4k-noise.jpg",
+      "variant": "original",
+      "round": 1,
+      "processCpuMs": 17.598,
+      "wallMs": 8.984260999999975
+    },
+    {
+      "name": "4k-noise.jpg",
+      "variant": "original",
+      "round": 2,
+      "processCpuMs": 17.135,
+      "wallMs": 10.090024
+    },
+    {
+      "name": "4k-noise.jpg",
+      "variant": "original",
+      "round": 3,
+      "processCpuMs": 15.467,
+      "wallMs": 9.674599
+    },
+    {
+      "name": "4k-noise.jpg",
+      "variant": "original",
+      "round": 4,
+      "processCpuMs": 17.794,
+      "wallMs": 10.55251899999999
+    },
+    {
+      "name": "4k-noise.jpg",
+      "variant": "original",
+      "round": 5,
+      "processCpuMs": 17.988,
+      "wallMs": 10.315342999999984
+    },
+    {
+      "name": "8k-noise.jpg",
+      "variant": "original",
+      "round": 1,
+      "processCpuMs": 28.554,
+      "wallMs": 21.607123
+    },
+    {
+      "name": "8k-noise.jpg",
+      "variant": "original",
+      "round": 2,
+      "processCpuMs": 26.992,
+      "wallMs": 20.882052999999985
+    },
+    {
+      "name": "8k-noise.jpg",
+      "variant": "original",
+      "round": 3,
+      "processCpuMs": 28.309,
+      "wallMs": 22.093074
+    },
+    {
+      "name": "8k-noise.jpg",
+      "variant": "original",
+      "round": 4,
+      "processCpuMs": 26.659,
+      "wallMs": 20.47955300000001
+    },
+    {
+      "name": "8k-noise.jpg",
+      "variant": "original",
+      "round": 5,
+      "processCpuMs": 25.614,
+      "wallMs": 19.57527799999997
+    },
+    {
+      "name": "4k-noise.webp",
+      "variant": "original",
+      "round": 1,
+      "processCpuMs": 0.051,
+      "wallMs": 0.030946000000028562
+    },
+    {
+      "name": "4k-noise.webp",
+      "variant": "original",
+      "round": 2,
+      "processCpuMs": 0.052,
+      "wallMs": 0.044206000000031054
+    },
+    {
+      "name": "4k-noise.webp",
+      "variant": "original",
+      "round": 3,
+      "processCpuMs": 0.05,
+      "wallMs": 0.04403700000000299
+    },
+    {
+      "name": "4k-noise.webp",
+      "variant": "original",
+      "round": 4,
+      "processCpuMs": 0.042,
+      "wallMs": 0.037496000000032836
+    },
+    {
+      "name": "4k-noise.webp",
+      "variant": "original",
+      "round": 5,
+      "processCpuMs": 0.027,
+      "wallMs": 0.02114199999999755
+    },
+    {
+      "name": "8k-noise.webp",
+      "variant": "original",
+      "round": 1,
+      "processCpuMs": 0.102,
+      "wallMs": 0.08734200000003511
+    },
+    {
+      "name": "8k-noise.webp",
+      "variant": "original",
+      "round": 2,
+      "processCpuMs": 0.018,
+      "wallMs": 0.012498999999991156
+    },
+    {
+      "name": "8k-noise.webp",
+      "variant": "original",
+      "round": 3,
+      "processCpuMs": 0.018,
+      "wallMs": 0.01234799999997449
+    },
+    {
+      "name": "8k-noise.webp",
+      "variant": "original",
+      "round": 4,
+      "processCpuMs": 0.017,
+      "wallMs": 0.0120380000000182
+    },
+    {
+      "name": "8k-noise.webp",
+      "variant": "original",
+      "round": 5,
+      "processCpuMs": 0.024,
+      "wallMs": 0.017315999999993892
+    }
+  ]
+}

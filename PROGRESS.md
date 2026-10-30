@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stages 1–6 are merged through PRs #10–#15. Stage 7, **Prepare guarded production operations**, starts from `origin/main` at `92d079c` on `chore/guarded-production-operations`. The owner requires zero Cloudflare charges using Workers/D1 Free and included R2 Standard usage. Production deployment is explicitly locked until resource suitability and zero-overage R2 protection are established. The stage adds operations/decision/runbook documentation, workflow/config safeguards, bounded rate retention, non-following verification, local diagnostics and guard/resource tests. Only stage 7 is authorized; stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not started.
+Share Comparison stages 1–7 are merged through PRs #10–#16. A documentation-only Free-sharing feasibility investigation starts from `origin/main` at `903c1d5`, with separate local experiment tools under `docs/analysis/`. The owner requires zero Cloudflare charges. Production remains locked: no provider CPU/peak isolate-memory certification or enforceable R2 zero-overage arrangement exists. The [new report](docs/FREE_SHARING_FEASIBILITY.md) compares measured optimization candidates, full codec-validation gaps and Free storage/execution alternatives. No architecture has been selected. Stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not authorized or started by this investigation.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -63,6 +63,13 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Free-sharing feasibility investigation, 2026-10-30 (not stage 8):
+
+- Added the detailed technical report, archived 150 Node component samples, 20 large JPEG/WebP component samples and 18 local workerd round-trip wall samples, plus offline reproduction tools. No application/configuration/workflow or production lock changes.
+- Native CRC32 substantially reduced a 20 MiB padded PNG's local validation cost, but not raster-dominated 4K/8K PNGs. Multipart and SHA-256 remain separate expensive operations. Node process CPU and local emulator wall latency are explicitly not provider CPU or peak isolate-memory evidence.
+- Direct local validation accepted incomplete 27-byte JPEG and 26-byte WebP files that failed Pillow decoding. Existing checks are structural for these formats; full codec validation adds another resource/security requirement. Existing image-validation/upload unit suites passed 63 tests.
+- Rechecked official R2/Workers/D1/KV/DO/Static Assets/billing documentation. Standard R2's included usage and alerts do not establish guaranteed zero charges. The report separates hard-failing Free-product alternatives from risk reduction and records unresolved plan-specific DO limits, owner decisions and separately authorized edge verification. Sharing stays closed and stage 8 remains unstarted.
 
 Share Comparison stage 7, 2026-10-29:
 

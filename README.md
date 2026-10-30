@@ -110,6 +110,8 @@ Defaults: 2–4 images, 20 MiB per file, 40 MiB total per publication, 36 megapi
 
 Production sharing requires an allowed HTTPS frontend origin, private R2, initialized D1, a Turnstile challenge, and operator-configured moderation. The owner requires **zero charges on Workers/D1 Free and included R2 Standard usage**. Production workflows are main-only and currently **locked**, pending measured resource suitability and enforceable R2 zero-overage protection. `npm run ops:check` intentionally exits 1; no confirmation or variable overrides this lock. The Pages demo remains available through its manual deployment workflow. See [guarded operations and owner decisions](docs/OPERATIONS.md) and [the Free-only envelope](docs/FREE_TIER_OPERATIONS.md).
 
+The [Free-only feasibility investigation](docs/FREE_SHARING_FEASIBILITY.md) adds local CPU/codec evidence and compares storage/execution alternatives. It does not approve an architecture, unlock deployment or begin stage 8.
+
 Upload parsing and image validation also enforce fixed structural and memory
 ceilings. See [resource limits](docs/RESOURCE_LIMITS.md) for details, overload
 behavior and the remaining production verification requirements.

@@ -1,0 +1,147 @@
+{
+  "generatedAt": "2026-10-30T12:42:43.785Z",
+  "miniflare": "5.20261023.0-beta",
+  "workerd": "1.20261023.1",
+  "scope": "Local Miniflare/workerd host dispatch round-trip wall time including IPC/body transfer. NOT provider CPU or isolate peak memory. No enforced 10 ms admission threshold. Native variant explicitly opts into nodejs_compat only inside this local experiment.",
+  "cloudflareFreeCertified": false,
+  "checks": [
+    {
+      "variant": "original",
+      "ieeeCrc": 3421780262,
+      "rejectCorruptPng": true
+    },
+    {
+      "variant": "native",
+      "ieeeCrc": 3421780262,
+      "rejectCorruptPng": true
+    }
+  ],
+  "samples": [
+    {
+      "name": "4k-grid-rgb8",
+      "variant": "original",
+      "round": 1,
+      "bytes": 36218,
+      "hostRoundTripWallMs": 95.13781899999992
+    },
+    {
+      "name": "4k-grid-rgb8",
+      "variant": "original",
+      "round": 2,
+      "bytes": 36218,
+      "hostRoundTripWallMs": 70.195608
+    },
+    {
+      "name": "4k-grid-rgb8",
+      "variant": "original",
+      "round": 3,
+      "bytes": 36218,
+      "hostRoundTripWallMs": 77.77055900000005
+    },
+    {
+      "name": "8k-zero-rgba8",
+      "variant": "original",
+      "round": 1,
+      "bytes": 129067,
+      "hostRoundTripWallMs": 424.60831200000007
+    },
+    {
+      "name": "8k-zero-rgba8",
+      "variant": "original",
+      "round": 2,
+      "bytes": 129067,
+      "hostRoundTripWallMs": 346.94031399999994
+    },
+    {
+      "name": "8k-zero-rgba8",
+      "variant": "original",
+      "round": 3,
+      "bytes": 129067,
+      "hostRoundTripWallMs": 339.791835
+    },
+    {
+      "name": "20mib-png-text",
+      "variant": "original",
+      "round": 1,
+      "bytes": 20971520,
+      "hostRoundTripWallMs": 90.20591799999966
+    },
+    {
+      "name": "20mib-png-text",
+      "variant": "original",
+      "round": 2,
+      "bytes": 20971520,
+      "hostRoundTripWallMs": 75.45549899999969
+    },
+    {
+      "name": "20mib-png-text",
+      "variant": "original",
+      "round": 3,
+      "bytes": 20971520,
+      "hostRoundTripWallMs": 93.01154399999996
+    },
+    {
+      "name": "4k-grid-rgb8",
+      "variant": "native",
+      "round": 1,
+      "bytes": 36218,
+      "hostRoundTripWallMs": 71.73088899999993
+    },
+    {
+      "name": "4k-grid-rgb8",
+      "variant": "native",
+      "round": 2,
+      "bytes": 36218,
+      "hostRoundTripWallMs": 68.15204900000026
+    },
+    {
+      "name": "4k-grid-rgb8",
+      "variant": "native",
+      "round": 3,
+      "bytes": 36218,
+      "hostRoundTripWallMs": 72.143685
+    },
+    {
+      "name": "8k-zero-rgba8",
+      "variant": "native",
+      "round": 1,
+      "bytes": 129067,
+      "hostRoundTripWallMs": 376.05781899999965
+    },
+    {
+      "name": "8k-zero-rgba8",
+      "variant": "native",
+      "round": 2,
+      "bytes": 129067,
+      "hostRoundTripWallMs": 397.91542299999946
+    },
+    {
+      "name": "8k-zero-rgba8",
+      "variant": "native",
+      "round": 3,
+      "bytes": 129067,
+      "hostRoundTripWallMs": 376.7488000000003
+    },
+    {
+      "name": "20mib-png-text",
+      "variant": "native",
+      "round": 1,
+      "bytes": 20971520,
+      "hostRoundTripWallMs": 35.51586800000041
+    },
+    {
+      "name": "20mib-png-text",
+      "variant": "native",
+      "round": 2,
+      "bytes": 20971520,
+      "hostRoundTripWallMs": 41.088072000000466
+    },
+    {
+      "name": "20mib-png-text",
+      "variant": "native",
+      "round": 3,
+      "bytes": 20971520,
+      "hostRoundTripWallMs": 33.636688000000504
+    }
+  ]
+}
