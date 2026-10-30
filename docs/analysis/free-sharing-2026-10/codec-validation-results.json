@@ -1,0 +1,30 @@
+{
+  "scope": "Direct offline validator result; not a complete publication or an exploit claim.",
+  "results": [
+    {
+      "name": "incomplete-codec.jpg",
+      "bytes": 27,
+      "serverAccepted": true,
+      "info": {
+        "width": 1,
+        "height": 1,
+        "type": "image/jpeg"
+      },
+      "pillowDecodeSucceeded": false,
+      "pillowError": "OSError: broken data stream when reading image file"
+    },
+    {
+      "name": "incomplete-codec.webp",
+      "bytes": 26,
+      "serverAccepted": true,
+      "info": {
+        "width": 1,
+        "height": 1,
+        "type": "image/webp"
+      },
+      "pillowDecodeSucceeded": false,
+      "pillowError": "OSError: failed to read next frame"
+    }
+  ],
+  "decoder": "Pillow 12.3.0"
+}

@@ -11,6 +11,12 @@ from stages 1–6 does not certify the Free resource envelope or zero-overage R2
 lock before installs, tests or remote actions; the Pages demo can still be
 published through its existing explicit manual authorization.
 
+The follow-up [Free-only feasibility investigation](FREE_SHARING_FEASIBILITY.md),
+dated 2026-10-30, adds reproducible local component/codec experiments and examines
+KV, SQLite Durable Objects and curated Static Assets. It changes no production
+configuration or approval state. The measurements below remain the original
+stage-7 run; the new report distinguishes its separate samples from edge evidence.
+
 ## Provider envelope
 
 | Service/resource     | Free constraint                                                    | Failure/billing implication                                                                  |
