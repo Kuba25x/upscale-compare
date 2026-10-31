@@ -1,0 +1,32 @@
+{
+  "backend": "sqlite",
+  "scope": "Local workerd storage and current structural/content checks, not complete JPEG/WebP validation or edge certification.",
+  "imageBytes": [20971520, 20971520],
+  "hashes": [
+    "7844e6b8a30565766966e401dfa2a357e88adbf377551a0f55ad7ad818e5c510",
+    "0316634e5b29dd7bb2963bce1450819ae1dc363de0467cc9377532a7458b63e1"
+  ],
+  "stateBeforeDelete": "active",
+  "usageBeforeDelete": {
+    "sqlCalls": 383,
+    "sqlMutationCalls": 83,
+    "rowsRead": 381,
+    "rowsWritten": 130,
+    "kvRead": 0,
+    "kvWrite": 0,
+    "kvDelete": 0,
+    "requests": 47
+  },
+  "usageAfterDelete": {
+    "sqlCalls": 447,
+    "sqlMutationCalls": 129,
+    "rowsRead": 555,
+    "rowsWritten": 176,
+    "kvRead": 0,
+    "kvWrite": 0,
+    "kvDelete": 0,
+    "requests": 55
+  },
+  "manifestRestored": true,
+  "originalBytesEqual": true
+}

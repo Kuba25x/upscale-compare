@@ -112,6 +112,8 @@ Production sharing requires an allowed HTTPS frontend origin, private R2, initia
 
 The [Free-only feasibility investigation](docs/FREE_SHARING_FEASIBILITY.md) adds local CPU/codec evidence and compares storage/execution alternatives. It does not approve an architecture, unlock deployment or begin stage 8.
 
+The [local SQLite DO/KV and complete-codec research](docs/FREE_STORAGE_RESEARCH.md) adds isolated prototypes and failure/resource evidence. SQLite DO storage is the recommended research direction; full 8K validation and provider limits remain blockers. Production R2 and the deployment lock are unchanged.
+
 Upload parsing and image validation also enforce fixed structural and memory
 ceilings. See [resource limits](docs/RESOURCE_LIMITS.md) for details, overload
 behavior and the remaining production verification requirements.

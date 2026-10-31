@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stages 1–7 are merged through PRs #10–#16. A documentation-only Free-sharing feasibility investigation starts from `origin/main` at `903c1d5`, with separate local experiment tools under `docs/analysis/`. The owner requires zero Cloudflare charges. Production remains locked: no provider CPU/peak isolate-memory certification or enforceable R2 zero-overage arrangement exists. The [new report](docs/FREE_SHARING_FEASIBILITY.md) compares measured optimization candidates, full codec-validation gaps and Free storage/execution alternatives. No architecture has been selected. Stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not authorized or started by this investigation.
+Share Comparison stages 1–7 are merged through PRs #10–#16, and the first Free-sharing feasibility report is merged as PR #17. The separately authorized local storage/codec research starts from `origin/main` at `ec6ff35`, with isolated prototypes and dependencies under `research/free-sharing/`. The owner requires zero Cloudflare charges. Production remains locked: no provider CPU/peak isolate-memory certification or enforceable R2 zero-overage arrangement exists. The [follow-up report](docs/FREE_STORAGE_RESEARCH.md) recommends SQLite DO storage plus the existing D1 authority as a research direction, while identifying unresolved Free DO CPU rules, full 8K decoder memory and exhausted-quota deletion concerns. No production architecture has been changed. Stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not authorized or started by this research.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -63,6 +63,13 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Local Free-storage and complete-codec research, 2026-10-31 (not stage 8):
+
+- Added isolated local SQLite-backed DO and Workers KV original-byte prototypes with private SQL journals, pinned manifests/hashes, 1 MiB parts, 20/40 MiB bounds, generation fences, bounded logical-first cleanup and persisted restart recovery. Production code, dependencies, controls, workflows, R2 bindings and deployment lock remain untouched.
+- The research suite passed **61 tests**, including mixed codecs, exact-limit synthetic 4K/8K originals, byte/SHA-256/configuration preservation, malformed codecs, concurrency/failure/retry/deletion and explicit quota/consistency limitation models. Existing image/upload/operations/configuration suites passed **84 tests**; the research prototype typecheck and formatting/evidence checks passed.
+- Full JPEG/WebP WASM decoding rejects six additional malformed-content cases accepted by structural validation; existing orientation/container rejections remain. The 15-input matrix also runs in local workerd. The tested full-RGBA wrappers retain at least 279–392 MiB for 8K and cannot fit 128 MB; this is separate from uncertain edge CPU. Recorded 24 full-codec and 9 PNG Node CPU samples are not provider CPU/peak-memory or Free certification.
+- Official documentation still does not unambiguously resolve Free DO CPU entitlement. The report drafts exact Cloudflare clarification questions without sending them, compares Free storage/operation envelopes, and records emulator differences, write-exhaustion takedown gaps, retention/restore concerns and required edge-only evidence. SQLite DO plus existing D1 authority is recommended for further research; a bounded validation-only decoder is still needed. No stage 8 or remote Cloudflare activity occurred.
 
 Free-sharing feasibility investigation, 2026-10-30 (not stage 8):
 

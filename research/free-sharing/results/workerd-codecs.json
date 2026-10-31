@@ -1,0 +1,164 @@
+{
+  "scope": "Local workerd WASM compatibility and tiny-fixture decode/rejection; round-trip wall time is not provider CPU or peak isolate memory.",
+  "samples": [
+    {
+      "name": "jpeg-baseline",
+      "status": 200,
+      "valid": true,
+      "result": {
+        "width": 91,
+        "height": 61,
+        "type": "image/jpeg",
+        "wasmLinearMemoryBytes": 16908288,
+        "jsOutputBytes": 22204
+      },
+      "hostRoundTripWallMs": 129.86836300000004
+    },
+    {
+      "name": "jpeg-progressive",
+      "status": 200,
+      "valid": true,
+      "result": {
+        "width": 89,
+        "height": 59,
+        "type": "image/jpeg",
+        "wasmLinearMemoryBytes": 16908288,
+        "jsOutputBytes": 21004
+      },
+      "hostRoundTripWallMs": 8.227502000000072
+    },
+    {
+      "name": "webp-lossy",
+      "status": 200,
+      "valid": true,
+      "result": {
+        "width": 87,
+        "height": 57,
+        "type": "image/webp",
+        "wasmLinearMemoryBytes": 16777216,
+        "jsOutputBytes": 19836
+      },
+      "hostRoundTripWallMs": 11.17458499999998
+    },
+    {
+      "name": "webp-lossless-alpha",
+      "status": 200,
+      "valid": true,
+      "result": {
+        "width": 83,
+        "height": 55,
+        "type": "image/webp",
+        "wasmLinearMemoryBytes": 16777216,
+        "jsOutputBytes": 18260
+      },
+      "hostRoundTripWallMs": 8.230552999999986
+    },
+    {
+      "name": "jpeg-missing-tables-blocks",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "[object Object]"
+      },
+      "hostRoundTripWallMs": 5.889659999999935
+    },
+    {
+      "name": "webp-missing-coded-raster",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "Error: Complete decode rejected content or emitted a warning."
+      },
+      "hostRoundTripWallMs": 5.76987900000006
+    },
+    {
+      "name": "jpeg-truncated-entropy-valid-eoi",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "Error: Complete decode rejected content or emitted a warning."
+      },
+      "hostRoundTripWallMs": 7.625580000000014
+    },
+    {
+      "name": "jpeg-oversubscribed-huffman-table",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "[object Object]"
+      },
+      "hostRoundTripWallMs": 7.910390000000007
+    },
+    {
+      "name": "jpeg-missing-eoi",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "Error: Incomplete JPEG image."
+      },
+      "hostRoundTripWallMs": 8.656456999999932
+    },
+    {
+      "name": "webp-truncated-vp8-correct-container",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "Error: Complete decode rejected content or emitted a warning."
+      },
+      "hostRoundTripWallMs": 4.244326999999998
+    },
+    {
+      "name": "webp-truncated-vp8l-correct-container",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "Error: Complete decode rejected content or emitted a warning."
+      },
+      "hostRoundTripWallMs": 3.856772000000092
+    },
+    {
+      "name": "webp-truncated-container",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "Error: Invalid WebP container size."
+      },
+      "hostRoundTripWallMs": 2.735457999999994
+    },
+    {
+      "name": "jpeg-rotated-exif",
+      "status": 415,
+      "valid": false,
+      "result": {
+        "error": "Error: Rotated or mirrored EXIF images cannot be published. Export an orientation-normalized screenshot first."
+      },
+      "hostRoundTripWallMs": 2.0128780000000006
+    },
+    {
+      "name": "jpeg-valid-after-rejections",
+      "status": 200,
+      "valid": true,
+      "result": {
+        "width": 91,
+        "height": 61,
+        "type": "image/jpeg",
+        "wasmLinearMemoryBytes": 16908288,
+        "jsOutputBytes": 22204
+      },
+      "hostRoundTripWallMs": 7.4630050000000665
+    },
+    {
+      "name": "webp-valid-after-rejections",
+      "status": 200,
+      "valid": true,
+      "result": {
+        "width": 83,
+        "height": 55,
+        "type": "image/webp",
+        "wasmLinearMemoryBytes": 16777216,
+        "jsOutputBytes": 18260
+      },
+      "hostRoundTripWallMs": 4.127986000000078
+    }
+  ]
+}

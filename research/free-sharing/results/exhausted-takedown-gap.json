@@ -1,0 +1,8 @@
+{
+  "scope": "Injected SQL write-call exhaustion, not an observed Cloudflare outage.",
+  "activePublication": true,
+  "deleteStatus": 503,
+  "stillReadable": true,
+  "productionAcceptance": false,
+  "requiredMitigation": "Independent fail-closed visibility/edge refusal and protected deletion capacity; not implemented in this storage prototype."
+}

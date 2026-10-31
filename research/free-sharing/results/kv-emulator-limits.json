@@ -1,0 +1,6 @@
+{
+  "valueOver25MiBRejected": true,
+  "consecutiveSameKeyWritesAllowed": true,
+  "immediateReadAfterWrite": true,
+  "scope": "Observed local emulator only; NOT production propagation, per-key rate or account quota evidence."
+}
