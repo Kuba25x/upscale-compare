@@ -1,0 +1,149 @@
+{
+  "scope": "Finite local malformed/valid fixture matrix, not complete codec/security proof.",
+  "results": [
+    {
+      "name": "jpeg-baseline",
+      "bytes": 8136,
+      "sha256": "6a208ee80ce6e3de24a0146f6d264ca3e21e14586fef21793d21651e8653d5ce",
+      "valid": true,
+      "currentAccepted": true,
+      "candidateAccepted": true,
+      "warnings": []
+    },
+    {
+      "name": "jpeg-progressive",
+      "bytes": 3409,
+      "sha256": "b7e0567441b7df6e0a4008e21a1d14e9381e2ab8a480d823f0636ce8abeb11a2",
+      "valid": true,
+      "currentAccepted": true,
+      "candidateAccepted": true,
+      "warnings": []
+    },
+    {
+      "name": "webp-lossy",
+      "bytes": 3074,
+      "sha256": "8a96a95a9835726b4c07bee3fce260af65bb4d79c07139396c1d27275a026e66",
+      "valid": true,
+      "currentAccepted": true,
+      "candidateAccepted": true,
+      "warnings": []
+    },
+    {
+      "name": "webp-lossless-alpha",
+      "bytes": 838,
+      "sha256": "44c1bae9f7f6f8289d4b12c3126d3f615e66cabb3b23ff471354566563a008a1",
+      "valid": true,
+      "currentAccepted": true,
+      "candidateAccepted": true,
+      "warnings": []
+    },
+    {
+      "name": "jpeg-missing-tables-blocks",
+      "bytes": 27,
+      "sha256": "1f7997a0f0d1f14e4db33156220bcc5d93e3d371e3fed5ff5aeb585382902877",
+      "valid": false,
+      "currentAccepted": true,
+      "candidateAccepted": false,
+      "error": "[object Object]",
+      "warnings": ["Quantization table 0x00 was not defined"]
+    },
+    {
+      "name": "webp-missing-coded-raster",
+      "bytes": 26,
+      "sha256": "ea3eb4f6b14361f4e7fc6f30196d9333b9989efaf2b06ef247f9fac2ac0af5b2",
+      "valid": false,
+      "currentAccepted": true,
+      "candidateAccepted": false,
+      "error": "Error: Complete decode rejected content or emitted a warning.",
+      "warnings": []
+    },
+    {
+      "name": "jpeg-truncated-entropy-valid-eoi",
+      "bytes": 4763,
+      "sha256": "e57c57746b47c00362b95c07ee0183b5ee2656da0b37b94d79761471f33ae697",
+      "valid": false,
+      "currentAccepted": true,
+      "candidateAccepted": false,
+      "error": "Error: Complete decode rejected content or emitted a warning.",
+      "warnings": ["Corrupt JPEG data: premature end of data segment"]
+    },
+    {
+      "name": "jpeg-oversubscribed-huffman-table",
+      "bytes": 8136,
+      "sha256": "84144b06be64fadef855c051755edcac26b07ea4032475f3e039ad025a85f658",
+      "valid": false,
+      "currentAccepted": true,
+      "candidateAccepted": false,
+      "error": "[object Object]",
+      "warnings": ["Bogus Huffman table definition"]
+    },
+    {
+      "name": "jpeg-missing-eoi",
+      "bytes": 8134,
+      "sha256": "f3d5c0e786de12a075b52851fe2ca3889eae9d833c6233fb7a41ed6aa03e92c9",
+      "valid": false,
+      "currentAccepted": false,
+      "candidateAccepted": false,
+      "error": "Error: Incomplete JPEG image.",
+      "warnings": []
+    },
+    {
+      "name": "webp-truncated-vp8-correct-container",
+      "bytes": 40,
+      "sha256": "d81f236943c6152c5d94a19931080b9a03b5e53326343f59ff6f069d21e7e885",
+      "valid": false,
+      "currentAccepted": true,
+      "candidateAccepted": false,
+      "error": "Error: Complete decode rejected content or emitted a warning.",
+      "warnings": []
+    },
+    {
+      "name": "webp-truncated-vp8l-correct-container",
+      "bytes": 658,
+      "sha256": "beb0397ab6bb29e3b10d24ea86e8256f6afa4a8789f41c10fe0b797088998ca8",
+      "valid": false,
+      "currentAccepted": true,
+      "candidateAccepted": false,
+      "error": "Error: Complete decode rejected content or emitted a warning.",
+      "warnings": []
+    },
+    {
+      "name": "webp-truncated-container",
+      "bytes": 57,
+      "sha256": "6c1b4b1434636eb462ed4b9845e4a7abcca165e28a110df47e0d3be142bf01b2",
+      "valid": false,
+      "currentAccepted": false,
+      "candidateAccepted": false,
+      "error": "Error: Invalid WebP container size.",
+      "warnings": []
+    },
+    {
+      "name": "jpeg-rotated-exif",
+      "bytes": 1251,
+      "sha256": "500a9a15a10dc1e423d740b9f5744a43e7ee8e8979ec0867636904188d5295d2",
+      "valid": false,
+      "currentAccepted": false,
+      "candidateAccepted": false,
+      "error": "Error: Rotated or mirrored EXIF images cannot be published. Export an orientation-normalized screenshot first.",
+      "warnings": []
+    },
+    {
+      "name": "jpeg-valid-after-rejections",
+      "bytes": 8136,
+      "sha256": "6a208ee80ce6e3de24a0146f6d264ca3e21e14586fef21793d21651e8653d5ce",
+      "valid": true,
+      "currentAccepted": true,
+      "candidateAccepted": true,
+      "warnings": []
+    },
+    {
+      "name": "webp-valid-after-rejections",
+      "bytes": 838,
+      "sha256": "44c1bae9f7f6f8289d4b12c3126d3f615e66cabb3b23ff471354566563a008a1",
+      "valid": true,
+      "currentAccepted": true,
+      "candidateAccepted": true,
+      "warnings": []
+    }
+  ]
+}

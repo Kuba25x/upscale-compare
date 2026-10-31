@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-10-31T15:03:07.005Z",
+  "node": "v24.19.0",
+  "scope": "Node process CPU of unchanged full PNG validator, 3 rounds after warm-up; no peak isolate memory, edge CPU or Free certification.",
+  "cloudflareFreeCertified": false,
+  "samples": [
+    {
+      "name": "4k-rgb-grid",
+      "round": 1,
+      "bytes": 36218,
+      "width": 3840,
+      "height": 2160,
+      "type": "image/png",
+      "processCpuMs": 60.393,
+      "wallMs": 53.98558000000003
+    },
+    {
+      "name": "4k-rgb-grid",
+      "round": 2,
+      "bytes": 36218,
+      "width": 3840,
+      "height": 2160,
+      "type": "image/png",
+      "processCpuMs": 48.855,
+      "wallMs": 49.169624999999996
+    },
+    {
+      "name": "4k-rgb-grid",
+      "round": 3,
+      "bytes": 36218,
+      "width": 3840,
+      "height": 2160,
+      "type": "image/png",
+      "processCpuMs": 82.161,
+      "wallMs": 59.627972
+    },
+    {
+      "name": "8k-rgba8-zero",
+      "round": 1,
+      "bytes": 129067,
+      "width": 7680,
+      "height": 4320,
+      "type": "image/png",
+      "processCpuMs": 474.998,
+      "wallMs": 295.66892200000007
+    },
+    {
+      "name": "8k-rgba8-zero",
+      "round": 2,
+      "bytes": 129067,
+      "width": 7680,
+      "height": 4320,
+      "type": "image/png",
+      "processCpuMs": 604.063,
+      "wallMs": 377.120316
+    },
+    {
+      "name": "8k-rgba8-zero",
+      "round": 3,
+      "bytes": 129067,
+      "width": 7680,
+      "height": 4320,
+      "type": "image/png",
+      "processCpuMs": 505.252,
+      "wallMs": 331.44836199999986
+    },
+    {
+      "name": "8k-rgba16-zero",
+      "round": 1,
+      "bytes": 258050,
+      "width": 7680,
+      "height": 4320,
+      "type": "image/png",
+      "processCpuMs": 752.561,
+      "wallMs": 515.5991260000001
+    },
+    {
+      "name": "8k-rgba16-zero",
+      "round": 2,
+      "bytes": 258050,
+      "width": 7680,
+      "height": 4320,
+      "type": "image/png",
+      "processCpuMs": 892.118,
+      "wallMs": 621.6075280000005
+    },
+    {
+      "name": "8k-rgba16-zero",
+      "round": 3,
+      "bytes": 258050,
+      "width": 7680,
+      "height": 4320,
+      "type": "image/png",
+      "processCpuMs": 762.657,
+      "wallMs": 535.318655
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "recordedAt": "2026-10-31T15:20:51.036437+00:00",
+  "auditedMain": "ec6ff358dc795eee960ae6c88661ff4832eb0c6d",
+  "scope": "Local-only synthetic storage/codec research, not stage 8, production changes, provider resource/billing evidence or deployment approval.",
+  "sourceSha256": {
+    "ops/production-readiness.json": "10ade67c3ab38789db6939f1432c5368caa23b901705c7b856127e7c6019f169",
+    "research/free-sharing/codec-probe.mjs": "1d5d5a975807ad48f4c4708a5d365f37a6afe3319655ce01ae5f70293e6998f9",
+    "research/free-sharing/codecs.mjs": "a8cc0c64638a14cfc4a44e21c845a7ef5cfa4c16f093a267dd11e96291e4c226",
+    "research/free-sharing/corpus.mjs": "efeaff79a4e60680a5d994f3a9fb16d079d352342185768ba3236d319474f44e",
+    "research/free-sharing/decoder-worker.mjs": "efc1e699e9cdb29d1ad30babfc715098e5b7e05f2370d37f81f9b06c4b4380ee",
+    "research/free-sharing/harness.mjs": "39808810793d39ded8393892ea374e50e17461ab77f69d5b3e57bc4272f484e4",
+    "research/free-sharing/package-lock.json": "d3f4b5f68045eeb18315a5712d48a3800a392b21b323091ab8c857887f94f9f3",
+    "research/free-sharing/png-probe.mjs": "120abb5ad4132ceb0c8b1c140c1c26334d997f007bc5742328ac92a61bac29be",
+    "research/free-sharing/prototype.ts": "051e892c4e0def0a36070e2df0fcd058d1b312a0908f87f6b3ae49d21b8d6255",
+    "research/free-sharing/vitest.config.mjs": "97dbf344b47e21abb4de83fc6fc0a8d6a5212af6c2ee556580535159bef2edf4",
+    "shared/model.ts": "ae61e24f13238b8a51d71f000f25955e6d0f747d55ed62a12a250705920e89dd",
+    "worker/src/image-validation.ts": "6ec0d17fde913b6b742bd19aa3ddd9a0fdab9327dca8cb55277df3a50290b5c0",
+    "worker/src/upload.ts": "857a519481a19979077b0ed51a1991e6a96d335fe1878c9441618d3d2045b786",
+    "research/free-sharing/tests/codecs.test.mjs": "554273f00bf5799a7e442b3492037660ddc78c7842e58168f0f89e724c7f5552",
+    "research/free-sharing/tests/storage.test.mjs": "4cf80fe06e12f5e63936b8386024800235d826a440cf63c95e2965e4f57ccdbf",
+    "research/free-sharing/tests/workerd-codecs.test.mjs": "8e43c9337f9390bb691d0a3737fd89e97565be35912cc2b3e57bb3f688c8c7be"
+  },
+  "wasmSha256": {
+    "research/free-sharing/node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm": "a7c4b12169817e779ff4af137981393ae924944e167ad1bd95747c9199162d3e",
+    "research/free-sharing/node_modules/@jsquash/webp/codec/dec/webp_dec.wasm": "30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344"
+  },
+  "versions": {
+    "miniflare": "5.20261023.0-beta",
+    "workerd": "1.20261023.1",
+    "vitest": "5.0.5",
+    "esbuild": "0.25.12"
+  },
+  "productionGuardExpectedExitCode": 1,
+  "validation": {
+    "researchTestsPassed": 61,
+    "existingUnitTestsPassed": 84,
+    "researchTypecheck": "passed",
+    "productionGuard": "expected exit 1; unchanged",
+    "applicationCodeChanged": false,
+    "rootDependenciesChanged": false,
+    "remoteCloudflareOperations": false
+  }
+}

@@ -1,0 +1,271 @@
+{
+  "numTotalTests": 61,
+  "numPassedTests": 61,
+  "numFailedTests": 0,
+  "success": true,
+  "scope": "Independent local research suite. Includes expected limitation cases; not production feature acceptance, provider quota or Free certification.",
+  "suites": [
+    {
+      "file": "codecs.test.mjs",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "additional complete-codec candidate without changing existing checks jpeg-baseline",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks jpeg-progressive",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks webp-lossy",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks webp-lossless-alpha",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks jpeg-missing-tables-blocks",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks webp-missing-coded-raster",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks jpeg-truncated-entropy-valid-eoi",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks jpeg-oversubscribed-huffman-table",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks jpeg-missing-eoi",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks webp-truncated-vp8-correct-container",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks webp-truncated-vp8l-correct-container",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks webp-truncated-container",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks jpeg-rotated-exif",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks jpeg-valid-after-rejections",
+          "status": "passed"
+        },
+        {
+          "name": "additional complete-codec candidate without changing existing checks webp-valid-after-rejections",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "storage.test.mjs",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "sqlite original-image prototype preserves 4K/8K originals at the exact 20 MiB/file and 40 MiB aggregate ceiling, hashes, settings and deletion",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype round trips 2 ordered originals and immutable manifest",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype round trips 3 ordered originals and immutable manifest",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype round trips 4 ordered originals and immutable manifest",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype preserves baseline/progressive JPEG and lossy/lossless WebP bytes in one ordered publication",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype enforces byte/part/aggregate and file-count bounds before storage",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype refuses private operations without the capability and never exposes quarantine",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype recovers an ambiguous committed part without changing bytes or double-writing ready data",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype serializes simultaneous identical parts and rejects a concurrent conflicting part",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype refuses activation after a concurrent emergency stop during part intake",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype recovers a failure before durable image write",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype recovers a lost activation acknowledgment using persisted identity and rejects conflicting retries",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype keeps incomplete/corrupt/mismatched content private",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype fences a stop before activation and still permits owner cleanup",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype logically hides first and retries bounded physical cleanup after failures",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype models exhausted storage as refusal without creating a pending identity",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite original-image prototype preserves pending parts, ownership and deletion across an actual emulator restart",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype preserves 4K/8K originals at the exact 20 MiB/file and 40 MiB aggregate ceiling, hashes, settings and deletion",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype round trips 2 ordered originals and immutable manifest",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype round trips 3 ordered originals and immutable manifest",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype round trips 4 ordered originals and immutable manifest",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype preserves baseline/progressive JPEG and lossy/lossless WebP bytes in one ordered publication",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype enforces byte/part/aggregate and file-count bounds before storage",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype refuses private operations without the capability and never exposes quarantine",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype recovers an ambiguous committed part without changing bytes or double-writing ready data",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype serializes simultaneous identical parts and rejects a concurrent conflicting part",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype refuses activation after a concurrent emergency stop during part intake",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype recovers a failure before durable image write",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype recovers a lost activation acknowledgment using persisted identity and rejects conflicting retries",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype keeps incomplete/corrupt/mismatched content private",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype fences a stop before activation and still permits owner cleanup",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype logically hides first and retries bounded physical cleanup after failures",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype models exhausted storage as refusal without creating a pending identity",
+          "status": "passed"
+        },
+        {
+          "name": "kv original-image prototype preserves pending parts, ownership and deletion across an actual emulator restart",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits refuses activation on injected negative visibility then recovers when data becomes visible",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits fails closed for injected kvWrite exhaustion with no storage fallback",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits fails closed for injected kvRead exhaustion with no storage fallback",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits fails closed for injected kvDelete exhaustion with no storage fallback",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits a stale physical value after deletion cannot bypass the fresh visibility gate",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits detects KV bytes changed outside the journal before activation",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits checks actual local KV size enforcement and records its immediate consistency behavior",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits cannot be used through an unrelated hostname or without explicit local opt-in",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits models SQL write exhaustion as private pending state and unavailable cleanup",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits records the unresolved active-takedown gap when every SQL write is exhausted",
+          "status": "passed"
+        },
+        {
+          "name": "KV-specific consistency/quota models and actual emulator limits records the actual local SQLite BLOB boundary separately from the application part limit",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "workerd-codecs.test.mjs",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "loads precompiled full-codec WASM in local workerd without remote fetch, eval or production bindings",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

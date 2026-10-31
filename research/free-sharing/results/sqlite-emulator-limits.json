@@ -1,0 +1,21 @@
+{
+  "scope": "Actual local workerd SQL BLOB acceptance, not provider plan or account-storage proof.",
+  "cases": [
+    {
+      "accepted": true,
+      "bytes": 1048576
+    },
+    {
+      "accepted": true,
+      "bytes": 2000000
+    },
+    {
+      "accepted": true,
+      "bytes": 2097152
+    },
+    {
+      "accepted": true,
+      "bytes": 2097153
+    }
+  ]
+}
