@@ -8,6 +8,11 @@ The application, limits, database migrations, production lock and workflows are
 unchanged. All experiments used local synthetic/public fixtures. No Cloudflare
 resources, credentials, subscriptions, remote migrations or uploads were used.
 
+The separately authorized [local storage and complete-codec follow-up](FREE_STORAGE_RESEARCH.md)
+adds SQLite DO/KV prototypes, failure/consistency models and full-codec CPU/memory
+evidence on 2026-10-31. This document retains its original measurements and verdict;
+neither investigation authorizes stage 8 or a production architecture change.
+
 ## Decision
 
 **The current Worker + D1 + R2 design does not meet the owner's combined

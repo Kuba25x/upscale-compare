@@ -1,0 +1,32 @@
+{
+  "backend": "kv",
+  "scope": "Local workerd storage and current structural/content checks, not complete JPEG/WebP validation or edge certification.",
+  "imageBytes": [20971520, 20971520],
+  "hashes": [
+    "7844e6b8a30565766966e401dfa2a357e88adbf377551a0f55ad7ad818e5c510",
+    "0316634e5b29dd7bb2963bce1450819ae1dc363de0467cc9377532a7458b63e1"
+  ],
+  "stateBeforeDelete": "active",
+  "usageBeforeDelete": {
+    "sqlCalls": 343,
+    "sqlMutationCalls": 83,
+    "rowsRead": 341,
+    "rowsWritten": 130,
+    "kvRead": 80,
+    "kvWrite": 40,
+    "kvDelete": 0,
+    "requests": 47
+  },
+  "usageAfterDelete": {
+    "sqlCalls": 407,
+    "sqlMutationCalls": 129,
+    "rowsRead": 515,
+    "rowsWritten": 176,
+    "kvRead": 80,
+    "kvWrite": 40,
+    "kvDelete": 40,
+    "requests": 55
+  },
+  "manifestRestored": true,
+  "originalBytesEqual": true
+}
