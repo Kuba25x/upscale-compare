@@ -1,0 +1,125 @@
+{
+  "generatedAt": "2026-11-01T13:04:37.691006+00:00",
+  "baseMainCommit": "07d83b6ddaa5bb361d339c94a6ad20b6bcc5b8ca",
+  "scope": "Local synthetic research only. No Cloudflare account/product usage or production code changes. Local Chromium is not Browser Run. No hosted-CI or full production-browser/build result is claimed.",
+  "cloudflareFreeCertified": false,
+  "environment": {
+    "node": "v24.19.0",
+    "chromium": "Chromium 154.0.8037.57 built on Debian GNU/Linux 13 (trixie)",
+    "pythonPillow": "12.3.0",
+    "packages": {
+      "@playwright/test": "1.64.1",
+      "esbuild": "0.25.12",
+      "miniflare": "5.20261023.0-beta",
+      "workerd": "1.20261023.1",
+      "vitest": "5.0.5",
+      "@jsquash/jpeg": "1.6.0",
+      "@jsquash/webp": "1.5.0"
+    }
+  },
+  "testRuns": [
+    {
+      "command": "npm --prefix research/free-sharing test",
+      "success": true,
+      "tests": 103,
+      "passed": 103,
+      "failed": 0,
+      "suites": [
+        {
+          "name": "research/free-sharing/tests/codecs.test.mjs",
+          "passed": 15,
+          "failed": 0
+        },
+        {
+          "name": "research/free-sharing/tests/execution.test.mjs",
+          "passed": 42,
+          "failed": 0
+        },
+        {
+          "name": "research/free-sharing/tests/storage.test.mjs",
+          "passed": 45,
+          "failed": 0
+        },
+        {
+          "name": "research/free-sharing/tests/workerd-codecs.test.mjs",
+          "passed": 1,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "command": "npx vitest run tests/unit/image-validation.test.ts tests/unit/upload.test.ts tests/unit/operations-guards.test.ts tests/unit/production-config.test.ts",
+      "success": true,
+      "tests": 84,
+      "passed": 84,
+      "failed": 0,
+      "suites": [
+        {
+          "name": "tests/unit/image-validation.test.ts",
+          "passed": 24,
+          "failed": 0
+        },
+        {
+          "name": "tests/unit/operations-guards.test.ts",
+          "passed": 12,
+          "failed": 0
+        },
+        {
+          "name": "tests/unit/production-config.test.ts",
+          "passed": 9,
+          "failed": 0
+        },
+        {
+          "name": "tests/unit/upload.test.ts",
+          "passed": 39,
+          "failed": 0
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "researchTypecheck": "passed: npx tsc -p research/free-sharing/tsconfig.json",
+    "repositoryFormatting": "passed: npx prettier --check .",
+    "diffWhitespace": "passed: git diff --check",
+    "executionMjsSyntax": "passed: node --check for execution/*.mjs",
+    "evidenceAndLocalLinks": "passed: 216 observations, 36 groups of one cold/five warm, 18 cases, median recomputation, cold browser closure and report-local links",
+    "productionReadiness": {
+      "command": "node scripts/production-readiness.mjs",
+      "exitCode": 1,
+      "expected": true,
+      "blockers": [
+        "free-worker-resources",
+        "r2-zero-overage",
+        "provider-usage-and-emergency-drill",
+        "owner-decisions-and-acceptance"
+      ]
+    }
+  },
+  "sourceSha256": {
+    "research/free-sharing/codecs.mjs": "a8cc0c64638a14cfc4a44e21c845a7ef5cfa4c16f093a267dd11e96291e4c226",
+    "research/free-sharing/corpus.mjs": "efeaff79a4e60680a5d994f3a9fb16d079d352342185768ba3236d319474f44e",
+    "research/free-sharing/execution/browser-entry.mjs": "f0bb9a9cdad72a4031b88efb45ee51cfc05e85dfe45bb1be43857deb18a71348",
+    "research/free-sharing/execution/budget.mjs": "419c7489cf6a9b7a2115a2926c72eeb3ca6f3417b3098f626ad029b562c81418",
+    "research/free-sharing/execution/controller.mjs": "119a8a3acc71d6fd303717d335d8cdb77bcbc57a91032148b63a13ad1e080520",
+    "research/free-sharing/execution/fixtures.mjs": "2f2372d894f249a3fc32769892bd2967d561895d9b1bf5fb40881ff2bfbbc683",
+    "research/free-sharing/execution/generate-png.py": "183bef40c58b3451bf2aed3b3d60e4f50409e22ff01258863d35754566cf557e",
+    "research/free-sharing/execution/lab.mjs": "76197a1ebdab73c9b3c16aed5882fea537b8b672414e8ac773c1c1e6e352d9db",
+    "research/free-sharing/execution/probe.mjs": "bbf8976fecade38923a2372cbcc53becbb56e85ecdda504cf4cec81c56ad2b95",
+    "research/free-sharing/execution/summarize.mjs": "66c1e7a885ab61bb2150ee116c2e574bcd3c003bbcc060a9c3c9d5d80eb6052f",
+    "research/free-sharing/execution/validate.mjs": "e015b38bb45286671f5f1b4c3eff3cda3d5308265a1fd87397bfa633bed873c2",
+    "research/free-sharing/execution/worker-entry.mjs": "dd22d7e451d2904369e646d35575cfc99682b928a9327e667445276061e66118",
+    "research/free-sharing/package-lock.json": "d3f4b5f68045eeb18315a5712d48a3800a392b21b323091ab8c857887f94f9f3",
+    "research/free-sharing/tests/execution.test.mjs": "7a774e1bda1ab5f523c67bb30fc6e84d0e4bcd2cbae01fc19fce43d9adcd270c",
+    "worker/src/image-validation.ts": "6ec0d17fde913b6b742bd19aa3ddd9a0fdab9327dca8cb55277df3a50290b5c0"
+  },
+  "wasmSha256": {
+    "research/free-sharing/node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm": "a7c4b12169817e779ff4af137981393ae924944e167ad1bd95747c9199162d3e",
+    "research/free-sharing/node_modules/@jsquash/webp/codec/dec/webp_dec.wasm": "30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344"
+  },
+  "evidenceSha256": {
+    "documentation.json": "2e05d41b9abdfb897d9a5cbb34dcc2d46949383d88481bd0e59f1cb5f8d34acd",
+    "fixtures.json": "49753234d9dfdd220fc605620a9cb64016cc190152b9c4f78450c7649fd26c02",
+    "samples.jsonl": "8bb0f97e24404e5ec0d014fc0ea471b835d08d45cfae80d23d1746af3b72e04b",
+    "summary.json": "97e54cd4d035fbbac793cec7b00ad50ac10c7c303c41aacde04d411859a397b0"
+  }
+}

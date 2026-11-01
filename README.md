@@ -114,6 +114,8 @@ The [Free-only feasibility investigation](docs/FREE_SHARING_FEASIBILITY.md) adds
 
 The [local SQLite DO/KV and complete-codec research](docs/FREE_STORAGE_RESEARCH.md) adds isolated prototypes and failure/resource evidence. SQLite DO storage is the recommended research direction; full 8K validation and provider limits remain blockers. Production R2 and the deployment lock are unchanged.
 
+The [phase A/B execution comparison](docs/FREE_VALIDATION_EXECUTION_RESEARCH.md) adds public-limit clarification, unsent Cloudflare questions and 216 local workerd/Chromium validation jobs. Local Chromium is not Browser Run; actual browser resources, large-file transport and the 600-second daily allowance remain unqualified. No production migration or later phase is authorized by these results.
+
 Upload parsing and image validation also enforce fixed structural and memory
 ceilings. See [resource limits](docs/RESOURCE_LIMITS.md) for details, overload
 behavior and the remaining production verification requirements.

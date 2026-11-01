@@ -13,6 +13,10 @@ adds SQLite DO/KV prototypes, failure/consistency models and full-codec CPU/memo
 evidence on 2026-10-31. This document retains its original measurements and verdict;
 neither investigation authorizes stage 8 or a production architecture change.
 
+The later [phase A/B execution comparison](FREE_VALIDATION_EXECUTION_RESEARCH.md)
+adds public-limit questions and local workerd/Chromium job measurements on
+2026-11-01. It does not resolve actual Browser Run resources or approve deployment.
+
 ## Decision
 
 **The current Worker + D1 + R2 design does not meet the owner's combined

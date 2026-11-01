@@ -1,5 +1,12 @@
 # Isolated Free-sharing research
 
+The separately authorized [phase A/B execution laboratory](execution/README.md)
+adds local workerd/Chromium comparison, failure tests and daily-budget scenarios.
+Its [report](../../docs/FREE_VALIDATION_EXECUTION_RESEARCH.md) and
+[archived execution evidence](execution-results/summary.json) supplement the
+historical storage/codec results below. Neither local runtime certifies Cloudflare
+Free, and no production architecture or deployment control changes.
+
 Local experiments authorized separately from audit stage 8, based on `main`
 `ec6ff358dc795eee960ae6c88661ff4832eb0c6d`. See the
 [technical report](../../docs/FREE_STORAGE_RESEARCH.md) and
