@@ -20,7 +20,7 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Current status
 
-Share Comparison stages 1–7 are merged through PRs #10–#16, and the first Free-sharing feasibility report is merged as PR #17. The separately authorized local storage/codec research starts from `origin/main` at `ec6ff35`, with isolated prototypes and dependencies under `research/free-sharing/`. The owner requires zero Cloudflare charges. Production remains locked: no provider CPU/peak isolate-memory certification or enforceable R2 zero-overage arrangement exists. The [follow-up report](docs/FREE_STORAGE_RESEARCH.md) recommends SQLite DO storage plus the existing D1 authority as a research direction, while identifying unresolved Free DO CPU rules, full 8K decoder memory and exhausted-quota deletion concerns. No production architecture has been changed. Stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not authorized or started by this research.
+Share Comparison stages 1–7 are merged through PRs #10–#16; Free-sharing feasibility and storage/codec research are merged as PRs #17–#18. The separately authorized phase A/B execution research starts from `origin/main` at `07d83b6`, with isolated experiments under `research/free-sharing/`. The owner requires zero Cloudflare charges. Production remains locked: no provider CPU/peak-memory certification or enforceable R2 zero-overage arrangement exists. The [execution comparison](docs/FREE_VALIDATION_EXECUTION_RESEARCH.md) identifies trusted browser validation as a direction worth clarifying, while retaining unresolved Browser Run RAM/CPU, large-file transport, daily allowance, Free DO limits and exhausted-quota deletion concerns. Local Chromium is not Browser Run. No production architecture has been changed. Phases C–E, stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not authorized or started by this research.
 
 The following viewer verification is historical; PR #9 has merged into main.
 
@@ -63,6 +63,13 @@ No merge or deployment is authorized. Preserve existing demo/production modes an
 - CI and manual guarded Pages/Worker deployment workflows. Generated production config disables uploads and creates no resources.
 
 ## Tests executed
+
+Local Free-validation execution research, phases A/B, 2026-11-01 (not stage 8):
+
+- Public-documentation review separates established Free limits from ambiguous DO CPU rules and unknown Browser Run resources. Precise provider questions are prepared but unsent. No Cloudflare account or remote binding was accessed.
+- Recorded **216 local jobs** across 18 synthetic cases and two runtimes, with one cold and five measured warm jobs per case/runtime. All **108 Chromium jobs** passed the additive validation/hash checks; workerd passed 78 and refused 30 under the research memory profile. The slowest cold browser job was 4.172 seconds; neither latency nor memory observations certify the actual service.
+- The independent research suite passed **103 tests** (61 existing plus 42 execution/protocol/failure cases); existing image/upload/operations/configuration suites passed **84 tests**. Synthetic originals cover 4K/8K PNG/JPEG/WebP, high-entropy PNG, exact 20/40 MiB bounds, cancellation/crash/uncertain cleanup, corrupt codecs and identity mismatches.
+- Daily-time scenarios use the documented **600 seconds/day**, cold whole-job time, failed attempts and uncertain-close idle tails. They are planning sensitivities, not measured provider consumption or configured quotas. The report records reproducibility, limitations and the next owner decision. Production code, workflows, R2 and deployment locks remain unchanged.
 
 Local Free-storage and complete-codec research, 2026-10-31 (not stage 8):
 

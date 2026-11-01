@@ -1,0 +1,65 @@
+{
+  "scope": "Phase A: public documentation only. No account access, provider contact or remote experiment. Checked for the 2026-11-01 investigation.",
+  "facts": [
+    {
+      "subject": "Workers Free HTTP CPU and isolate memory",
+      "classification": "documented",
+      "finding": "10 ms CPU per HTTP invocation and 128 MB per isolate including WASM; local workerd is not plan enforcement evidence.",
+      "sources": ["https://developers.cloudflare.com/workers/platform/limits/"]
+    },
+    {
+      "subject": "SQLite DO Free CPU entitlement",
+      "classification": "ambiguous",
+      "finding": "DO table/default and reset descriptions say 30 seconds; introduction/FAQ also refer to Workers plan/per-invocation limits. No explicit unambiguous Free CPU override was established.",
+      "sources": [
+        "https://developers.cloudflare.com/durable-objects/platform/limits/",
+        "https://developers.cloudflare.com/durable-objects/reference/faq/"
+      ]
+    },
+    {
+      "subject": "Browser Run Free availability and quota",
+      "classification": "documented",
+      "finding": "Available on Free; 600 browser seconds/day shared across methods, three concurrent browser sessions/account, one new instance/20 seconds. Further launches after daily exhaustion return 429 until the next UTC day.",
+      "sources": [
+        "https://developers.cloudflare.com/browser-run/pricing/",
+        "https://developers.cloudflare.com/browser-run/limits/"
+      ]
+    },
+    {
+      "subject": "Browser Run Free numeric memory and CPU allocation",
+      "classification": "not-established",
+      "finding": "No authoritative numeric browser RAM/CPU entitlement was found in the reviewed public pages. Separate Chrome process execution does not prove sufficient resources for this workload.",
+      "sources": [
+        "https://developers.cloudflare.com/browser-run/limits/",
+        "https://developers.cloudflare.com/browser-run/faq/"
+      ]
+    },
+    {
+      "subject": "Browser session shutdown",
+      "classification": "documented",
+      "finding": "Default 60-second inactivity timeout is not a 60-second active-task limit. Unclosed sessions continue consuming time; explicit close and failure handling are required.",
+      "sources": ["https://developers.cloudflare.com/browser-run/limits/"]
+    },
+    {
+      "subject": "Local Browser Run feature parity",
+      "classification": "documented-limitation",
+      "finding": "FAQ reports a local-development request limit of 1 MB. Plain local Playwright is used here; no remote binding is enabled to overcome that limit.",
+      "sources": ["https://developers.cloudflare.com/browser-run/faq/"]
+    },
+    {
+      "subject": "Browser content handling",
+      "classification": "documented-with-scope-limit",
+      "finding": "FAQ describes ephemeral submitted HTML/generated-output processing and no Browser Sessions caching. Optional recordings and crawl have longer retention. Coverage for this custom binary/WASM validation and failure paths still needs clarification.",
+      "sources": ["https://developers.cloudflare.com/browser-run/faq/"]
+    },
+    {
+      "subject": "Actual account and absolute project billing protection",
+      "classification": "not-verified",
+      "finding": "Public Free availability does not verify the owner's account plan, other account usage, activation requirements or a zero-charge configuration. No actual settings were accessed. No paid fallback or R2 is authorized.",
+      "sources": [
+        "https://developers.cloudflare.com/browser-run/pricing/",
+        "https://developers.cloudflare.com/durable-objects/platform/pricing/"
+      ]
+    }
+  ]
+}

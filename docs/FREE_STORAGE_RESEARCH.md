@@ -1,5 +1,10 @@
 # Free-only sharing: local storage and complete-codec research
 
+Follow-up: the separately authorized [phase A/B execution comparison](FREE_VALIDATION_EXECUTION_RESEARCH.md)
+adds public-documentation findings and local workerd/Chromium measurements. The
+results below remain historical; no actual Browser Run/DO Free entitlement or
+production storage migration is established by the follow-up.
+
 **2026-10-31.** Base: current `main`
 [`ec6ff358dc795eee960ae6c88661ff4832eb0c6d`](https://github.com/Kuba25x/upscale-compare/commit/ec6ff358dc795eee960ae6c88661ff4832eb0c6d),
 including stages 1–7 and the [first feasibility report](FREE_SHARING_FEASIBILITY.md).
