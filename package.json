@@ -29,15 +29,23 @@
     "build:demo": "npm run notices && npm run typecheck:frontend && vite build --mode demo",
     "dev:demo": "vite --host 0.0.0.0 --mode demo",
     "test:demo": "npm run build:demo && playwright test --config playwright.demo.config.ts",
-    "test:diagnostics": "playwright test --config playwright.diagnostics.config.ts"
+    "test:diagnostics": "playwright test --config playwright.diagnostics.config.ts",
+    "build:android": "npm run notices && npm run typecheck:frontend && vite build --mode android && node scripts/android-notices.mjs",
+    "android:sync": "npm run build:android && cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew --no-daemon lintDebug testDebugUnitTest assembleDebug",
+    "test:android:web": "npm run build:android && playwright test --config playwright.android.config.ts"
   },
   "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.6.0",
     "@cloudflare/workers-types": "5.20261026.1",
     "@playwright/test": "^1.56.0",
     "@types/node": "^24.0.0",

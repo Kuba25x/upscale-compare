@@ -23,8 +23,9 @@ interface Props {
   onChange: (update: (previous: Config) => Config) => void;
   onMetadata: () => void;
   onHelp: () => void;
+  onImageError?: () => void;
 }
-export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) {
+export function Viewer({ images, config, onChange, onMetadata, onHelp, onImageError }: Props) {
   const stage = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
@@ -535,6 +536,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
         className="comparison-image"
         data-testid={`image-${side}`}
         src={image.url}
+        onError={onImageError}
         alt={image.label}
         draggable={false}
         width={image.width}

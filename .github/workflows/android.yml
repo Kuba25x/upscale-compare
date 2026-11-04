@@ -1,0 +1,78 @@
+name: Android debug APK
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      [
+        'src/**',
+        'shared/**',
+        'android/**',
+        'tests/**',
+        'package*.json',
+        '*config.ts',
+        'scripts/android-*',
+        '.github/workflows/android.yml',
+      ]
+  push:
+    branches: [feat/android-capacitor, main]
+    paths:
+      [
+        'src/**',
+        'shared/**',
+        'android/**',
+        'tests/**',
+        'package*.json',
+        '*config.ts',
+        'scripts/android-*',
+        '.github/workflows/android.yml',
+      ]
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - run: npm install --global npm@11.9.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'platform-tools'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/set-playwright-browser.mjs
+      - run: npm run test:android:web
+      - run: npx vitest run tests/unit/demo-config.test.ts tests/unit/android-adapter.test.ts
+      - run: npm run android:apk
+      - name: Verify and describe APK
+        run: |
+          mkdir -p artifacts
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/upscale-compare-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose artifacts/upscale-compare-debug.apk
+          sha256sum artifacts/upscale-compare-debug.apk > artifacts/SHA256SUMS
+          git rev-parse HEAD > artifacts/COMMIT
+          printf '%s\n' 'Debug build; device qualification pending. See docs/ANDROID.md.' 'The disposable CI debug key may require uninstalling a previous build (which deletes its local session).' > artifacts/README.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upscale-compare-debug-${{ github.sha }}
+          path: artifacts/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-test-reports-${{ github.sha }}
+          path: |
+            android/app/build/reports/
+            test-results/
+          retention-days: 14
