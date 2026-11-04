@@ -38,6 +38,10 @@ for (const [width, height] of [
         win.Capacitor = {
           PluginHeaders: [
             {
+              name: 'SystemBars',
+              methods: ['hide', 'show'].map((name) => ({ name, rtype: 'promise' })),
+            },
+            {
               name: 'Originals',
               methods: ['pick', 'restore', 'paths', 'save', 'discard'].map((name) => ({
                 name,
@@ -48,13 +52,20 @@ for (const [width, height] of [
               name: 'App',
               methods: ['toggleBackButtonHandler', 'addListener', 'removeListener'].map((name) => ({
                 name,
-                rtype: 'promise',
+                rtype: name === 'addListener' ? 'callback' : 'promise',
               })),
             },
           ],
           convertFileSrc: (path: string) => path,
-          nativeCallback: () => {},
+          nativeCallback: (_plugin: string, method: string, args: any, callback: any) => {
+            if (method === 'addListener') win[`listener-${args.eventName}`] = callback;
+            return args.eventName;
+          },
           nativePromise: async (plugin: string, method: string, args: any) => {
+            if (plugin === 'SystemBars') {
+              win.barsHidden = method === 'hide';
+              return {};
+            }
             if (plugin === 'App') return {};
             if (method === 'restore')
               return { session: JSON.parse(localStorage.getItem('test-session') || 'null'), paths };
@@ -134,15 +145,24 @@ for (const [width, height] of [
     await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
     await expect
       .poll(() =>
-        page.evaluate(() => JSON.parse(localStorage.getItem('test-session')!).config.mode),
+        page.evaluate(() => {
+          const config = JSON.parse(localStorage.getItem('test-session')!).config;
+          return [config.mode, config.view.zoom];
+        }),
       )
-      .toBe('side');
+      .toEqual(['side', 1]);
     await page.reload();
     await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', '1');
     await expect(page.getByRole('button', { name: 'Side-by-Side', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
+    await page.getByRole('button', { name: 'Enter fullscreen' }).click();
+    await expect(page.getByRole('button', { name: 'Exit fullscreen' })).toBeVisible();
+    expect(await page.evaluate(() => (window as any).barsHidden)).toBe(true);
+    await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
+    await expect(page.getByRole('button', { name: 'Enter fullscreen' })).toBeVisible();
+    expect(await page.evaluate(() => (window as any).barsHidden)).toBe(false);
     await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
     await expect(page.locator('.upload-list img')).toHaveCount(0);
     await page.evaluate(() => {

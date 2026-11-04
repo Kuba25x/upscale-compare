@@ -24,8 +24,19 @@ interface Props {
   onMetadata: () => void;
   onHelp: () => void;
   onImageError?: () => void;
+  fullscreenOverride?: boolean;
+  onToggleFullscreen?: () => Promise<void>;
 }
-export function Viewer({ images, config, onChange, onMetadata, onHelp, onImageError }: Props) {
+export function Viewer({
+  images,
+  config,
+  onChange,
+  onMetadata,
+  onHelp,
+  onImageError,
+  fullscreenOverride,
+  onToggleFullscreen,
+}: Props) {
   const stage = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
@@ -196,6 +207,10 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp, onImageEr
     }));
   const toggleFullscreen = async () => {
     try {
+      if (onToggleFullscreen) {
+        await onToggleFullscreen();
+        return;
+      }
       if (document.fullscreenElement) await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
     } catch {
@@ -357,7 +372,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp, onImageEr
     };
     window.addEventListener('keydown', keyboard);
     return () => window.removeEventListener('keydown', keyboard);
-  }, [onChange, images.length, onHelp]);
+  }, [onChange, images.length, onHelp, onToggleFullscreen]);
   const setDivider = (clientX: number) => {
     const rect = stage.current!.getBoundingClientRect();
     onChange((previous) => ({
@@ -814,11 +829,11 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp, onImageEr
           <span className="toolbar-separator" />
           <button
             className="icon-button"
-            aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            aria-label={(fullscreenOverride ?? fullscreen) ? 'Exit fullscreen' : 'Enter fullscreen'}
             title="Fullscreen (F)"
             onClick={() => void toggleFullscreen()}
           >
-            {fullscreen ? <Shrink size={16} /> : <Expand size={16} />}
+            {(fullscreenOverride ?? fullscreen) ? <Shrink size={16} /> : <Expand size={16} />}
           </button>
           <button
             className="icon-button"

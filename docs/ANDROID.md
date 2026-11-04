@@ -54,8 +54,10 @@ thumbnail. Provider metadata and declared file size are not trusted as quotas.
 - **Clear comparison** in the existing upload dialog commits an empty session and
   removes the unreferenced private originals. Cleanup failures are reported; any
   leftovers still count against the storage quota and are retried on startup/save.
-- Back closes an open dialog (busy import prevents dismissal). Root back remains
-  under Android's predictive-back navigation. Capacitor SystemBars handles insets.
+- Back closes an open dialog (busy import prevents dismissal), then leaves native
+  fullscreen. Root back remains under Android's predictive-back navigation. The
+  existing fullscreen control uses Capacitor SystemBars on Android; the web keeps
+  its HTML fullscreen implementation. SystemBars also handles insets.
 
 No `largeHeap` override is used. WebView owns decode and texture caches; removing
 an image element cannot force immediate cache eviction. A pair of 8K RGBA8 images
@@ -123,8 +125,8 @@ npm run android:apk
 ```
 
 The Android browser suite uses a **mock native bridge** and actual synthetic 4K/8K
-PNGs. It checks offline requests, native-adapter routing, pixel scale, restore,
-cancel and clear. It does not measure Android memory, exercise SAF or certify
+PNGs. It checks offline requests, native-adapter routing, decoded pixels, physical-pixel scale, Chromium pinch, restore, cancel, clear and
+fullscreen/back adapter routing. It does not measure Android memory, exercise SAF or certify
 phone performance. Native JVM tests cover streaming byte/hash identity, exact
 256 MiB input without a full-size allocation, unknown-length overflows, free-space
 refusal, empty inputs and dimension limits. Existing web suites retain gesture,
@@ -158,3 +160,21 @@ If full-image rendering cannot meet these criteria, stop and report the failing
 fixtures, memory/frame measurements and a region/tile-renderer recommendation.
 Do not introduce that larger renderer change without owner approval. No renderer
 qualification or physical-device results are claimed by this implementation.
+
+## Recorded implementation checks — 2026-11-04
+
+On the implementation branch, `npm run build`, all **305** Vitest unit/integration
+checks, **31** demo, **45** E2E, **37** local production-sharing and **5** diagnostics
+browser checks passed. The focused Android/guard subset passed **9** checks;
+these are already included in the Vitest total. `npm audit --audit-level=high`
+reported zero vulnerabilities. Formatting and diff whitespace checks passed.
+
+The Android-mode browser suite passed both real synthetic 4K/8K image cases with
+a mocked native bridge. It checks decoded pixel samples, pinch, session restore,
+clear/cancel and fullscreen/back routing. The initial local signed APK build
+passed lint/JVM tests; the final branch is also built and signed independently
+in the Android debug APK workflow, including **7** native policy JVM tests.
+Consult the PR checks/artifact for the exact final CI commit and outcome.
+
+No physical Xiaomi measurements or native picker/lifecycle test results are
+claimed. These remain the release-qualification gate described above.

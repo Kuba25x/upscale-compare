@@ -30,6 +30,7 @@ import {
   restoreAndroidSession,
   saveAndroidSession,
   discardOriginals,
+  setAndroidFullscreen,
 } from './lib/android';
 import { App as NativeApp } from '@capacitor/app';
 
@@ -50,6 +51,7 @@ export default function App() {
   >(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(ANDROID_MODE);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [restored, setRestored] = useState(!ANDROID_MODE);
   const [dragging, setDragging] = useState(false);
   const [route, setRoute] = useState(location.hash);
@@ -125,17 +127,32 @@ export default function App() {
       void listener.then((handle) => handle.remove());
     };
   }, [images, metadata, config, restored, loading]);
+  const changeNativeFullscreen = useCallback(async (enabled: boolean) => {
+    try {
+      await setAndroidFullscreen(enabled);
+      setNativeFullscreen(enabled);
+    } catch {
+      setError('Could not change fullscreen mode.');
+    }
+  }, []);
+  useEffect(() => {
+    if (ANDROID_MODE && nativeFullscreen && images.length < 2) void changeNativeFullscreen(false);
+  }, [images.length, nativeFullscreen, changeNativeFullscreen]);
   useEffect(() => {
     if (!ANDROID_MODE) return;
-    // Intercept only modal navigation; leave root predictive back to Android.
-    void NativeApp.toggleBackButtonHandler({ enabled: Boolean(modal) || loading });
+    // Intercept modal/fullscreen navigation; leave root predictive back to Android.
+    void NativeApp.toggleBackButtonHandler({
+      enabled: Boolean(modal) || loading || nativeFullscreen,
+    });
     const listener = NativeApp.addListener('backButton', () => {
-      if (!loading) setModal(null);
+      if (loading) return;
+      if (modal) setModal(null);
+      else if (nativeFullscreen) void changeNativeFullscreen(false);
     });
     return () => {
       void listener.then((handle) => handle.remove());
     };
-  }, [modal, loading]);
+  }, [modal, loading, nativeFullscreen, changeNativeFullscreen]);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadAction = useRef<UploadAction>({ kind: 'all' });
   const currentImages = useRef(images);
@@ -444,6 +461,10 @@ export default function App() {
       {ready ? (
         <main className="comparison-layout">
           <Viewer
+            fullscreenOverride={ANDROID_MODE ? nativeFullscreen : undefined}
+            onToggleFullscreen={
+              ANDROID_MODE ? () => changeNativeFullscreen(!nativeFullscreen) : undefined
+            }
             onImageError={
               ANDROID_MODE
                 ? () =>
