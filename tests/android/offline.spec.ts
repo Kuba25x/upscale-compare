@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 
 for (const [width, height] of [
@@ -75,10 +76,61 @@ for (const [width, height] of [
     await expect(
       page.getByRole('button', { name: 'Share Comparison', exact: true }),
     ).toBeDisabled();
+    await expect
+      .poll(() =>
+        page
+          .getByTestId('image-A')
+          .evaluate((node: HTMLImageElement) => [
+            node.complete,
+            node.naturalWidth,
+            node.naturalHeight,
+          ]),
+      )
+      .toEqual([true, width, height]);
     await page.getByRole('button', { name: '100%', exact: true }).click();
     const bounds = await page.getByTestId('image-A').boundingBox();
     expect(bounds!.width * 3).toBeCloseTo(width, 2);
     expect(bounds!.height * 3).toBeCloseTo(height, 2);
+    const stageBox = (await page.getByTestId('stage').boundingBox())!;
+    const shot = PNG.sync.read(await page.screenshot());
+    const pixelX = Math.round((stageBox.x + stageBox.width * 0.25) * 3);
+    const pixelY = Math.round((stageBox.y + stageBox.height * 0.55) * 3);
+    const sourceX = pixelX - Math.round(bounds!.x * 3);
+    const sourceY = pixelY - Math.round(bounds!.y * 3);
+    const offset = (pixelY * shot.width + pixelX) * 4;
+    expect([...shot.data.subarray(offset, offset + 4)]).toEqual([
+      sourceX % 256,
+      sourceY % 256,
+      80,
+      255,
+    ]);
+    const client = await page.context().newCDPSession(page);
+    for (const mode of ['Split Screen', 'Side-by-Side']) {
+      await page.getByRole('button', { name: mode, exact: true }).click();
+      const x = Math.round(stageBox.x + 60),
+        y = Math.round(stageBox.y + stageBox.height / 2);
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [
+          { x, y: y - 40, id: 1 },
+          { x, y: y + 40, id: 2 },
+        ],
+      });
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [
+          { x, y: y - 60, id: 1 },
+          { x, y: y + 60, id: 2 },
+        ],
+      });
+      await expect
+        .poll(async () => Number(await page.getByTestId('stage').getAttribute('data-zoom')))
+        .toBeCloseTo(1.5, 5);
+      await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+      await expect(page.getByTestId('stage')).not.toHaveClass(/panning/);
+      await page.getByRole('button', { name: '100%', exact: true }).click();
+    }
+    await client.detach();
     await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
     await expect
       .poll(() =>
