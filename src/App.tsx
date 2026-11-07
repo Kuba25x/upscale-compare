@@ -225,6 +225,7 @@ export default function App() {
   }, [route]);
   const requestFiles = (action: UploadAction, source: AndroidImageSource = androidImageSource) => {
     if (ANDROID_MODE) {
+      setAndroidImageSource(source);
       setLoading(true);
       setError('');
       void pickOriginals(

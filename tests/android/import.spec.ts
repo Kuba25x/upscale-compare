@@ -78,7 +78,7 @@ test('Files is available before import and for replacements; cancel/failure pres
   await expect.poll(async () => (await config(page))?.images.length).toBe(2);
   const previous = await config(page);
   await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
-  await page.getByLabel('Image source').selectOption('files');
+  await expect(page.getByLabel('Image source')).toHaveValue('files');
   await page.evaluate(() => {
     (window as any).cancelPick = true;
   });
