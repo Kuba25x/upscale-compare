@@ -140,7 +140,10 @@ final class AndroidDisplayLayout {
         .put("navigationVisible", insets.isVisible(WindowInsetsCompat.Type.navigationBars()))
         .put("layoutTop", top)
         .put("layoutBottom", bottom)
-        .put("safeTop", Math.max(top, Math.max(cutout.top, mandatory.top)))
+        // Hidden status bars retain a mandatory swipe-start inset. Reserving it for
+        // tap controls would recreate the empty status-bar strip in landscape.
+        // System edge swipes remain available; the app requests no gesture exclusions.
+        .put("safeTop", Math.max(top, cutout.top))
         .put("safeRight", Math.max(cutout.right, Math.max(navigation.right, gestures.right)))
         .put("safeBottom", Math.max(bottom, Math.max(cutout.bottom, gestures.bottom)))
         .put("safeLeft", Math.max(cutout.left, Math.max(navigation.left, gestures.left)))

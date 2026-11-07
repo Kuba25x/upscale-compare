@@ -76,6 +76,7 @@ public class AndroidDisplayLayoutTest {
       WindowInsetsCompat insets =
           new WindowInsetsCompat.Builder()
               .setInsets(WindowInsetsCompat.Type.systemGestures(), Insets.of(20, 0, 20, 24))
+              .setInsets(WindowInsetsCompat.Type.mandatorySystemGestures(), Insets.of(0, 90, 0, 24))
               .setDisplayCutout(
                   new DisplayCutoutCompat(
                       new Rect(left ? 96 : 0, 0, left ? 0 : 96, 0),
@@ -87,6 +88,7 @@ public class AndroidDisplayLayoutTest {
         JSObject state = layout.snapshot();
         assertTrue(state.getBool("landscape"));
         assertEquals(0, state.getInteger("layoutTop").intValue());
+        assertEquals(0, state.getInteger("safeTop").intValue());
         assertEquals(0, state.getInteger("layoutBottom").intValue());
         assertEquals(96, state.getInteger(left ? "safeLeft" : "safeRight").intValue());
         assertEquals(20, state.getInteger(left ? "safeRight" : "safeLeft").intValue());

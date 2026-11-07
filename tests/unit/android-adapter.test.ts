@@ -78,7 +78,7 @@ it('strips transient URLs from the persisted session and preserves cleanup warni
   expect(saved.size).toBe(original.size);
 });
 
-it('delegates Android insets and dark system icons to the native DisplayLayout integration', async () => {
+it('delegates Android insets and light system icons to the native DisplayLayout integration', async () => {
   const { default: config } = await import('../../capacitor.config');
   expect(config.plugins?.SystemBars).toMatchObject({
     hidden: false,

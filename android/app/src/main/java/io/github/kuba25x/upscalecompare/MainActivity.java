@@ -30,7 +30,7 @@ public class MainActivity extends BridgeActivity {
             displayLayout.applyPolicy();
           }
         });
-    // Run after Capacitor's initial SystemBars setup, which is queued on the UI thread.
+    // Reassert after Capacitor startup and the first WebView layout.
     bridge.getWebView().post(() -> displayLayout.applyPolicy());
   }
 
