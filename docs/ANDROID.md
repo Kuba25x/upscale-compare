@@ -19,8 +19,10 @@ Only the selected pair is rendered; the upload dialog does not decode full-size
 thumbnails of every stored original. No new comparison renderer is introduced.
 The existing favicon design is reused for the launcher and splash screen.
 
-`OriginalsPlugin` uses ACTION_OPEN_DOCUMENT, CATEGORY_OPENABLE and EXTRA_LOCAL_ONLY.
-It requests access only to selected documents, without broad storage permissions.
+`OriginalsPlugin` defaults to the AndroidX Photo Picker contracts for images.
+Files remains an explicit SAF alternative with ACTION_OPEN_DOCUMENT, CATEGORY_OPENABLE
+and EXTRA_LOCAL_ONLY. Selection grants cover only chosen items; broad photo-library
+or storage permissions are not requested.
 The provider's source stream is copied once in 64 KiB chunks, hashed with SHA-256,
 and fsynced. No Base64, full-file JS buffer, image re-encoding or resizing is used.
 Metadata and bounds are checked both before copying and on the private copy;
@@ -203,3 +205,62 @@ visible-system-bar adapter calls and Back/modal routing. Native bridge calls are
 mocked. Desktop/mobile web tests cover the unchanged HTML fullscreen behavior.
 Real Android 16 insets, system-bar visibility and physical touch behavior still
 require verification on Xiaomi 15T; no hardware results are claimed here.
+
+## System Photo Picker and Files fallback
+
+The default Photos source uses AndroidX Activity 1.11.0 `PickMultipleVisualMedia`
+for two or more available slots and `PickVisualMedia` for a single replacement or
+last remaining slot. A new/replaced comparison requires two to four items; adding
+allows one through the remaining slot count. The system picker provides its normal
+tap selection and confirmation UI. Its API sets a maximum, not a minimum: choosing
+only one image for a new comparison is rejected after confirmation, before native
+streams are opened or large originals are copied. Empty/cancelled results do nothing.
+
+**Browse files instead** on the landing screen and the **Image source** selector
+in the existing upload dialog preserve access to PNG/JPEG/WebP documents outside
+the indexed media library. AndroidX automatically falls back to SAF when no Photo
+Picker implementation is available; a missing picker activity also falls back to
+SAF. The fallback has no enforceable system selection maximum, so native validation
+checks the actual deduplicated URI list before storage work. Unsupported codecs
+and non-content URIs are rejected; app limits remain unchanged.
+
+Photo Picker cloud-provider images may require network access during import. They
+are available to the app offline only after the native copy succeeds. The app
+never asks for thumbnails, transcodes or transfers originals through JavaScript.
+The existing ContentResolver stream, hash, bounds/format checks, private storage
+and atomic commit/cleanup pipeline are retained. A failed batch retains the last
+committed session and removes private partial copies.
+
+### Capacitor lifecycle integration
+
+Contracts create the launch Intent and parse returned URIs. The launch still uses
+Capacitor's pre-registered `startActivityForResult(..., "picked")` and
+`@ActivityCallback`, which saves the original PluginCall and its minimum/limit/source
+options. No late ActivityResultLauncher registration or separate Activity is added.
+After process recreation, a dangling Capacitor call has no live JavaScript consumer:
+its result returns an interrupted marker without downloading/copying selected cloud
+items, and the existing `appRestoredResult` handler requests a fresh selection while
+restoring the committed session. No persistent library permission is needed for
+completed private copies.
+
+Native tests include AndroidX contract/URI/fallback checks on simulated API 28/33,
+Capacitor launch/call persistence, cancellation and interrupted results, and actual
+ContentResolver copies with synthetic PNG/GIF fixtures, byte/hash verification and
+failed-batch rollback. Robolectric is a test-only dependency. Its Bridge test uses
+a WebView without ServiceWorkerController interception because no real Chromium
+provider runs inside Robolectric; native activity-result and call restoration code
+is exercised. Browser tests mock the bridge to verify source selection, slot bounds
+and preservation of the current comparison. Existing large-stream tests remain.
+
+On Xiaomi 15T / Android 16 verify actual tap/confirm UX, single replacement,
+remaining slots, Files access, cancel/back, cloud items online/offline and activity
+recreation during the picker/copy. Automated framework tests do not certify the OEM
+picker UI or real-device performance.
+
+References: [Android Photo Picker](https://developer.android.com/training/data-storage/shared/photo-picker),
+[Capacitor Android plugins](https://capacitorjs.com/docs/plugins/android).
+
+Implementation checks: 22 JVM/Robolectric tests, 309 frontend/backend unit and
+integration tests, 9 Android browser tests, 32 demo tests and 45 E2E tests passed
+locally. Android lint, debug APK assembly, type checking and formatting passed.
+The CI build/artifact for the exact PR head is linked in PR #20.

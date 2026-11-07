@@ -1,6 +1,7 @@
 package io.github.kuba25x.upscalecompare;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.BitmapFactory;
@@ -213,20 +214,26 @@ public class OriginalsPlugin extends Plugin {
       call.reject("An import is already in progress.");
       return;
     }
-    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-    intent.addCategory(Intent.CATEGORY_OPENABLE);
-    intent.setType("image/*");
-    intent.putExtra(
-        Intent.EXTRA_MIME_TYPES, new String[] {"image/png", "image/jpeg", "image/webp"});
-    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, call.getInt("limit", 4) > 1);
-    intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
     try {
-      startActivityForResult(call, intent, "picked");
+      ImageSelection selection = selection(call);
+      Intent intent = selection.createIntent(getContext());
+      try {
+        // Keep the pre-registered Capacitor callback and saved PluginCall/options for restoration.
+        startActivityForResult(call, intent, "picked");
+      } catch (ActivityNotFoundException unavailable) {
+        if (Intent.ACTION_OPEN_DOCUMENT.equals(intent.getAction())) throw unavailable;
+        startActivityForResult(call, selection.documentsIntent(), "picked");
+      }
     } catch (Exception e) {
       picking.set(false);
-      call.reject("The system document picker is unavailable.");
+      call.reject("Could not open the image picker: " + e.getMessage());
     }
+  }
+
+  private ImageSelection selection(PluginCall call) throws IOException {
+    int limit = call.getInt("limit", 4);
+    return new ImageSelection(
+        call.getInt("minimum", limit == 1 ? 1 : 2), limit, call.getString("source", "photos"));
   }
 
   @ActivityCallback
@@ -240,20 +247,34 @@ public class OriginalsPlugin extends Plugin {
       call.resolve(new JSObject().put("images", new JSArray()));
       return;
     }
-    Intent data = result.getData();
-    List<Uri> uris = new ArrayList<>();
-    if (data.getClipData() != null) {
-      for (int i = 0; i < data.getClipData().getItemCount(); i++)
-        uris.add(data.getClipData().getItemAt(i).getUri());
-    } else if (data.getData() != null) uris.add(data.getData());
+    // A restored Capacitor call has no live JS consumer. The App restoration handler asks
+    // the user to select again; avoid downloading/copying large cloud items just to discard them.
+    if (PluginCall.CALLBACK_ID_DANGLING.equals(call.getCallbackId())) {
+      picking.set(false);
+      call.resolve(new JSObject().put("images", new JSArray()).put("interrupted", true));
+      return;
+    }
+    final List<Uri> uris;
+    try {
+      ImageSelection selection = selection(call);
+      uris = selection.parseResult(result.getResultCode(), result.getData());
+      if (uris.isEmpty()) {
+        picking.set(false);
+        call.resolve(new JSObject().put("images", new JSArray()));
+        return;
+      }
+      // Validate count and all URI schemes before initializing storage or opening any streams.
+      selection.validate(uris);
+    } catch (Exception e) {
+      picking.set(false);
+      call.reject(e.getMessage());
+      return;
+    }
     io.execute(
         () -> {
           List<String> batch = new ArrayList<>();
           try {
             initialize();
-            int limit = Math.min(4, Math.max(1, call.getInt("limit", 4)));
-            if (uris.isEmpty() || uris.size() > limit)
-              throw new IOException("Too many selected files.");
             JSArray images = new JSArray();
             for (Uri uri : uris) {
               String id = UUID.randomUUID().toString();
@@ -277,7 +298,8 @@ public class OriginalsPlugin extends Plugin {
   }
 
   private JSONObject importOne(Uri uri, String id) throws Exception {
-    if (!"content".equals(uri.getScheme())) throw new IOException("Choose a local document.");
+    if (!"content".equals(uri.getScheme()))
+      throw new IOException("Choose an image from Photos or Files.");
     String name = "Screenshot";
     try (Cursor cursor =
         getContext()
@@ -297,6 +319,10 @@ public class OriginalsPlugin extends Plugin {
     BitmapFactory.Options bounds = new BitmapFactory.Options();
     bounds.inJustDecodeBounds = true;
     try (InputStream in = getContext().getContentResolver().openInputStream(uri)) {
+      if (in == null)
+        throw new IOException(
+            "The selected image is unavailable. Cloud items need network access until copied"
+                + " locally.");
       BitmapFactory.decodeStream(in, null, bounds);
     }
     OriginalPolicy.dimensions(bounds.outWidth, bounds.outHeight);
@@ -306,7 +332,10 @@ public class OriginalsPlugin extends Plugin {
     OriginalPolicy.Copy copied;
     try (InputStream in = getContext().getContentResolver().openInputStream(uri);
         FileOutputStream out = new FileOutputStream(file)) {
-      if (in == null) throw new IOException("The document is unavailable offline.");
+      if (in == null)
+        throw new IOException(
+            "The selected image is unavailable. Cloud items need network access until copied"
+                + " locally.");
       copied =
           OriginalPolicy.copy(
               in,

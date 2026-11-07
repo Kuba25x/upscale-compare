@@ -31,6 +31,7 @@ import {
   saveAndroidSession,
   discardOriginals,
   ensureAndroidSystemBarsVisible,
+  type AndroidImageSource,
 } from './lib/android';
 import { App as NativeApp } from '@capacitor/app';
 
@@ -50,6 +51,7 @@ export default function App() {
     'upload' | 'metadata' | 'share' | 'help' | 'privacy' | 'recovery' | null
   >(null);
   const [error, setError] = useState('');
+  const [androidImageSource, setAndroidImageSource] = useState<AndroidImageSource>('photos');
   const [loading, setLoading] = useState(ANDROID_MODE);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [restored, setRestored] = useState(!ANDROID_MODE);
@@ -221,11 +223,15 @@ export default function App() {
       active = false;
     };
   }, [route]);
-  const requestFiles = (action: UploadAction) => {
+  const requestFiles = (action: UploadAction, source: AndroidImageSource = androidImageSource) => {
     if (ANDROID_MODE) {
       setLoading(true);
       setError('');
-      void pickOriginals(action.kind === 'one' ? 1 : action.kind === 'add' ? 4 - images.length : 4)
+      void pickOriginals(
+        action.kind === 'one' ? 1 : action.kind === 'add' ? 4 - images.length : 4,
+        action.kind === 'all' || readOnly ? 2 : 1,
+        source,
+      )
         .then((selected) => upload(selected, action, true))
         .catch((reason) => setError(reason.message || 'Could not import the selected originals.'))
         .finally(() => setLoading(false));
@@ -569,16 +575,28 @@ export default function App() {
           <div className="upload-center">
             <button
               className="primary upload-hero"
-              onClick={() => requestFiles({ kind: 'all' })}
+              onClick={() => requestFiles({ kind: 'all' }, 'photos')}
               disabled={loading}
             >
               <Upload size={23} strokeWidth={1.6} />
               Upload Images
             </button>
             <p>
-              {ANDROID_MODE
-                ? 'Choose 2–4 local screenshots to compare'
-                : 'Drop 2–4 screenshots here to compare'}
+              {ANDROID_MODE ? (
+                <>
+                  Choose 2–4 screenshots to compare
+                  <br />
+                  <button
+                    className="text-button"
+                    disabled={loading}
+                    onClick={() => requestFiles({ kind: 'all' }, 'files')}
+                  >
+                    Browse files instead
+                  </button>
+                </>
+              ) : (
+                'Drop 2–4 screenshots here to compare'
+              )}
             </p>
             <span className="landing-hint">
               PNG recommended · Original quality ·{' '}
@@ -653,6 +671,22 @@ export default function App() {
                 ? 'Add or replace screenshots. Originals are stored privately on this device.'
                 : 'Add or replace screenshots. Files stay in your browser until you publish.'}
           </p>
+          {ANDROID_MODE && (
+            <label>
+              Image source
+              <select
+                aria-label="Image source"
+                value={androidImageSource}
+                disabled={loading}
+                onChange={(event) =>
+                  setAndroidImageSource(event.target.value as AndroidImageSource)
+                }
+              >
+                <option value="photos">Photos — system Photo Picker</option>
+                <option value="files">Files — document picker</option>
+              </select>
+            </label>
+          )}
           {!readOnly && (
             <div className="upload-list">
               {images.map((image, index) => (

@@ -251,3 +251,13 @@ button. System status/navigation bars stay visible. The normal Android toolbar
 places fullscreen last; the web keeps its existing button order and HTML behavior.
 Source geometry, native import/storage policies, sharing and deployment controls
 are untouched. See [Android fullscreen behavior and qualification](docs/ANDROID.md#android-comparison-only-fullscreen--2026-11-07).
+
+## Android system Photo Picker
+
+PR #20 now defaults to AndroidX PickMultipleVisualMedia/PickVisualMedia while
+retaining Capacitor's activity-result launcher and restoration path. Native min/max
+and content-URI validation runs before copying; interrupted restored results avoid
+unnecessary cloud downloads. Files remains a landing/dialog option and automatic
+SAF fallback. Original streaming/hash/format checks, sessions and storage limits
+are retained. Viewer, fullscreen, gestures, web file input, sharing and production
+controls are unchanged. See [Photo Picker and lifecycle documentation](docs/ANDROID.md#system-photo-picker-and-files-fallback).

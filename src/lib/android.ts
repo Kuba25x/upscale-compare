@@ -41,8 +41,13 @@ const sessionSchema = z
 export type AndroidSession = z.infer<typeof sessionSchema>;
 type Original = z.infer<typeof originalSchema>;
 export type AndroidImage = LocalImage & Original;
+export type AndroidImageSource = 'photos' | 'files';
 const Originals = registerPlugin<{
-  pick(options: { limit: number }): Promise<{ images: Original[] }>;
+  pick(options: {
+    limit: number;
+    minimum: number;
+    source: AndroidImageSource;
+  }): Promise<{ images: Original[] }>;
   restore(): Promise<{ session: unknown; paths: Record<string, string> }>;
   paths(options: { ids: string[] }): Promise<{ paths: Record<string, string> }>;
   save(options: { session: AndroidSession }): Promise<{ warning?: string }>;
@@ -57,9 +62,18 @@ function materialize(
     throw new Error('A stored original is unavailable. Import the images again.');
   return { ...image, url: Capacitor.convertFileSrc(paths[image.id]) };
 }
-export async function pickOriginals(limit: number): Promise<AndroidImage[]> {
-  const { images } = await Originals.pick({ limit });
+export async function pickOriginals(
+  limit: number,
+  minimum = 1,
+  source: AndroidImageSource = 'photos',
+): Promise<AndroidImage[]> {
+  const { images } = await Originals.pick({ limit, minimum, source });
+  if (!images.length) return [];
   try {
+    if (images.length < minimum || images.length > limit)
+      throw new Error(
+        `Select ${minimum === limit ? minimum : `${minimum}–${limit}`} images. Your current comparison has not changed.`,
+      );
     const checked = images.map((image) => originalSchema.parse(image));
     const { paths } = await Originals.paths({ ids: checked.map((i) => i.id) });
     return checked.map((i) =>

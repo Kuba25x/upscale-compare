@@ -86,3 +86,31 @@ it('keeps Android system bars visible without a hide API in fullscreen transitio
   const { default: config } = await import('../../capacitor.config');
   expect(config.plugins?.SystemBars).toMatchObject({ hidden: false, insetsHandling: 'native' });
 });
+
+it('sends Photo Picker bounds and explicit Files selection without changing source bytes', async () => {
+  native.pick.mockResolvedValue({ images: [original] });
+  native.paths.mockResolvedValue({ paths: { [original.id]: '/private/original' } });
+  const { pickOriginals } = await import('../../src/lib/android');
+  await pickOriginals(1, 1);
+  expect(native.pick).toHaveBeenLastCalledWith({ limit: 1, minimum: 1, source: 'photos' });
+  await pickOriginals(1, 1, 'files');
+  expect(native.pick).toHaveBeenLastCalledWith({ limit: 1, minimum: 1, source: 'files' });
+});
+it('cancels before constructing local URLs or changing native storage', async () => {
+  native.pick.mockResolvedValue({ images: [] });
+  const { pickOriginals } = await import('../../src/lib/android');
+  expect(await pickOriginals(4, 2)).toEqual([]);
+  expect(native.paths).not.toHaveBeenCalled();
+  expect(native.save).not.toHaveBeenCalled();
+  expect(native.discard).not.toHaveBeenCalled();
+});
+it('rejects too few returned images and unsupported formats without saving a session', async () => {
+  const { pickOriginals } = await import('../../src/lib/android');
+  native.pick.mockResolvedValue({ images: [original] });
+  await expect(pickOriginals(4, 2)).rejects.toThrow('2–4');
+  expect(native.discard).toHaveBeenCalledWith({ ids: [original.id] });
+  native.pick.mockResolvedValue({ images: [{ ...original, type: 'image/heic' }] });
+  await expect(pickOriginals(1, 1)).rejects.toThrow();
+  expect(native.paths).not.toHaveBeenCalled();
+  expect(native.save).not.toHaveBeenCalled();
+});

@@ -53,7 +53,21 @@ export async function installAndroidBridge(
           if (plugin === 'App') return {};
           if (method === 'restore')
             return { session: JSON.parse(localStorage.getItem('test-session') || 'null'), paths };
-          if (method === 'pick') return { images: win.cancelPick ? [] : originals };
+          if (method === 'pick') {
+            win.pickerCalls ??= [];
+            win.pickerCalls.push(args);
+            if (win.pickerFailure) throw new Error(win.pickerFailure);
+            if (win.cancelPick) return { images: [] };
+            const selected = (win.pickIndices ?? originals.map((_, i) => i)).map(
+              (i: number) => originals[i],
+            );
+            // Mirror only the native protocol outcome; Android contract/URI checks have native tests.
+            if (selected.length < args.minimum || selected.length > args.limit)
+              throw new Error(
+                `Select ${args.minimum}–${args.limit} images. Your current comparison has not changed.`,
+              );
+            return { images: selected };
+          }
           if (method === 'paths') return { paths };
           if (method === 'save') {
             localStorage.setItem('test-session', JSON.stringify(args.session));

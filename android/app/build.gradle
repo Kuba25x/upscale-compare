@@ -17,6 +17,7 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    testOptions { unitTests.includeAndroidResources = true }
     buildTypes {
         release {
             minifyEnabled false
@@ -34,6 +35,8 @@ repositories {
 dependencyLocking { lockAllConfigurations() }
 
 dependencies {
+    implementation "androidx.activity:activity:$androidxActivityVersion"
+    testImplementation 'org.robolectric:robolectric:4.16.1'
     implementation 'androidx.exifinterface:exifinterface:1.4.1'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
