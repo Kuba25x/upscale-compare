@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type TouchEvent as ReactTouchEvent,
@@ -15,6 +16,7 @@ import {
   diagnosticViewport,
   type DiagnosticData,
 } from '../lib/gesture-diagnostics';
+import { ANDROID_MODE } from '../lib/config';
 import { clamp, originFor, panBy, pinchAt, scaleFor, zoomAt } from '../lib/geometry';
 
 interface Props {
@@ -23,8 +25,22 @@ interface Props {
   onChange: (update: (previous: Config) => Config) => void;
   onMetadata: () => void;
   onHelp: () => void;
+  onImageError?: () => void;
+  fullscreenOverride?: boolean;
+  onToggleFullscreen?: () => void | Promise<void>;
 }
-export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) {
+export function Viewer({
+  images,
+  config,
+  onChange,
+  onMetadata,
+  onHelp,
+  onImageError,
+  fullscreenOverride,
+  onToggleFullscreen,
+}: Props) {
+  const comparisonFullscreen = ANDROID_MODE && fullscreenOverride === true;
+  const wasComparisonFullscreen = useRef(false);
   const stage = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
@@ -166,9 +182,25 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
     if (gestureDiagnostics.recording) gestureDiagnostics.record('commit', frame);
   }, [config, size, dpr, images]);
 
+  // Resize the existing image layers before painting the Android layout transition.
+  useLayoutEffect(() => {
+    if (!ANDROID_MODE || !stage.current) return;
+    cancelPanning();
+    const rect = stage.current.getBoundingClientRect();
+    setSize({ width: rect.width, height: rect.height, x: rect.left, y: rect.top });
+    setDpr(window.devicePixelRatio || 1);
+    if (comparisonFullscreen) stage.current.focus({ preventScroll: true });
+    else if (wasComparisonFullscreen.current)
+      stage.current
+        .querySelector<HTMLButtonElement>('.fullscreen-button')
+        ?.focus({ preventScroll: true });
+    wasComparisonFullscreen.current = comparisonFullscreen;
+  }, [comparisonFullscreen, cancelPanning]);
+
   useEffect(() => {
     const resize = () => {
       if (stage.current) {
+        if (ANDROID_MODE) cancelPanning();
         const rect = stage.current.getBoundingClientRect();
         setSize({ width: rect.width, height: rect.height, x: rect.left, y: rect.top });
         setDpr(window.devicePixelRatio || 1);
@@ -195,6 +227,10 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
     }));
   const toggleFullscreen = async () => {
     try {
+      if (onToggleFullscreen) {
+        await onToggleFullscreen();
+        return;
+      }
       if (document.fullscreenElement) await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
     } catch {
@@ -326,7 +362,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
           selected: [previous.selected[1], previous.selected[0]],
         }));
       if (event.key === 'f') void toggleFullscreen();
-      if (event.key === '?') onHelp();
+      if (event.key === '?' && !comparisonFullscreen) onHelp();
       if (event.key.startsWith('Arrow')) {
         const delta = {
           x: event.key === 'ArrowLeft' ? 50 : event.key === 'ArrowRight' ? -50 : 0,
@@ -356,7 +392,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
     };
     window.addEventListener('keydown', keyboard);
     return () => window.removeEventListener('keydown', keyboard);
-  }, [onChange, images.length, onHelp]);
+  }, [onChange, images.length, onHelp, onToggleFullscreen, comparisonFullscreen]);
   const setDivider = (clientX: number) => {
     const rect = stage.current!.getBoundingClientRect();
     onChange((previous) => ({
@@ -535,6 +571,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
         className="comparison-image"
         data-testid={`image-${side}`}
         src={image.url}
+        onError={onImageError}
         alt={image.label}
         draggable={false}
         width={image.width}
@@ -550,6 +587,16 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
       />
     );
   };
+  const fullscreenButton = (
+    <button
+      className={ANDROID_MODE ? 'icon-button fullscreen-button' : 'icon-button'}
+      aria-label={(fullscreenOverride ?? fullscreen) ? 'Exit fullscreen' : 'Enter fullscreen'}
+      title="Fullscreen (F)"
+      onClick={() => void toggleFullscreen()}
+    >
+      {(fullscreenOverride ?? fullscreen) ? <Shrink size={16} /> : <Expand size={16} />}
+    </button>
+  );
   return (
     <div className="viewer-content">
       <div
@@ -810,14 +857,7 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
             <Plus size={15} />
           </button>
           <span className="toolbar-separator" />
-          <button
-            className="icon-button"
-            aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-            title="Fullscreen (F)"
-            onClick={() => void toggleFullscreen()}
-          >
-            {fullscreen ? <Shrink size={16} /> : <Expand size={16} />}
-          </button>
+          {!ANDROID_MODE && fullscreenButton}
           <button
             className="icon-button"
             aria-label="Comparison details"
@@ -834,7 +874,19 @@ export function Viewer({ images, config, onChange, onMetadata, onHelp }: Props) 
           >
             <Keyboard size={17} />
           </button>
+          {ANDROID_MODE && fullscreenButton}
         </div>
+        {comparisonFullscreen && (
+          <button
+            className="android-fullscreen-exit"
+            aria-label="Exit fullscreen"
+            title="Exit fullscreen"
+            onClick={() => void toggleFullscreen()}
+            onDoubleClick={(event) => event.stopPropagation()}
+          >
+            <Shrink size={20} />
+          </button>
+        )}
       </div>
     </div>
   );

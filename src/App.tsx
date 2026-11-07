@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { emptyMetadata, type Config, type LocalImage, type Metadata } from '../shared/model';
 import { API_URL, fetchComparison, publicImageUrl } from './lib/api';
-import { DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/config';
+import { ANDROID_MODE, DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/config';
 import { formatBytes, loadImage } from './lib/images';
 import { Viewer } from './components/Viewer';
 import { GestureDiagnostics } from './components/GestureDiagnostics';
@@ -24,6 +24,16 @@ import { MetadataEditor } from './components/MetadataEditor';
 import { readDeletionKey, ShareDialog, type Published } from './components/ShareDialog';
 import { PublicationRecoveryDialog } from './components/PublicationRecoveryDialog';
 import { JOURNAL_CHANGED, pendingPublications } from './lib/publication-journal';
+
+import {
+  pickOriginals,
+  restoreAndroidSession,
+  saveAndroidSession,
+  discardOriginals,
+  ensureAndroidSystemBarsVisible,
+  type AndroidImageSource,
+} from './lib/android';
+import { App as NativeApp } from '@capacitor/app';
 
 const SOURCE = 'https://github.com/Kuba25x/upscale-compare';
 const initialConfig: Config = {
@@ -41,7 +51,10 @@ export default function App() {
     'upload' | 'metadata' | 'share' | 'help' | 'privacy' | 'recovery' | null
   >(null);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [androidImageSource, setAndroidImageSource] = useState<AndroidImageSource>('photos');
+  const [loading, setLoading] = useState(ANDROID_MODE);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [restored, setRestored] = useState(!ANDROID_MODE);
   const [dragging, setDragging] = useState(false);
   const [route, setRoute] = useState(location.hash);
   const [published, setPublished] = useState<Published>();
@@ -60,6 +73,89 @@ export default function App() {
       window.removeEventListener('storage', update);
     };
   }, []);
+  useEffect(() => {
+    if (!ANDROID_MODE) return;
+    const listener = NativeApp.addListener('appRestoredResult', (result) => {
+      if (result.pluginId !== 'Originals' || result.methodName !== 'pick') return;
+      if (result.success && Array.isArray(result.data?.images)) {
+        void discardOriginals(result.data.images).catch((reason) => setError(reason.message));
+      }
+      setError(
+        'Import was interrupted when Android restarted the app. Please choose the files again.',
+      );
+    });
+    return () => {
+      void listener.then((handle) => handle.remove());
+    };
+  }, []);
+  useEffect(() => {
+    if (!ANDROID_MODE) return;
+    let active = true;
+    restoreAndroidSession()
+      .then((session) => {
+        if (!active) return;
+        setRestored(true);
+        if (!session) return;
+        setImages(session.images);
+        setMetadata(session.metadata);
+        setConfig(session.config);
+      })
+      .catch((reason) => {
+        if (active) setError(`Could not restore the local session: ${reason.message}`);
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!ANDROID_MODE || !restored || loading) return;
+    const save = () =>
+      saveAndroidSession({ images, metadata, config })
+        .then((result) => {
+          if (result.warning) setError(result.warning);
+        })
+        .catch((reason) => setError(`Could not save the local session: ${reason.message}`));
+    const timer = window.setTimeout(() => void save(), 250);
+    const listener = NativeApp.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive) void save();
+    });
+    return () => {
+      clearTimeout(timer);
+      void listener.then((handle) => handle.remove());
+    };
+  }, [images, metadata, config, restored, loading]);
+  useEffect(() => {
+    if (ANDROID_MODE)
+      void ensureAndroidSystemBarsVisible().catch(() =>
+        setError('Could not restore Android system bars.'),
+      );
+  }, []);
+  const changeNativeFullscreen = useCallback((enabled: boolean) => {
+    setNativeFullscreen(enabled);
+  }, []);
+  useEffect(() => {
+    if (ANDROID_MODE && nativeFullscreen && images.length < 2) void changeNativeFullscreen(false);
+  }, [images.length, nativeFullscreen, changeNativeFullscreen]);
+  useEffect(() => {
+    if (!ANDROID_MODE) return;
+    // Intercept modal/fullscreen navigation; leave root predictive back to Android.
+    void NativeApp.toggleBackButtonHandler({
+      enabled: Boolean(modal) || loading || nativeFullscreen,
+    });
+    const listener = NativeApp.addListener('backButton', () => {
+      if (loading) return;
+      if (modal) setModal(null);
+      else if (nativeFullscreen) void changeNativeFullscreen(false);
+    });
+    return () => {
+      void listener.then((handle) => handle.remove());
+    };
+  }, [modal, loading, nativeFullscreen, changeNativeFullscreen]);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadAction = useRef<UploadAction>({ kind: 'all' });
   const currentImages = useRef(images);
@@ -127,13 +223,27 @@ export default function App() {
       active = false;
     };
   }, [route]);
-  const requestFiles = (action: UploadAction) => {
+  const requestFiles = (action: UploadAction, source: AndroidImageSource = androidImageSource) => {
+    if (ANDROID_MODE) {
+      setAndroidImageSource(source);
+      setLoading(true);
+      setError('');
+      void pickOriginals(
+        action.kind === 'one' ? 1 : action.kind === 'add' ? 4 - images.length : 4,
+        action.kind === 'all' || readOnly ? 2 : 1,
+        source,
+      )
+        .then((selected) => upload(selected, action, true))
+        .catch((reason) => setError(reason.message || 'Could not import the selected originals.'))
+        .finally(() => setLoading(false));
+      return;
+    }
     uploadAction.current = action;
     fileInput.current!.multiple = action.kind !== 'one';
     fileInput.current!.value = '';
     fileInput.current!.click();
   };
-  const upload = async (files: File[], action: UploadAction) => {
+  const upload = async (files: File[] | LocalImage[], action: UploadAction, native = false) => {
     if (!files.length) return;
     setError('');
     const replacingAll = action.kind === 'all' || readOnly;
@@ -143,13 +253,16 @@ export default function App() {
         ? images.length
         : images.length + files.length;
     if (total < 2 || total > 4 || (action.kind === 'one' && files.length !== 1)) {
+      if (native) await discardOriginals(files as LocalImage[]);
       setError(
         'Select two to four images for a comparison. You can replace one image at a time in Upload Images.',
       );
       return;
     }
     setLoading(true);
-    const results = await Promise.allSettled(files.map(loadImage));
+    const results = native
+      ? (files as LocalImage[]).map((value) => ({ status: 'fulfilled' as const, value }))
+      : await Promise.allSettled((files as File[]).map(loadImage));
     const loaded = results
       .filter(
         (result): result is PromiseFulfilledResult<LocalImage> => result.status === 'fulfilled',
@@ -161,6 +274,36 @@ export default function App() {
       setError(failed.reason.message);
       setLoading(false);
       return;
+    }
+    if (native) {
+      const nextImages = replacingAll
+        ? loaded
+        : action.kind === 'one'
+          ? images.map((image, i) => (i === action.index ? loaded[0] : image))
+          : [...images, ...loaded];
+      const nextConfig = replacingAll
+        ? {
+            ...initialConfig,
+            view: {
+              zoom: null,
+              center: {
+                x: Math.max(...loaded.slice(0, 2).map((image) => image.width)) / 2,
+                y: Math.max(...loaded.slice(0, 2).map((image) => image.height)) / 2,
+              },
+            },
+          }
+        : config;
+      try {
+        const result = await saveAndroidSession({
+          images: nextImages,
+          config: nextConfig,
+          metadata: replacingAll ? emptyMetadata() : metadata,
+        });
+        if (result.warning) setError(result.warning);
+      } catch (reason) {
+        await discardOriginals(loaded);
+        throw reason;
+      }
     }
     if (replacingAll) {
       images.forEach((image) => {
@@ -192,6 +335,7 @@ export default function App() {
       setImages((previous) => [...previous, ...loaded]);
       setPublished(undefined);
     }
+    if (native) setRestored(true);
     setModal(null);
     setLoading(false);
   };
@@ -230,9 +374,9 @@ export default function App() {
   };
   return (
     <div
-      className={`app ${ready ? 'has-images' : ''}`}
+      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ''}${ANDROID_MODE && nativeFullscreen ? ' android-comparison-fullscreen' : ''}`}
       onDragEnter={(event) => {
-        if (!event.dataTransfer.types.includes('Files')) return;
+        if (ANDROID_MODE || !event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
         dragDepth.current++;
         setDragging(true);
@@ -247,6 +391,7 @@ export default function App() {
       }}
       onDrop={(event) => {
         event.preventDefault();
+        if (ANDROID_MODE) return;
         dragDepth.current = 0;
         setDragging(false);
         if (!loading)
@@ -256,6 +401,7 @@ export default function App() {
       <input
         className="sr-only"
         type="file"
+        disabled={ANDROID_MODE}
         accept="image/png,image/jpeg,image/webp"
         multiple
         ref={fileInput}
@@ -323,6 +469,18 @@ export default function App() {
       {ready ? (
         <main className="comparison-layout">
           <Viewer
+            fullscreenOverride={ANDROID_MODE ? nativeFullscreen : undefined}
+            onToggleFullscreen={
+              ANDROID_MODE ? () => changeNativeFullscreen(!nativeFullscreen) : undefined
+            }
+            onImageError={
+              ANDROID_MODE
+                ? () =>
+                    setError(
+                      'The original could not be displayed. The file may be damaged or WebView may have run out of image memory. Original bytes have not been changed.',
+                    )
+                : undefined
+            }
             images={images}
             config={config}
             onChange={updateConfig}
@@ -407,7 +565,9 @@ export default function App() {
           )}
           {DEMO_MODE && (
             <p id="demo-sharing-note" className="demo-notice">
-              Demo · Public sharing is not available yet. Images stay in this browser.
+              {ANDROID_MODE
+                ? 'Offline · Public sharing is unavailable. Images stay on this device.'
+                : 'Demo · Public sharing is not available yet. Images stay in this browser.'}
             </p>
           )}
         </main>
@@ -416,26 +576,48 @@ export default function App() {
           <div className="upload-center">
             <button
               className="primary upload-hero"
-              onClick={() => requestFiles({ kind: 'all' })}
+              onClick={() => requestFiles({ kind: 'all' }, 'photos')}
               disabled={loading}
             >
               <Upload size={23} strokeWidth={1.6} />
               Upload Images
             </button>
-            <p>Drop 2–4 screenshots here to compare</p>
+            <p>
+              {ANDROID_MODE ? (
+                <>
+                  Choose 2–4 screenshots to compare
+                  <br />
+                  <button
+                    className="text-button"
+                    disabled={loading}
+                    onClick={() => requestFiles({ kind: 'all' }, 'files')}
+                  >
+                    Browse files instead
+                  </button>
+                </>
+              ) : (
+                'Drop 2–4 screenshots here to compare'
+              )}
+            </p>
             <span className="landing-hint">
               PNG recommended · Original quality ·{' '}
               {DEMO_MODE ? 'Images stay on this device' : 'Private until shared'}
             </span>
             {DEMO_MODE && (
               <p id="demo-sharing-note" className="demo-notice">
-                Demo · Public sharing is not available yet.
+                {ANDROID_MODE
+                  ? 'Offline · Public sharing is unavailable.'
+                  : 'Demo · Public sharing is not available yet.'}
               </p>
             )}
           </div>
           <footer className="landing-footer">
             <button className="text-button" onClick={() => setModal('privacy')}>
-              {DEMO_MODE ? 'Your images stay in this browser.' : 'Local first. Yours to share.'}
+              {ANDROID_MODE
+                ? 'Your images stay on this device.'
+                : DEMO_MODE
+                  ? 'Your images stay in this browser.'
+                  : 'Local first. Yours to share.'}
             </button>
             <a href={SOURCE} target="_blank" rel="noreferrer">
               <Github size={14} />
@@ -486,13 +668,31 @@ export default function App() {
           <p className="muted">
             {readOnly
               ? 'Choose two to four screenshots to start a new local comparison.'
-              : 'Add or replace screenshots. Files stay in your browser until you publish.'}
+              : ANDROID_MODE
+                ? 'Add or replace screenshots. Originals are stored privately on this device.'
+                : 'Add or replace screenshots. Files stay in your browser until you publish.'}
           </p>
+          {ANDROID_MODE && (
+            <label>
+              Image source
+              <select
+                aria-label="Image source"
+                value={androidImageSource}
+                disabled={loading}
+                onChange={(event) =>
+                  setAndroidImageSource(event.target.value as AndroidImageSource)
+                }
+              >
+                <option value="photos">Photos — system Photo Picker</option>
+                <option value="files">Files — document picker</option>
+              </select>
+            </label>
+          )}
           {!readOnly && (
             <div className="upload-list">
               {images.map((image, index) => (
                 <div className="upload-list-item" key={index}>
-                  <img src={image.url} alt="" />
+                  {!ANDROID_MODE && <img src={image.url} alt="" />}
                   <div>
                     <b>{image.label}</b>
                     <span className="muted">
@@ -507,7 +707,9 @@ export default function App() {
             </div>
           )}
           <p className="muted small">
-            PNG, JPEG, WebP · 20 MB per image · 40 MB total when sharing · 36 MP per image
+            {ANDROID_MODE
+              ? 'PNG, JPEG, WebP · Provisional 256 MiB per image · 36 MP · 1 GiB per session'
+              : 'PNG, JPEG, WebP · 20 MB per image · 40 MB total when sharing · 36 MP per image'}
           </p>
           {error && (
             <p className="error" role="alert">
@@ -515,6 +717,19 @@ export default function App() {
             </p>
           )}
           <div className="modal-actions">
+            {ANDROID_MODE && (
+              <button
+                disabled={loading}
+                onClick={() => {
+                  setImages([]);
+                  setMetadata(emptyMetadata());
+                  setConfig(initialConfig);
+                  setModal(null);
+                }}
+              >
+                Clear comparison
+              </button>
+            )}
             {!readOnly && images.length < 4 && (
               <button disabled={loading} onClick={() => requestFiles({ kind: 'add' })}>
                 <ImagePlus size={16} />
@@ -621,10 +836,16 @@ export default function App() {
           <div className="privacy-copy">
             <h3>Compare privately</h3>
             <p>
-              Local images are decoded in your browser. They are not sent to a server until you
-              explicitly publish. Closing or refreshing the page clears an unpublished comparison.
+              {ANDROID_MODE
+                ? 'Original images are copied without recompression into private device storage. The current comparison is restored after restarting. Clear comparison removes its stored originals. App data is excluded from Android backup.'
+                : 'Local images are decoded in your browser. They are not sent to a server until you explicitly publish. Closing or refreshing the page clears an unpublished comparison.'}
             </p>
-            {DEMO_MODE ? (
+            {ANDROID_MODE ? (
+              <p>
+                Sharing is disabled. No sharing service or verification widget is contacted. Files
+                available only in cloud storage cannot be imported offline.
+              </p>
+            ) : DEMO_MODE ? (
               <>
                 <h3>Frontend-only demo</h3>
                 <p>

@@ -1357,3 +1357,47 @@ input[type='checkbox'] {
   bottom: 68px;
   z-index: 20;
 }
+
+/* Android comparison-only layout stays inside the system-inset WebView. */
+.app.android-comparison-fullscreen {
+  min-height: 0;
+  overscroll-behavior: none;
+}
+.app.android-comparison-fullscreen > :not(.comparison-layout),
+.app.android-comparison-fullscreen .comparison-layout > :not(.viewer-content),
+.app.android-comparison-fullscreen .image-badge,
+.app.android-comparison-fullscreen .alignment-warning,
+.app.android-comparison-fullscreen .inspection-toolbar {
+  display: none;
+}
+.app.android-comparison-fullscreen > .comparison-layout {
+  padding: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.app.android-comparison-fullscreen .viewer-content {
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+}
+.app.android-comparison-fullscreen .android-fullscreen-exit {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  z-index: 3;
+  width: 48px;
+  min-height: 48px;
+  padding: 12px;
+  color: #eef6e5;
+  background: #15171bcc;
+  border: 1px solid #ffffff55;
+  border-radius: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+/* Leave room above the exit target for the divider handle in very short windows. */
+@media (max-height: 160px) {
+  .app.android-comparison-fullscreen .divider-handle {
+    top: min(50%, calc(100% - 88px));
+  }
+}

@@ -16,6 +16,7 @@ afterEach(() => {
   vi.resetModules();
 });
 describe.each([
+  { mode: 'android', flag: 'false', name: 'offline Android build ignores production flags' },
   { mode: 'demo', flag: 'false', name: 'demo build even if a flag is overridden' },
   { mode: 'production', flag: 'true', name: 'explicit demo flag' },
 ])('sharing guard: $name', ({ mode, flag }) => {

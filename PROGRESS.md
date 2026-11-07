@@ -229,3 +229,35 @@ Final review found no new blocker in input ownership, stable touch snapshots, co
 1. PR #9 is ready for owner review; see its Validation section for final local and hosted results. Keep Issue #8 open until the verified solution is merged.
 2. Merge and deployment are owner actions. Do not merge, deploy, activate cloud resources or create another issue/PR automatically.
 3. Preserve the analysis, opt-in development diagnostics, image quality, attribution, AGPL-3.0 and backend safeguards. Raw user logs remain outside the public repository.
+
+## Android offline preview — 2026-11-04
+
+Work on `feat/android-capacitor` starts from verified current main `1b133e0`.
+Capacitor 8.6.0 packages the shared viewer offline with sharing disabled, native
+SAF document import, bounded original-byte streaming/hash checks, private storage
+quotas and atomic session persistence. The standalone Android Actions workflow
+builds a signed debug APK without accessing Cloudflare or deployment controls.
+See [Android documentation](docs/ANDROID.md) for reproducible builds, test scope,
+storage behavior and the required Xiaomi 15T / Android 16 qualification matrix.
+No tile/region renderer was introduced. Physical-device memory, gestures and
+predictive-back qualification remain pending; the provisional 256 MiB ceiling
+is not a performance guarantee.
+
+## Android comparison-only fullscreen — 2026-11-07
+
+PR #20 remains open on `feat/android-capacitor`. Android fullscreen now expands
+the existing comparison viewport and hides app chrome, with a standalone exit
+button. System status/navigation bars stay visible. The normal Android toolbar
+places fullscreen last; the web keeps its existing button order and HTML behavior.
+Source geometry, native import/storage policies, sharing and deployment controls
+are untouched. See [Android fullscreen behavior and qualification](docs/ANDROID.md#android-comparison-only-fullscreen--2026-11-07).
+
+## Android system Photo Picker
+
+PR #20 now defaults to AndroidX PickMultipleVisualMedia/PickVisualMedia while
+retaining Capacitor's activity-result launcher and restoration path. Native min/max
+and content-URI validation runs before copying; interrupted restored results avoid
+unnecessary cloud downloads. Files remains a landing/dialog option and automatic
+SAF fallback. Original streaming/hash/format checks, sessions and storage limits
+are retained. Viewer, fullscreen, gestures, web file input, sharing and production
+controls are unchanged. See [Photo Picker and lifecycle documentation](docs/ANDROID.md#system-photo-picker-and-files-fallback).
