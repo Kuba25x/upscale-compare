@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.ParcelFileDescriptor;
+import android.view.Surface;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -108,6 +109,13 @@ public class DisplayIntegrationTest {
     scenario.onActivity(a -> a.setRequestedOrientation(orientation));
     eventually(
         () -> scenario.onActivity(a -> assertEquals(landscape, a.displayLayout.isLandscape())));
+    // This emulator has a portrait natural orientation; wait for the actual display rotation.
+    int rotation =
+        orientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+            ? Surface.ROTATION_270
+            : landscape ? Surface.ROTATION_90 : Surface.ROTATION_0;
+    eventually(
+        () -> scenario.onActivity(a -> assertEquals(rotation, a.getDisplay().getRotation())));
     eventually(
         () ->
             assertEquals(
@@ -208,14 +216,25 @@ public class DisplayIntegrationTest {
                         + " e=document.querySelector('.android-fullscreen-exit').getBoundingClientRect();"
                         + " return s.x===0 && s.y===0 && Math.abs(s.width-innerWidth)<1 &&"
                         + " e.right<=innerWidth && e.bottom<=s.bottom && e.width>=48; })()")));
-    scenario.onActivity(
-        a -> {
-          JSObject state = a.displayLayout.snapshot();
-          assertTrue(
-              "The emulator must enable a display cutout overlay",
-              state.optJSONArray("cutouts").length() > 0);
-          assertEquals(0, state.getInteger("layoutTop").intValue());
-        });
+    eventually(
+        () ->
+            scenario.onActivity(
+                a -> {
+                  JSObject state = a.displayLayout.snapshot();
+                  int[] origin = new int[2];
+                  a.getBridge().getWebView().getLocationOnScreen(origin);
+                  assertArrayEquals(new int[] {0, 0}, origin);
+                  assertEquals(
+                      a.getWindow().getDecorView().getWidth(),
+                      a.getBridge().getWebView().getWidth());
+                  assertEquals(
+                      a.getWindow().getDecorView().getHeight(),
+                      a.getBridge().getWebView().getHeight());
+                  assertTrue(
+                      "The emulator must enable a display cutout overlay",
+                      state.optJSONArray("cutouts").length() > 0);
+                  assertEquals(0, state.getInteger("layoutTop").intValue());
+                }));
     // Native cutout/gesture distances are compared with the real DOM control rectangle.
     AtomicReference<JSObject> snapshot = new AtomicReference<>();
     scenario.onActivity(a -> snapshot.set(a.displayLayout.snapshot()));
@@ -260,13 +279,27 @@ public class DisplayIntegrationTest {
       click(".android-fullscreen-exit");
       bars(false, false);
       eventually(
-          () ->
-              assertEquals(
-                  "true",
-                  js(
-                      "document.querySelector('.app-header').getBoundingClientRect().height < 80 &&"
-                          + " document.querySelector('.stage').getBoundingClientRect().height >"
-                          + " innerHeight * .7")));
+          () -> {
+            JSONObject geometry =
+                new JSONObject(
+                    js(
+                        "(() => { const"
+                            + " h=document.querySelector('.app-header').getBoundingClientRect(),"
+                            + " m=document.querySelector('.mode-controls').getBoundingClientRect(),"
+                            + " a=document.querySelector('.header-actions').getBoundingClientRect();"
+                            + " return {header:h.height,"
+                            + " safeTop:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--android-safe-top')),"
+                            + " stage:document.querySelector('.stage').getBoundingClientRect().height,"
+                            + " height:innerHeight, modeCenter:m.y+m.height/2,"
+                            + " actionsCenter:a.y+a.height/2}; })()"));
+            assertTrue(
+                "Expected one compact row plus measured safety: " + geometry,
+                Math.abs(geometry.getDouble("header") - 52 - geometry.getDouble("safeTop")) < 1
+                    && Math.abs(
+                            geometry.getDouble("modeCenter") - geometry.getDouble("actionsCenter"))
+                        < 2
+                    && geometry.getDouble("stage") > geometry.getDouble("height") * .7);
+          });
       click(".android-images-toggle");
       assertEquals(
           "true",

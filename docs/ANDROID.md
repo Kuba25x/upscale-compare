@@ -285,7 +285,7 @@ are used.
 
 Hidden bars support transient reveal by system edge swipe. Transient visibility does
 not add reserved image padding. The normal portrait layout is retained. In landscape,
-the normal header is a single 52 CSS-pixel row (plus any measured top cutout safety),
+the normal header is a single 52 CSS-pixel row (plus measured top cutout/mandatory-gesture safety),
 with identity, comparison mode, Images and import. On narrower windows the mode/import
 controls retain accessible names and use icons. Images opens the existing A/B selection,
 swap and label controls as a temporary panel. Inspection tools remain at the bottom
