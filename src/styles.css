@@ -1405,6 +1405,18 @@ input[type='checkbox'] {
   translate: calc((var(--android-safe-left, 0px) - var(--android-safe-right, 0px)) / 2)
     calc((var(--android-safe-top, 0px) - var(--android-safe-bottom, 0px)) / 2);
 }
+.android-app .toast {
+  left: calc(50% + (var(--android-safe-left, 0px) - var(--android-safe-right, 0px)) / 2);
+  max-width: min(
+    660px,
+    calc(100vw - var(--android-safe-left, 0px) - var(--android-safe-right, 0px) - 28px)
+  );
+}
+.android-app.android-landscape .landing-footer {
+  left: calc(16px + var(--android-safe-left, 0px));
+  right: calc(16px + var(--android-safe-right, 0px));
+  bottom: calc(15px + var(--android-overlay-bottom));
+}
 .android-app.android-landscape .app-header {
   display: flex;
   flex-direction: row;

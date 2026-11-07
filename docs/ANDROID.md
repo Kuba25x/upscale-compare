@@ -294,7 +294,8 @@ edge with a touch-friendly zoom selector. Rotation never activates minimalist mo
 The tiny `DisplayLayout` plugin exposes getState, setMode and layoutChange. All window
 mutations run on the activity UI thread. It reports physical-pixel bar, cutout and
 gesture measurements and actual cutout rectangles; React converts them using the
-WebView's devicePixelRatio. Only controls use cutout/gesture padding in landscape.
+WebView's devicePixelRatio. Insets are observed at the window decor root before child
+views can transform or consume them. Only controls use cutout/gesture padding in landscape.
 The divider line remains aligned to the comparison; its handle can shift away from
 an unsafe edge. Dragging that handle retains its initial grab offset, and viewport
 changes cancel its capture so stale coordinates cannot move the comparison.

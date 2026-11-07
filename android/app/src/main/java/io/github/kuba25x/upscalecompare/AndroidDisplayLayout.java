@@ -22,6 +22,7 @@ final class AndroidDisplayLayout {
   static final int BACKGROUND = Color.rgb(16, 17, 20);
   private final Activity activity;
   private final View view;
+  private final View windowView;
   private final Consumer<JSObject> changed;
   private final View.OnLayoutChangeListener layoutListener;
   private WindowInsetsCompat insets = WindowInsetsCompat.CONSUMED;
@@ -33,11 +34,13 @@ final class AndroidDisplayLayout {
       Activity activity, View view, boolean minimalist, Consumer<JSObject> changed) {
     this.activity = activity;
     this.view = view;
+    this.windowView = activity.getWindow().getDecorView();
     this.minimalist = minimalist;
     this.changed = changed;
     ViewCompat.setOnApplyWindowInsetsListener(
-        view,
+        windowView,
         (v, value) -> {
+          v.setPadding(0, 0, 0, 0);
           insets = value;
           publish();
           // The application uses measured CSS variables, not WebView's version-dependent safe-area
@@ -101,7 +104,7 @@ final class AndroidDisplayLayout {
     else controller.show(WindowInsetsCompat.Type.statusBars());
     if (isLandscape()) controller.hide(WindowInsetsCompat.Type.navigationBars());
     else controller.show(WindowInsetsCompat.Type.navigationBars());
-    ViewCompat.requestApplyInsets(view);
+    ViewCompat.requestApplyInsets(windowView);
     publish();
   }
 
@@ -152,7 +155,7 @@ final class AndroidDisplayLayout {
 
   void destroy() {
     destroyed = true;
-    ViewCompat.setOnApplyWindowInsetsListener(view, null);
+    ViewCompat.setOnApplyWindowInsetsListener(windowView, null);
     view.removeOnLayoutChangeListener(layoutListener);
   }
 }

@@ -42,7 +42,7 @@ public class AndroidDisplayLayoutTest {
                 new DisplayCutoutCompat(
                     new Rect(0, 100, 0, 0), List.of(new Rect(180, 0, 220, 100))))
             .build();
-    ViewCompat.dispatchApplyWindowInsets(view, insets);
+    ViewCompat.dispatchApplyWindowInsets(activity.getWindow().getDecorView(), insets);
     assertEquals(100, layout.snapshot().getInteger("layoutTop").intValue());
     assertEquals(60, layout.snapshot().getInteger("layoutBottom").intValue());
     layout.setMinimalist(true);
@@ -81,7 +81,7 @@ public class AndroidDisplayLayoutTest {
                       new Rect(left ? 96 : 0, 0, left ? 0 : 96, 0),
                       List.of(new Rect(left ? 0 : 900, 180, left ? 96 : 996, 220))))
               .build();
-      ViewCompat.dispatchApplyWindowInsets(view, insets);
+      ViewCompat.dispatchApplyWindowInsets(activity.getWindow().getDecorView(), insets);
       for (boolean minimalist : new boolean[] {false, true}) {
         layout.setMinimalist(minimalist);
         JSObject state = layout.snapshot();
@@ -97,7 +97,7 @@ public class AndroidDisplayLayoutTest {
     }
     // Keyboard space remains usable for the expanded label editor even in landscape.
     ViewCompat.dispatchApplyWindowInsets(
-        view,
+        activity.getWindow().getDecorView(),
         new WindowInsetsCompat.Builder()
             .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, 300))
             .build());
