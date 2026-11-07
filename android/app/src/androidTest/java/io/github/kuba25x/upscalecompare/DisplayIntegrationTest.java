@@ -128,22 +128,30 @@ public class DisplayIntegrationTest {
   }
 
   private void screenshot(String name) throws Exception {
-    Bitmap screen = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-    assertNotNull(screen);
+    if (name.equals("portrait-normal")) {
+      // WindowInsets delivery precedes compositor presentation; sample a settled frame.
+      eventually(
+          () -> {
+            Bitmap frame =
+                InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+            assertNotNull(frame);
+            try {
+              for (int y : new int[] {2, frame.getHeight() - 3}) {
+                int pixel = frame.getPixel(frame.getWidth() / 4, y);
+                assertTrue(
+                    "System bar background is disconnected from the app",
+                    Math.abs(Color.red(pixel) - 16) <= 2
+                        && Math.abs(Color.green(pixel) - 17) <= 2
+                        && Math.abs(Color.blue(pixel) - 20) <= 2);
+              }
+            } finally {
+              frame.recycle();
+            }
+          });
+    }
     // UTP uninstalls the isolated app after the suite; keep CI evidence outside app data.
     shell("mkdir -p /data/local/tmp/upscale-compare-system-ui");
     shell("screencap -p /data/local/tmp/upscale-compare-system-ui/" + name + ".png");
-    if (name.equals("portrait-normal")) {
-      for (int y : new int[] {2, screen.getHeight() - 3}) {
-        int pixel = screen.getPixel(screen.getWidth() / 4, y);
-        assertTrue(
-            "System bar background is disconnected from the app",
-            Math.abs(Color.red(pixel) - 16) <= 2
-                && Math.abs(Color.green(pixel) - 17) <= 2
-                && Math.abs(Color.blue(pixel) - 20) <= 2);
-      }
-    }
-    screen.recycle();
   }
 
   private void seedIsolatedSession() throws Exception {

@@ -45,6 +45,7 @@ export function Viewer({
   const comparisonFullscreen = ANDROID_MODE && fullscreenOverride === true;
   const wasComparisonFullscreen = useRef(false);
   const stage = useRef<HTMLDivElement>(null);
+  const androidDividerDrag = useRef<{ pointer: number; offset: number } | null>(null);
   const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
   const [fullscreen, setFullscreen] = useState(false);
@@ -74,6 +75,14 @@ export function Viewer({
   }, []);
   const cancelPanning = useCallback(() => {
     const element = stage.current;
+    const divider = element?.querySelector<HTMLElement>('[role="slider"]');
+    if (
+      ANDROID_MODE &&
+      androidDividerDrag.current &&
+      divider?.hasPointerCapture(androidDividerDrag.current.pointer)
+    )
+      divider.releasePointerCapture(androidDividerDrag.current.pointer);
+    androidDividerDrag.current = null;
     for (const pointerId of pointers.current.keys()) {
       if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
     }
@@ -758,7 +767,16 @@ export function Viewer({
                 // Keep pointer gestures in the viewer; Tab gives the slider keyboard focus.
                 stage.current?.focus({ preventScroll: true });
                 event.currentTarget.setPointerCapture(event.pointerId);
-                setDivider(event.clientX);
+                if (ANDROID_MODE) {
+                  const rect = stage.current!.getBoundingClientRect();
+                  androidDividerDrag.current = {
+                    pointer: event.pointerId,
+                    offset: (event.target as HTMLElement).closest('.divider-handle')
+                      ? event.clientX - rect.left - config.divider * rect.width
+                      : 0,
+                  };
+                }
+                setDivider(event.clientX - (androidDividerDrag.current?.offset ?? 0));
               }}
               onPointerMove={(event) => {
                 if (event.pointerType === 'touch' && touchContacts.current.size > 0) return;
@@ -768,7 +786,10 @@ export function Viewer({
                   return;
                 }
                 if (event.currentTarget.hasPointerCapture(event.pointerId))
-                  setDivider(event.clientX);
+                  setDivider(event.clientX - (androidDividerDrag.current?.offset ?? 0));
+              }}
+              onLostPointerCapture={() => {
+                androidDividerDrag.current = null;
               }}
               onKeyDown={(event) => {
                 if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {

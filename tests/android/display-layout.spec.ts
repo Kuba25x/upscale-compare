@@ -99,6 +99,18 @@ test('all four display modes use inset-aware controls and an edge-to-edge image 
   expect(toolbar.height).toBeLessThanOrEqual(50);
   expect(stage.y + stage.height - toolbar.y - toolbar.height).toBe(26);
   await expect(page.locator('.image-selection-bar')).toBeHidden();
+  await page.getByRole('slider').focus();
+  await page.keyboard.press('Home');
+  const safeHandle = await box(page, '.divider-handle');
+  await page.mouse.move(safeHandle.x + safeHandle.width / 2, safeHandle.y + safeHandle.height / 2);
+  await page.mouse.down();
+  await expect.poll(async () => (await config(page)).divider).toBe(0);
+  await page.mouse.move(
+    safeHandle.x + safeHandle.width / 2 + 30,
+    safeHandle.y + safeHandle.height / 2,
+  );
+  await page.mouse.up();
+  await expect.poll(async () => (await config(page)).divider).toBeCloseTo(30 / 900, 4);
   await page.screenshot({ path: 'test-results/android/compact-landscape-right-cutout.png' });
   await page.setViewportSize({ width: 500, height: 240 });
   await insets(page, { cutoutLeft: 46, gestureRight: 12, gestureBottom: 12 });

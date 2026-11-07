@@ -296,7 +296,9 @@ mutations run on the activity UI thread. It reports physical-pixel bar, cutout a
 gesture measurements and actual cutout rectangles; React converts them using the
 WebView's devicePixelRatio. Only controls use cutout/gesture padding in landscape.
 The divider line remains aligned to the comparison; its handle can shift away from
-an unsafe edge. The minimalist exit button stays above gesture/navigation space.
+an unsafe edge. Dragging that handle retains its initial grab offset, and viewport
+changes cancel its capture so stale coordinates cannot move the comparison.
+The minimalist exit button stays above gesture/navigation space.
 Dialogs respect asymmetric insets and the keyboard. Image layers remain mounted;
 the existing ResizeObserver/geometry adapts Fit without rewriting zoom or source center.
 
@@ -315,6 +317,9 @@ Photo Picker cancellation/return, background/resume, Back and Activity recreatio
 Screenshots and connected test reports are uploaded separately. Browser tests cover
 layout/state/zoom, touch gestures and retained image elements; they are not evidence
 of native window-manager behavior.
+Transient reveal is checked against native WindowManager policy: Android deliberately
+keeps transient visibility out of app insets so overlay bars do not resize content.
+Background pixel checks wait for compositor presentation after insets delivery.
 
 The test build is isolated as `io.github.kuba25x.upscalecompare.systemuitest`; it seeds
 only its own synthetic comparison. It cannot overwrite an installed user's normal
