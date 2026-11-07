@@ -6,6 +6,8 @@ const native = vi.hoisted(() => ({
   discard: vi.fn(),
   save: vi.fn(),
   restore: vi.fn(),
+  show: vi.fn(),
+  hide: vi.fn(),
 }));
 vi.mock('@capacitor/core', () => ({
   Capacitor: { convertFileSrc: (path: string) => `local:${path}` },
@@ -74,4 +76,13 @@ it('strips transient URLs from the persisted session and preserves cleanup warni
   expect(saved.file).toBeUndefined();
   expect(saved.sha256).toBe(original.sha256);
   expect(saved.size).toBe(original.size);
+});
+
+it('keeps Android system bars visible without a hide API in fullscreen transitions', async () => {
+  const { ensureAndroidSystemBarsVisible } = await import('../../src/lib/android');
+  await ensureAndroidSystemBarsVisible();
+  expect(native.show).toHaveBeenCalledOnce();
+  expect(native.hide).not.toHaveBeenCalled();
+  const { default: config } = await import('../../capacitor.config');
+  expect(config.plugins?.SystemBars).toMatchObject({ hidden: false, insetsHandling: 'native' });
 });

@@ -54,10 +54,11 @@ thumbnail. Provider metadata and declared file size are not trusted as quotas.
 - **Clear comparison** in the existing upload dialog commits an empty session and
   removes the unreferenced private originals. Cleanup failures are reported; any
   leftovers still count against the storage quota and are retried on startup/save.
-- Back closes an open dialog (busy import prevents dismissal), then leaves native
+- Back closes an open dialog (busy import prevents dismissal), then leaves comparison-only
   fullscreen. Root back remains under Android's predictive-back navigation. The
-  existing fullscreen control uses Capacitor SystemBars on Android; the web keeps
-  its HTML fullscreen implementation. SystemBars also handles insets.
+  existing fullscreen control changes only the Android app layout. The status and
+  navigation bars stay visible, with SystemBars providing native insets and an
+  explicit visible startup state. The web keeps its HTML fullscreen implementation.
 
 No `largeHeap` override is used. WebView owns decode and texture caches; removing
 an image element cannot force immediate cache eviction. A pair of 8K RGBA8 images
@@ -178,3 +179,27 @@ Consult the PR checks/artifact for the exact final CI commit and outcome.
 
 No physical Xiaomi measurements or native picker/lifecycle test results are
 claimed. These remain the release-qualification gate described above.
+
+## Android comparison-only fullscreen — 2026-11-07
+
+The Android toolbar keeps its existing fullscreen icon as the last button. It
+activates an app-scoped layout class, never HTML fullscreen or SystemBars.hide().
+Only the existing image layers, Split Screen divider/handle and a standalone
+48-by-48 CSS-pixel exit target remain visible. The exit button has a translucent
+dark background and a 12-pixel minimum inset from the viewport edges, respecting
+safe-area insets. It is absent from the normal interface. Taps never reveal UI.
+
+The same Viewer and image elements stay mounted. Entering/exiting does not change
+selected sources, mode, divider, zoom or source center. Android layout transitions
+are measured before painting; ResizeObserver adapts Fit and display density, and
+cancels stale touch contacts when the viewport changes. Source bytes, dimensions
+and the physical-pixel zoom model are unchanged. A system Back action exits this
+layout before root navigation; ordinary modal Back behavior remains available.
+
+Fullscreen browser tests cover both comparison modes, mixed dimensions, exact
+state preservation, pan/pinch, divider movement, portrait/landscape and short
+viewports, button placement/visibility, unchanged image nodes/URLs/load counts,
+visible-system-bar adapter calls and Back/modal routing. Native bridge calls are
+mocked. Desktop/mobile web tests cover the unchanged HTML fullscreen behavior.
+Real Android 16 insets, system-bar visibility and physical touch behavior still
+require verification on Xiaomi 15T; no hardware results are claimed here.

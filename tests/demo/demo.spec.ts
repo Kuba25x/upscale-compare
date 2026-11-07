@@ -146,7 +146,7 @@ test('refuses shared links and refresh without making API requests', async ({ pa
   await expect(page.getByTestId('stage')).toBeVisible();
 });
 
-test('keeps privacy information, keyboard shortcuts, and fullscreen available', async ({
+test('keeps privacy information, pixel controls, keyboard shortcuts, and fullscreen available', async ({
   page,
 }) => {
   await openDemo(page);
@@ -167,6 +167,14 @@ test('keeps privacy information, keyboard shortcuts, and fullscreen available', 
   );
   await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+  await expect(page.locator('.app-header')).toBeVisible();
+  await expect(page.locator('.image-selection-bar')).toBeVisible();
+  await expect(page.locator('.inspection-toolbar')).toBeVisible();
+  await expect(page.locator('.image-badge').first()).toBeVisible();
+  await expect(page.locator('.android-fullscreen-exit')).toHaveCount(0);
+  await expect(page.locator('.inspection-toolbar > button').last()).toHaveAccessibleName(
+    'Keyboard shortcuts',
+  );
   await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click();
 });
 

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { installAndroidBridge } from './bridge';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 
@@ -19,68 +20,10 @@ for (const [width, height] of [
         return route.fulfill({ contentType: 'image/png', body: image.buffer });
       return route.continue();
     });
-    await page.addInitScript(
-      ({ width, height, size }) => {
-        const win = window as any;
-        const originals = [1, 2].map((n) => ({
-          id: `00000000-0000-4000-8000-00000000000${n}`,
-          name: `Original ${n}.png`,
-          type: 'image/png',
-          width,
-          height,
-          size,
-          sha256: 'a'.repeat(64),
-        }));
-        const paths = Object.fromEntries(
-          originals.map((i, n) => [i.id, `${location.origin}/original-${n}.png`]),
-        );
-        win.androidBridge = {};
-        win.Capacitor = {
-          PluginHeaders: [
-            {
-              name: 'SystemBars',
-              methods: ['hide', 'show'].map((name) => ({ name, rtype: 'promise' })),
-            },
-            {
-              name: 'Originals',
-              methods: ['pick', 'restore', 'paths', 'save', 'discard'].map((name) => ({
-                name,
-                rtype: 'promise',
-              })),
-            },
-            {
-              name: 'App',
-              methods: ['toggleBackButtonHandler', 'addListener', 'removeListener'].map((name) => ({
-                name,
-                rtype: name === 'addListener' ? 'callback' : 'promise',
-              })),
-            },
-          ],
-          convertFileSrc: (path: string) => path,
-          nativeCallback: (_plugin: string, method: string, args: any, callback: any) => {
-            if (method === 'addListener') win[`listener-${args.eventName}`] = callback;
-            return args.eventName;
-          },
-          nativePromise: async (plugin: string, method: string, args: any) => {
-            if (plugin === 'SystemBars') {
-              win.barsHidden = method === 'hide';
-              return {};
-            }
-            if (plugin === 'App') return {};
-            if (method === 'restore')
-              return { session: JSON.parse(localStorage.getItem('test-session') || 'null'), paths };
-            if (method === 'pick') return { images: win.cancelPick ? [] : originals };
-            if (method === 'paths') return { paths };
-            if (method === 'save') {
-              localStorage.setItem('test-session', JSON.stringify(args.session));
-              return {};
-            }
-            return {};
-          },
-        };
-      },
-      { width, height, size: image.buffer.length },
-    );
+    await installAndroidBridge(page, [
+      { name: 'Original.png', type: 'image/png', width, height, size: image.buffer.length },
+      { name: 'Original B.png', type: 'image/png', width, height, size: image.buffer.length },
+    ]);
     await page.goto('/');
     await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
     await expect(page.getByTestId('stage')).toBeVisible();
@@ -159,7 +102,8 @@ for (const [width, height] of [
     );
     await page.getByRole('button', { name: 'Enter fullscreen' }).click();
     await expect(page.getByRole('button', { name: 'Exit fullscreen' })).toBeVisible();
-    expect(await page.evaluate(() => (window as any).barsHidden)).toBe(true);
+    expect(await page.evaluate(() => (window as any).barsHidden)).toBe(false);
+    expect(await page.evaluate(() => (window as any).systemBarCalls)).not.toContain('hide');
     await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
     await expect(page.getByRole('button', { name: 'Enter fullscreen' })).toBeVisible();
     expect(await page.evaluate(() => (window as any).barsHidden)).toBe(false);

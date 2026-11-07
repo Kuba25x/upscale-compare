@@ -30,7 +30,7 @@ import {
   restoreAndroidSession,
   saveAndroidSession,
   discardOriginals,
-  setAndroidFullscreen,
+  ensureAndroidSystemBarsVisible,
 } from './lib/android';
 import { App as NativeApp } from '@capacitor/app';
 
@@ -127,13 +127,14 @@ export default function App() {
       void listener.then((handle) => handle.remove());
     };
   }, [images, metadata, config, restored, loading]);
-  const changeNativeFullscreen = useCallback(async (enabled: boolean) => {
-    try {
-      await setAndroidFullscreen(enabled);
-      setNativeFullscreen(enabled);
-    } catch {
-      setError('Could not change fullscreen mode.');
-    }
+  useEffect(() => {
+    if (ANDROID_MODE)
+      void ensureAndroidSystemBarsVisible().catch(() =>
+        setError('Could not restore Android system bars.'),
+      );
+  }, []);
+  const changeNativeFullscreen = useCallback((enabled: boolean) => {
+    setNativeFullscreen(enabled);
   }, []);
   useEffect(() => {
     if (ANDROID_MODE && nativeFullscreen && images.length < 2) void changeNativeFullscreen(false);
@@ -366,7 +367,7 @@ export default function App() {
   };
   return (
     <div
-      className={`app ${ready ? 'has-images' : ''}`}
+      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ''}${ANDROID_MODE && nativeFullscreen ? ' android-comparison-fullscreen' : ''}`}
       onDragEnter={(event) => {
         if (ANDROID_MODE || !event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();

@@ -96,8 +96,7 @@ export async function discardOriginals(images: LocalImage[]) {
   await Originals.discard({ ids: images.map((i) => (i as AndroidImage).id) });
 }
 
-const SystemBars = registerPlugin<{ hide(): Promise<void>; show(): Promise<void> }>('SystemBars');
-export async function setAndroidFullscreen(enabled: boolean) {
-  if (enabled) await SystemBars.hide();
-  else await SystemBars.show();
+const SystemBars = registerPlugin<{ show(): Promise<void> }>('SystemBars');
+export async function ensureAndroidSystemBarsVisible() {
+  await SystemBars.show();
 }
