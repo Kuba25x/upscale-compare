@@ -78,13 +78,13 @@ it('strips transient URLs from the persisted session and preserves cleanup warni
   expect(saved.size).toBe(original.size);
 });
 
-it('keeps Android system bars visible without a hide API in fullscreen transitions', async () => {
-  const { ensureAndroidSystemBarsVisible } = await import('../../src/lib/android');
-  await ensureAndroidSystemBarsVisible();
-  expect(native.show).toHaveBeenCalledOnce();
-  expect(native.hide).not.toHaveBeenCalled();
+it('delegates Android insets and dark system icons to the native DisplayLayout integration', async () => {
   const { default: config } = await import('../../capacitor.config');
-  expect(config.plugins?.SystemBars).toMatchObject({ hidden: false, insetsHandling: 'native' });
+  expect(config.plugins?.SystemBars).toMatchObject({
+    hidden: false,
+    insetsHandling: 'disable',
+    style: 'DARK',
+  });
 });
 
 it('sends Photo Picker bounds and explicit Files selection without changing source bytes', async () => {

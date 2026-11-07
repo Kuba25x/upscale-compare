@@ -110,7 +110,10 @@ async function assertFullscreen(page: Page, mode: string) {
       document.documentElement.scrollHeight,
     ]),
   ).toEqual([page.viewportSize()!.width, page.viewportSize()!.height]);
-  expect(await page.evaluate(() => (window as any).barsHidden)).toBe(false);
+  expect(await page.evaluate(() => (window as any).displayState.statusVisible)).toBe(false);
+  expect(await page.evaluate(() => (window as any).displayState.navigationVisible)).toBe(
+    page.viewportSize()!.width <= page.viewportSize()!.height,
+  );
   expect(await page.evaluate(() => (window as any).systemBarCalls)).not.toContain('hide');
   expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
   if (mode === 'Split Screen') {

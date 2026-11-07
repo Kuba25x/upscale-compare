@@ -4,6 +4,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
 import { snapshotContacts, sameContacts, samePositions } from '../lib/contact-snapshot';
@@ -733,7 +734,16 @@ export function Viewer({
               aria-valuemax={100}
               aria-valuenow={Math.round(config.divider * 100)}
               tabIndex={0}
-              style={{ left: `clamp(18px, ${config.divider * 100}%, calc(100% - 18px))` }}
+              style={
+                {
+                  left: `clamp(18px, ${config.divider * 100}%, calc(100% - 18px))`,
+                  ...(ANDROID_MODE
+                    ? {
+                        '--android-divider-position': `clamp(18px, ${config.divider * 100}cqw, calc(100cqw - 18px))`,
+                      }
+                    : {}),
+                } as CSSProperties
+              }
               onPointerDown={(event) => {
                 if (event.pointerType === 'touch' && touchContacts.current.size > 0) {
                   event.preventDefault();
@@ -825,7 +835,7 @@ export function Viewer({
           {[1, 2, 4].map((zoom) => (
             <button
               key={zoom}
-              className={config.view.zoom === zoom ? 'selected' : ''}
+              className={`zoom-preset${config.view.zoom === zoom ? ' selected' : ''}`}
               onClick={() => setZoom(zoom)}
               title={
                 zoom === 1
@@ -836,6 +846,28 @@ export function Viewer({
               {zoom * 100}%
             </button>
           ))}
+          {ANDROID_MODE && (
+            <select
+              className="android-zoom-select"
+              aria-label="Zoom preset"
+              onPointerDown={(event) => event.stopPropagation()}
+              onTouchStart={(event) => event.stopPropagation()}
+              value={
+                config.view.zoom !== null && [1, 2, 4].includes(config.view.zoom)
+                  ? config.view.zoom
+                  : ''
+              }
+              onChange={(event) => setZoom(Number(event.target.value))}
+              onDoubleClick={(event) => event.stopPropagation()}
+            >
+              <option value="" disabled>
+                {config.view.zoom === null ? 'Fit' : `${Math.round(config.view.zoom * 100)}%`}
+              </option>
+              <option value="1">100%</option>
+              <option value="2">200%</option>
+              <option value="4">400%</option>
+            </select>
+          )}
           <span className="toolbar-separator" />
           <button
             className="icon-button"

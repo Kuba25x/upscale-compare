@@ -30,10 +30,10 @@ import {
   restoreAndroidSession,
   saveAndroidSession,
   discardOriginals,
-  ensureAndroidSystemBarsVisible,
   type AndroidImageSource,
 } from './lib/android';
 import { App as NativeApp } from '@capacitor/app';
+import { useAndroidDisplay } from './lib/android-display';
 
 const SOURCE = 'https://github.com/Kuba25x/upscale-compare';
 const initialConfig: Config = {
@@ -53,7 +53,10 @@ export default function App() {
   const [error, setError] = useState('');
   const [androidImageSource, setAndroidImageSource] = useState<AndroidImageSource>('photos');
   const [loading, setLoading] = useState(ANDROID_MODE);
-  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const { display, setMinimalist: changeNativeFullscreen } = useAndroidDisplay(setError);
+  const nativeFullscreen = display?.minimalist ?? false;
+  const androidLandscape = ANDROID_MODE && display?.landscape === true;
+  const [imagePanelOpen, setImagePanelOpen] = useState(false);
   const [restored, setRestored] = useState(!ANDROID_MODE);
   const [dragging, setDragging] = useState(false);
   const [route, setRoute] = useState(location.hash);
@@ -130,32 +133,26 @@ export default function App() {
     };
   }, [images, metadata, config, restored, loading]);
   useEffect(() => {
-    if (ANDROID_MODE)
-      void ensureAndroidSystemBarsVisible().catch(() =>
-        setError('Could not restore Android system bars.'),
-      );
-  }, []);
-  const changeNativeFullscreen = useCallback((enabled: boolean) => {
-    setNativeFullscreen(enabled);
-  }, []);
-  useEffect(() => {
-    if (ANDROID_MODE && nativeFullscreen && images.length < 2) void changeNativeFullscreen(false);
-  }, [images.length, nativeFullscreen, changeNativeFullscreen]);
+    if (ANDROID_MODE && restored && !loading && nativeFullscreen && images.length < 2)
+      void changeNativeFullscreen(false);
+  }, [images.length, restored, loading, nativeFullscreen, changeNativeFullscreen]);
   useEffect(() => {
     if (!ANDROID_MODE) return;
     // Intercept modal/fullscreen navigation; leave root predictive back to Android.
     void NativeApp.toggleBackButtonHandler({
-      enabled: Boolean(modal) || loading || nativeFullscreen,
+      enabled:
+        Boolean(modal) || loading || nativeFullscreen || (androidLandscape && imagePanelOpen),
     });
     const listener = NativeApp.addListener('backButton', () => {
       if (loading) return;
       if (modal) setModal(null);
       else if (nativeFullscreen) void changeNativeFullscreen(false);
+      else if (androidLandscape && imagePanelOpen) setImagePanelOpen(false);
     });
     return () => {
       void listener.then((handle) => handle.remove());
     };
-  }, [modal, loading, nativeFullscreen, changeNativeFullscreen]);
+  }, [modal, loading, nativeFullscreen, changeNativeFullscreen, androidLandscape, imagePanelOpen]);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadAction = useRef<UploadAction>({ kind: 'all' });
   const currentImages = useRef(images);
@@ -374,7 +371,7 @@ export default function App() {
   };
   return (
     <div
-      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ''}${ANDROID_MODE && nativeFullscreen ? ' android-comparison-fullscreen' : ''}`}
+      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ''}${ANDROID_MODE && display && display.width > 0 ? ' android-layout-ready' : ''}${androidLandscape ? ' android-landscape' : ''}${ANDROID_MODE && nativeFullscreen ? ' android-comparison-fullscreen' : ''}`}
       onDragEnter={(event) => {
         if (ANDROID_MODE || !event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
@@ -417,20 +414,22 @@ export default function App() {
             <span className="eyebrow">MODE</span>
             <div className="segmented">
               <button
+                aria-label="Split Screen"
                 aria-pressed={config.mode === 'split'}
                 className={config.mode === 'split' ? 'active' : ''}
                 onClick={() => setConfig((previous) => ({ ...previous, mode: 'split' }))}
               >
                 <SplitSquareHorizontal size={16} />
-                Split Screen
+                <span>Split Screen</span>
               </button>
               <button
+                aria-label="Side-by-Side"
                 aria-pressed={config.mode === 'side'}
                 className={config.mode === 'side' ? 'active' : ''}
                 onClick={() => setConfig((previous) => ({ ...previous, mode: 'side' }))}
               >
                 <Columns2 size={16} />
-                Side-by-Side
+                <span>Side-by-Side</span>
               </button>
             </div>
           </div>
@@ -439,10 +438,22 @@ export default function App() {
           <span className="brand-mark" aria-hidden="true">
             <span />
           </span>
-          Upscale Compare
+          <span className="brand-name">Upscale Compare</span>
         </h1>
         {ready && (
           <div className="header-actions">
+            {ANDROID_MODE && (
+              <button
+                className="android-images-toggle"
+                aria-label="Image controls"
+                aria-expanded={androidLandscape && imagePanelOpen}
+                aria-controls="android-image-controls"
+                onClick={() => setImagePanelOpen((open) => !open)}
+              >
+                <ChevronDown size={17} />
+                <span>Images</span>
+              </button>
+            )}
             <button
               className="share-button"
               onClick={() => setModal('share')}
@@ -459,7 +470,12 @@ export default function App() {
               <Share2 size={16} />
               <span>Share Comparison</span>
             </button>
-            <button className="primary" onClick={() => setModal('upload')} disabled={loading}>
+            <button
+              className="primary"
+              aria-label="Upload Images"
+              onClick={() => setModal('upload')}
+              disabled={loading}
+            >
               <ImagePlus size={17} />
               <span>Upload Images</span>
             </button>
@@ -487,7 +503,10 @@ export default function App() {
             onMetadata={details}
             onHelp={help}
           />
-          <div className="image-selection-bar">
+          <div
+            id={ANDROID_MODE ? 'android-image-controls' : undefined}
+            className={`image-selection-bar${ANDROID_MODE && imagePanelOpen ? ' android-image-panel-open' : ''}`}
+          >
             {([0, 1] as const).map((slot) => {
               const index = config.selected[slot],
                 image = images[index];

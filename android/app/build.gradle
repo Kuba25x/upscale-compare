@@ -18,10 +18,17 @@ android {
         }
     }
     testOptions { unitTests.includeAndroidResources = true }
+    // Instrumentation uses isolated app data and cannot overwrite a user's comparison.
+    testBuildType 'systemUi'
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        systemUi {
+            initWith debug
+            applicationIdSuffix '.systemuitest'
+            matchingFallbacks = ['debug']
         }
     }
 }

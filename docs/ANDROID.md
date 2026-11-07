@@ -57,10 +57,9 @@ thumbnail. Provider metadata and declared file size are not trusted as quotas.
   removes the unreferenced private originals. Cleanup failures are reported; any
   leftovers still count against the storage quota and are retried on startup/save.
 - Back closes an open dialog (busy import prevents dismissal), then leaves comparison-only
-  fullscreen. Root back remains under Android's predictive-back navigation. The
-  existing fullscreen control changes only the Android app layout. The status and
-  navigation bars stay visible, with SystemBars providing native insets and an
-  explicit visible startup state. The web keeps its HTML fullscreen implementation.
+  fullscreen or closes the expanded landscape image panel. Root back remains under
+  Android's predictive-back navigation. AndroidDisplayLayout owns native bar visibility,
+  cutout and gesture insets; the web keeps its HTML fullscreen implementation.
 
 No `largeHeap` override is used. WebView owns decode and texture caches; removing
 an image element cannot force immediate cache eviction. A pair of 8K RGBA8 images
@@ -185,7 +184,8 @@ claimed. These remain the release-qualification gate described above.
 ## Android comparison-only fullscreen — 2026-11-07
 
 The Android toolbar keeps its existing fullscreen icon as the last button. It
-activates an app-scoped layout class, never HTML fullscreen or SystemBars.hide().
+activates an app-scoped layout class, never HTML fullscreen. The native display
+controller applies the orientation/mode policy described below.
 Only the existing image layers, Split Screen divider/handle and a standalone
 48-by-48 CSS-pixel exit target remain visible. The exit button has a translucent
 dark background and a 12-pixel minimum inset from the viewport edges, respecting
@@ -201,7 +201,7 @@ layout before root navigation; ordinary modal Back behavior remains available.
 Fullscreen browser tests cover both comparison modes, mixed dimensions, exact
 state preservation, pan/pinch, divider movement, portrait/landscape and short
 viewports, button placement/visibility, unchanged image nodes/URLs/load counts,
-visible-system-bar adapter calls and Back/modal routing. Native bridge calls are
+display-policy adapter calls and Back/modal routing. Native bridge calls are
 mocked. Desktop/mobile web tests cover the unchanged HTML fullscreen behavior.
 Real Android 16 insets, system-bar visibility and physical touch behavior still
 require verification on Xiaomi 15T; no hardware results are claimed here.
@@ -264,3 +264,75 @@ Implementation checks: 22 JVM/Robolectric tests, 309 frontend/backend unit and
 integration tests, 9 Android browser tests, 32 demo tests and 45 E2E tests passed
 locally. Android lint, debug APK assembly, type checking and formatting passed.
 The CI build/artifact for the exact PR head is linked in PR #20.
+
+## Edge-to-edge display and compact landscape interface
+
+`feat/android-edge-to-edge` starts from merged PR #20 at main `dddd663`.
+`AndroidDisplayLayout` owns the window with AndroidX `WindowCompat`,
+`WindowInsetsControllerCompat` and measured `WindowInsetsCompat`. Capacitor's built-in
+SystemBars inset handling is disabled to avoid competing decor padding; its initial
+style is DARK (light icons). The window and app background are #101114, system bars
+are transparent, and contrast scrims are disabled. The Android build alone adds
+`viewport-fit=cover`. No device model, fixed notch offset or legacy system-UI flags
+are used.
+
+| Orientation                 | App mode   | Status bar | Navigation bar | Image surface                                                |
+| --------------------------- | ---------- | ---------- | -------------- | ------------------------------------------------------------ |
+| Portrait                    | Normal     | Visible    | Visible        | Below status/camera safe area and above navigation           |
+| Portrait                    | Minimalist | Hidden     | Visible        | Physical top edge, including camera cutout; above navigation |
+| Landscape, either direction | Normal     | Hidden     | Hidden         | Full width including camera cutout; below compact header     |
+| Landscape, either direction | Minimalist | Hidden     | Hidden         | Full window including camera cutout                          |
+
+Hidden bars support transient reveal by system edge swipe. Transient visibility does
+not add reserved image padding. The normal portrait layout is retained. In landscape,
+the normal header is a single 52 CSS-pixel row (plus any measured top cutout safety),
+with identity, comparison mode, Images and import. On narrower windows the mode/import
+controls retain accessible names and use icons. Images opens the existing A/B selection,
+swap and label controls as a temporary panel. Inspection tools remain at the bottom
+edge with a touch-friendly zoom selector. Rotation never activates minimalist mode.
+
+The tiny `DisplayLayout` plugin exposes getState, setMode and layoutChange. All window
+mutations run on the activity UI thread. It reports physical-pixel bar, cutout and
+gesture measurements and actual cutout rectangles; React converts them using the
+WebView's devicePixelRatio. Only controls use cutout/gesture padding in landscape.
+The divider line remains aligned to the comparison; its handle can shift away from
+an unsafe edge. The minimalist exit button stays above gesture/navigation space.
+Dialogs respect asymmetric insets and the keyboard. Image layers remain mounted;
+the existing ResizeObserver/geometry adapts Fit without rewriting zoom or source center.
+
+Native policy is reapplied on orientation change, resume, regained window focus and
+page commit, including returns from Photo Picker. Minimalist state is saved in the
+Activity bundle and restored before React initializes, without clearing the committed
+comparison while session restoration is pending. No import, original-byte, quota,
+sharing or backend behavior changes.
+
+### Native system UI instrumentation
+
+The Android workflow also runs an API 36 emulator with gesture navigation and a
+simulated display cutout. Instrumentation checks actual WindowInsets visibility,
+light icon appearance, cutout layout, DOM safe targets, both landscape directions,
+Photo Picker cancellation/return, background/resume, Back and Activity recreation.
+Screenshots and connected test reports are uploaded separately. Browser tests cover
+layout/state/zoom, touch gestures and retained image elements; they are not evidence
+of native window-manager behavior.
+
+The test build is isolated as `io.github.kuba25x.upscalecompare.systemuitest`; it seeds
+only its own synthetic comparison. It cannot overwrite an installed user's normal
+app data. With a connected API 36 emulator configured for a cutout and gesture navigation:
+
+```sh
+npm run android:sync
+adb shell cmd overlay enable --user 0 com.android.internal.display.cutout.emulation.tall
+adb shell cmd overlay enable --user 0 com.android.internal.systemui.navbar.gestural
+cd android
+./gradlew connectedSystemUiAndroidTest
+```
+
+The normal debug APK is still built with `npm run android:apk`. Test reports and APKs
+remain separate artifacts. Confirm the workflow outcome for the exact PR commit;
+compiled instrumentation or Robolectric tests alone do not establish a device pass.
+
+Xiaomi 15T / Android 16 still requires physical-device qualification: HyperOS bar
+colors/icon contrast, actual camera bounds in both rotations, transient edge swipes,
+keyboard/three-button navigation, predictive Back and sustained 4K/8K touch performance.
+The emulator does not certify OEM behavior or real-device memory stability.

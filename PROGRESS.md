@@ -261,3 +261,19 @@ unnecessary cloud downloads. Files remains a landing/dialog option and automatic
 SAF fallback. Original streaming/hash/format checks, sessions and storage limits
 are retained. Viewer, fullscreen, gestures, web file input, sharing and production
 controls are unchanged. See [Photo Picker and lifecycle documentation](docs/ANDROID.md#system-photo-picker-and-files-fallback).
+
+## Android edge-to-edge and landscape controls
+
+PR #20 is merged. `feat/android-edge-to-edge` starts from verified origin/main
+`dddd663`, with a new PR for Android-only window/inset behavior and compact Variant A.
+Native AndroidX display policy keeps both bars in normal portrait, only navigation
+in minimalist portrait, and hides both bars in either landscape mode. Image content
+can extend through cutouts while controls use measured safe/gesture insets. The
+landscape header, expandable image controls and edge inspection toolbar preserve
+the existing image state and viewer geometry. Web, import/storage, sharing, backend
+and production deployment controls are unchanged.
+
+API 36 instrumentation uses a separate `.systemuitest` application id and synthetic
+originals to protect user data. The Android workflow uploads native reports/screenshots
+and a debug APK. See [display behavior and native tests](docs/ANDROID.md#edge-to-edge-display-and-compact-landscape-interface)
+for the policy matrix, reproducible test commands and remaining Xiaomi qualification.
