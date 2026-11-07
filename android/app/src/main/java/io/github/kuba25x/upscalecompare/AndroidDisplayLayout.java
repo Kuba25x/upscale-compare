@@ -26,6 +26,7 @@ final class AndroidDisplayLayout {
   private final View.OnLayoutChangeListener layoutListener;
   private WindowInsetsCompat insets = WindowInsetsCompat.CONSUMED;
   private boolean minimalist;
+  private boolean destroyed;
   private long revision;
 
   AndroidDisplayLayout(
@@ -68,6 +69,7 @@ final class AndroidDisplayLayout {
 
   @SuppressWarnings("deprecation")
   void applyPolicy() {
+    if (destroyed || activity.isFinishing()) return;
     Window window = activity.getWindow();
     WindowCompat.setDecorFitsSystemWindows(window, false);
     if (Build.VERSION.SDK_INT >= 28) {
@@ -108,10 +110,9 @@ final class AndroidDisplayLayout {
     Insets navigation =
         insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars());
     Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+    Insets mandatory = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures());
     Insets gestures =
-        Insets.max(
-            insets.getInsets(WindowInsetsCompat.Type.systemGestures()),
-            insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures()));
+        Insets.max(insets.getInsets(WindowInsetsCompat.Type.systemGestures()), mandatory);
     Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
     boolean landscape = isLandscape();
     int top = !landscape && !minimalist ? Math.max(status.top, cutout.top) : 0;
@@ -136,7 +137,7 @@ final class AndroidDisplayLayout {
         .put("navigationVisible", insets.isVisible(WindowInsetsCompat.Type.navigationBars()))
         .put("layoutTop", top)
         .put("layoutBottom", bottom)
-        .put("safeTop", Math.max(top, cutout.top))
+        .put("safeTop", Math.max(top, Math.max(cutout.top, mandatory.top)))
         .put("safeRight", Math.max(cutout.right, Math.max(navigation.right, gestures.right)))
         .put("safeBottom", Math.max(bottom, Math.max(cutout.bottom, gestures.bottom)))
         .put("safeLeft", Math.max(cutout.left, Math.max(navigation.left, gestures.left)))
@@ -144,11 +145,13 @@ final class AndroidDisplayLayout {
   }
 
   void publish() {
+    if (destroyed) return;
     revision++;
     changed.accept(snapshot());
   }
 
   void destroy() {
+    destroyed = true;
     ViewCompat.setOnApplyWindowInsetsListener(view, null);
     view.removeOnLayoutChangeListener(layoutListener);
   }

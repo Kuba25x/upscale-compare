@@ -117,29 +117,22 @@ public class DisplayIntegrationTest {
                         + landscape)));
   }
 
-  private void shell(String command) throws Exception {
+  private String shell(String command) throws Exception {
     try (ParcelFileDescriptor result =
             InstrumentationRegistry.getInstrumentation()
                 .getUiAutomation()
                 .executeShellCommand(command);
         var in = new ParcelFileDescriptor.AutoCloseInputStream(result)) {
-      in.readAllBytes();
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
     }
   }
 
   private void screenshot(String name) throws Exception {
     Bitmap screen = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
     assertNotNull(screen);
-    File directory =
-        new File(
-            InstrumentationRegistry.getInstrumentation()
-                .getTargetContext()
-                .getExternalFilesDir(null),
-            "screenshots");
-    assertTrue(directory.isDirectory() || directory.mkdirs());
-    try (var out = new FileOutputStream(new File(directory, name + ".png"))) {
-      screen.compress(Bitmap.CompressFormat.PNG, 100, out);
-    }
+    // UTP uninstalls the isolated app after the suite; keep CI evidence outside app data.
+    shell("mkdir -p /data/local/tmp/upscale-compare-system-ui");
+    shell("screencap -p /data/local/tmp/upscale-compare-system-ui/" + name + ".png");
     if (name.equals("portrait-normal")) {
       for (int y : new int[] {2, screen.getHeight() - 3}) {
         int pixel = screen.getPixel(screen.getWidth() / 4, y);
@@ -279,16 +272,23 @@ public class DisplayIntegrationTest {
       int swipeX = dimensions.get().getInteger("width") / 2;
       int swipeY = dimensions.get().getInteger("height") / 3;
       shell("input swipe " + swipeX + " 0 " + swipeX + " " + swipeY + " 300");
+      // Transient bars deliberately do not change app-visible WindowInsets visibility.
+      // Inspect the emulator's actual window policy, not the app's requested hidden bits.
       eventually(
           () ->
-              scenario.onActivity(
-                  a ->
-                      assertTrue(
-                          ViewCompat.getRootWindowInsets(a.getWindow().getDecorView())
-                              .isVisible(WindowInsetsCompat.Type.statusBars()))));
+              assertTrue(
+                  shell("dumpsys window displays")
+                      .lines()
+                      .anyMatch(
+                          line ->
+                              line.contains("mShowingTransientTypes=")
+                                  && line.contains("statusBars"))));
       assertEquals(
           viewportBeforeReveal,
           js("document.querySelector('.stage').getBoundingClientRect().height"));
+      screenshot("landscape-transient-bars");
+      eventually(
+          () -> assertFalse(shell("dumpsys window displays").contains("mShowingTransientTypes=")));
       bars(false, false);
       // Launch the real Photo Picker through the existing Capacitor callback and cancel it.
       AtomicReference<MainActivity> activity = new AtomicReference<>();

@@ -29,6 +29,7 @@ interface Props {
   onImageError?: () => void;
   fullscreenOverride?: boolean;
   onToggleFullscreen?: () => void | Promise<void>;
+  androidViewportKey?: string;
 }
 export function Viewer({
   images,
@@ -39,6 +40,7 @@ export function Viewer({
   onImageError,
   fullscreenOverride,
   onToggleFullscreen,
+  androidViewportKey,
 }: Props) {
   const comparisonFullscreen = ANDROID_MODE && fullscreenOverride === true;
   const wasComparisonFullscreen = useRef(false);
@@ -196,7 +198,7 @@ export function Viewer({
         .querySelector<HTMLButtonElement>('.fullscreen-button')
         ?.focus({ preventScroll: true });
     wasComparisonFullscreen.current = comparisonFullscreen;
-  }, [comparisonFullscreen, cancelPanning]);
+  }, [comparisonFullscreen, androidViewportKey, cancelPanning]);
 
   useEffect(() => {
     const resize = () => {

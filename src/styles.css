@@ -1574,6 +1574,6 @@ input[type='checkbox'] {
 /* Leave room above the exit target for the divider handle in very short windows. */
 @media (max-height: 160px) {
   .app.android-comparison-fullscreen .divider-handle {
-    top: min(50%, calc(100% - 88px));
+    top: min(50%, calc(100% - var(--android-overlay-bottom) - 92px));
   }
 }

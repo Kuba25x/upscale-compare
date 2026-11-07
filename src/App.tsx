@@ -485,6 +485,17 @@ export default function App() {
       {ready ? (
         <main className="comparison-layout">
           <Viewer
+            androidViewportKey={
+              ANDROID_MODE && display
+                ? [
+                    display.landscape,
+                    display.layoutTop,
+                    display.layoutBottom,
+                    display.width,
+                    display.height,
+                  ].join(':')
+                : undefined
+            }
             fullscreenOverride={ANDROID_MODE ? nativeFullscreen : undefined}
             onToggleFullscreen={
               ANDROID_MODE ? () => changeNativeFullscreen(!nativeFullscreen) : undefined

@@ -66,14 +66,7 @@ jobs:
           profile: pixel_7
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
-          script: |
-            adb shell cmd overlay enable --user 0 com.android.internal.display.cutout.emulation.tall
-            adb shell cmd overlay enable --user 0 com.android.internal.systemui.navbar.gestural
-            display_test_exit=0
-            ./android/gradlew -p android --no-daemon connectedSystemUiAndroidTest || display_test_exit=$?
-            mkdir -p test-results/native-system-ui
-            adb pull /sdcard/Android/data/io.github.kuba25x.upscalecompare.systemuitest/files/screenshots test-results/native-system-ui || true
-            exit "$display_test_exit"
+          script: bash scripts/android-system-ui-tests.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
