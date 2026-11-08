@@ -326,8 +326,8 @@ keeps transient visibility out of app insets so overlay bars do not resize conte
 Background pixel checks wait for compositor presentation after insets delivery.
 Screenshots also wait for WebView's visual-state callback and animation frames;
 fixture-background and transient-icon pixel checks reject captures of the previous mode.
-The test acknowledges only Android's first-use immersive gesture tutorial through
-its framework accessibility IDs. Pixel assertions inspect the same native PNG that
+The test recognizes Android's first-use immersive tutorial window and confirms it
+with the system top-edge swipe described by that tutorial. Pixel assertions inspect the same native PNG that
 is uploaded, and failure reports retain the frame plus DOM/native scroll coordinates.
 
 The test build is isolated as `io.github.kuba25x.upscalecompare.systemuitest`; it seeds

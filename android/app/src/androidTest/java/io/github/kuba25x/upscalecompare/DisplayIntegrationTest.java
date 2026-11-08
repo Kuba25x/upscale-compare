@@ -2,7 +2,6 @@ package io.github.kuba25x.upscalecompare;
 
 import static org.junit.Assert.*;
 
-import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
@@ -10,7 +9,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.ParcelFileDescriptor;
 import android.view.Surface;
-import android.view.accessibility.AccessibilityNodeInfo;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -62,22 +60,20 @@ public class DisplayIntegrationTest {
     throw new AssertionError("Display state did not settle", last);
   }
 
-  private void dismissSystemTutorial() {
-    var automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
-    for (var window : automation.getWindows()) {
-      var root = window.getRoot();
-      if (root == null) continue;
-      var titles = root.findAccessibilityNodeInfosByViewId("android:id/immersive_cling_title");
-      if (titles.stream().noneMatch(AccessibilityNodeInfo::isVisibleToUser)) continue;
-      // Acknowledge only Android's first-use immersive gesture tutorial, never app/permission UI.
-      for (var button : root.findAccessibilityNodeInfosByViewId("android:id/ok"))
-        if (button.isVisibleToUser() && button.isEnabled()) {
-          assertTrue(
-              "Could not acknowledge the system gesture tutorial",
-              button.performAction(AccessibilityNodeInfo.ACTION_CLICK));
-          return;
-        }
-    }
+  private void dismissSystemTutorial() throws Exception {
+    boolean shown =
+        shell("dumpsys window windows")
+            .lines()
+            .anyMatch(
+                line -> line.contains("Window #") && line.contains("ImmersiveModeConfirmation"));
+    if (!shown) return;
+    AtomicReference<JSObject> size = new AtomicReference<>();
+    scenario.onActivity(a -> size.set(a.displayLayout.snapshot()));
+    // Android confirms this specific first-use tutorial when a system edge swipe
+    // successfully reveals the bars. No app or permission dialog is acknowledged.
+    int x = size.get().getInteger("width") / 2;
+    int y = size.get().getInteger("height") / 3;
+    shell("input swipe " + x + " 0 " + x + " " + y + " 300");
   }
 
   private String js(String script) throws Exception {
@@ -377,12 +373,6 @@ public class DisplayIntegrationTest {
 
   @Test
   public void realWindowBarsCutoutsPickerResumeBackAndRecreation() throws Exception {
-    var automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
-    var service = automation.getServiceInfo();
-    service.flags |=
-        AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-            | AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
-    automation.setServiceInfo(service);
     seedIsolatedSession();
     try (ActivityScenario<MainActivity> active = ActivityScenario.launch(MainActivity.class)) {
       scenario = active;
