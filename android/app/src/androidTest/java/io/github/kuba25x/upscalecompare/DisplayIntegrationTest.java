@@ -2,12 +2,15 @@ package io.github.kuba25x.upscalecompare;
 
 import static org.junit.Assert.*;
 
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.ParcelFileDescriptor;
 import android.view.Surface;
+import android.view.accessibility.AccessibilityNodeInfo;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -48,6 +51,7 @@ public class DisplayIntegrationTest {
     long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
     do {
       try {
+        dismissSystemTutorial();
         check.run();
         return;
       } catch (AssertionError | Exception failure) {
@@ -56,6 +60,24 @@ public class DisplayIntegrationTest {
       Thread.sleep(100);
     } while (System.nanoTime() < until);
     throw new AssertionError("Display state did not settle", last);
+  }
+
+  private void dismissSystemTutorial() {
+    var automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+    for (var window : automation.getWindows()) {
+      var root = window.getRoot();
+      if (root == null) continue;
+      var titles = root.findAccessibilityNodeInfosByViewId("android:id/immersive_cling_title");
+      if (titles.stream().noneMatch(AccessibilityNodeInfo::isVisibleToUser)) continue;
+      // Acknowledge only Android's first-use immersive gesture tutorial, never app/permission UI.
+      for (var button : root.findAccessibilityNodeInfosByViewId("android:id/ok"))
+        if (button.isVisibleToUser() && button.isEnabled()) {
+          assertTrue(
+              "Could not acknowledge the system gesture tutorial",
+              button.performAction(AccessibilityNodeInfo.ACTION_CLICK));
+          return;
+        }
+    }
   }
 
   private String js(String script) throws Exception {
@@ -163,6 +185,7 @@ public class DisplayIntegrationTest {
   }
 
   private void screenshot(String name) throws Exception {
+    shell("mkdir -p /data/local/tmp/upscale-compare-system-ui");
     try {
       assertScreenshot(name);
     } catch (AssertionError | Exception failure) {
@@ -191,6 +214,20 @@ public class DisplayIntegrationTest {
     }
   }
 
+  private Bitmap captureFrame(String name) throws Exception {
+    String path = "/data/local/tmp/upscale-compare-system-ui/" + name + ".png";
+    shell("screencap -p " + path);
+    try (var pipe =
+            InstrumentationRegistry.getInstrumentation()
+                .getUiAutomation()
+                .executeShellCommand("cat " + path);
+        var in = new ParcelFileDescriptor.AutoCloseInputStream(pipe)) {
+      Bitmap frame = BitmapFactory.decodeStream(in);
+      assertNotNull("The native screen capture could not be decoded", frame);
+      return frame;
+    }
+  }
+
   private void assertScreenshot(String name) throws Exception {
     awaitVisualFrame();
     AtomicReference<JSObject> state = new AtomicReference<>();
@@ -207,9 +244,7 @@ public class DisplayIntegrationTest {
     // leaves a known background at these sample points, independently of layout flags.
     eventually(
         () -> {
-          Bitmap frame =
-              InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-          assertNotNull(frame);
+          Bitmap frame = captureFrame(name);
           try {
             if (name.equals("landscape-transient-bars")) {
               int white = 0;
@@ -233,18 +268,7 @@ public class DisplayIntegrationTest {
                       + y,
                   minimalist ? colorNear(pixel, 23, 25, 30) : colorNear(pixel, 20, 21, 25));
             }
-          } finally {
-            frame.recycle();
-          }
-        });
-    if (name.equals("portrait-normal")) {
-      // WindowInsets delivery precedes compositor presentation; sample a settled frame.
-      eventually(
-          () -> {
-            Bitmap frame =
-                InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-            assertNotNull(frame);
-            try {
+            if (name.equals("portrait-normal")) {
               for (int y : new int[] {2, frame.getHeight() - 3}) {
                 int pixel = frame.getPixel(frame.getWidth() / 4, y);
                 assertTrue(
@@ -253,14 +277,11 @@ public class DisplayIntegrationTest {
                         && Math.abs(Color.green(pixel) - 17) <= 2
                         && Math.abs(Color.blue(pixel) - 20) <= 2);
               }
-            } finally {
-              frame.recycle();
             }
-          });
-    }
-    // UTP uninstalls the isolated app after the suite; keep CI evidence outside app data.
-    shell("mkdir -p /data/local/tmp/upscale-compare-system-ui");
-    shell("screencap -p /data/local/tmp/upscale-compare-system-ui/" + name + ".png");
+          } finally {
+            frame.recycle();
+          }
+        });
   }
 
   private void seedIsolatedSession() throws Exception {
@@ -356,6 +377,12 @@ public class DisplayIntegrationTest {
 
   @Test
   public void realWindowBarsCutoutsPickerResumeBackAndRecreation() throws Exception {
+    var automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+    var service = automation.getServiceInfo();
+    service.flags |=
+        AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+            | AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+    automation.setServiceInfo(service);
     seedIsolatedSession();
     try (ActivityScenario<MainActivity> active = ActivityScenario.launch(MainActivity.class)) {
       scenario = active;
