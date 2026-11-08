@@ -1358,7 +1358,194 @@ input[type='checkbox'] {
   z-index: 20;
 }
 
-/* Android comparison-only layout stays inside the system-inset WebView. */
+/* Android owns measured native insets; the web keeps its existing viewport layout. */
+.android-app {
+  --android-overlay-top: max(
+    0px,
+    calc(var(--android-safe-top, 0px) - var(--android-layout-top, 0px))
+  );
+  --android-overlay-bottom: max(
+    0px,
+    calc(var(--android-safe-bottom, 0px) - var(--android-layout-bottom, 0px))
+  );
+  min-height: 0;
+  padding-top: var(--android-layout-top, 0px);
+  padding-bottom: var(--android-layout-bottom, 0px);
+  background: #101114;
+  overscroll-behavior: none;
+}
+.android-app:not(.android-layout-ready) {
+  visibility: hidden;
+}
+.android-app:not(.android-layout-ready) .toast {
+  visibility: visible;
+}
+.android-app .stage {
+  container-type: size;
+}
+.android-app .android-images-toggle,
+.android-app .android-zoom-select {
+  display: none;
+}
+.android-app .app-header {
+  padding-left: max(10px, var(--android-safe-left, 0px));
+  padding-right: max(10px, var(--android-safe-right, 0px));
+}
+.android-app .divider-handle {
+  /* Move only the handle away from cutouts/edge gestures; the divider line stays aligned. */
+  left: clamp(
+    calc(var(--android-safe-left, 0px) + 24px - var(--android-divider-position) + 15px),
+    15px,
+    calc(100cqw - var(--android-safe-right, 0px) - 24px - var(--android-divider-position) + 15px)
+  );
+}
+.android-app .modal {
+  max-width: calc(100vw - var(--android-safe-left, 0px) - var(--android-safe-right, 0px) - 32px);
+  max-height: calc(100dvh - var(--android-safe-top, 0px) - var(--android-safe-bottom, 0px) - 24px);
+  translate: calc((var(--android-safe-left, 0px) - var(--android-safe-right, 0px)) / 2)
+    calc((var(--android-safe-top, 0px) - var(--android-safe-bottom, 0px)) / 2);
+}
+.android-app .toast {
+  left: calc(50% + (var(--android-safe-left, 0px) - var(--android-safe-right, 0px)) / 2);
+  max-width: min(
+    660px,
+    calc(100vw - var(--android-safe-left, 0px) - var(--android-safe-right, 0px) - 28px)
+  );
+}
+.android-app.android-landscape .landing-footer {
+  left: calc(16px + var(--android-safe-left, 0px));
+  right: calc(16px + var(--android-safe-right, 0px));
+  bottom: calc(15px + var(--android-overlay-bottom));
+}
+.android-app.android-landscape .app-header {
+  display: flex;
+  flex-direction: row;
+  height: calc(52px + var(--android-overlay-top));
+  padding: var(--android-overlay-top) calc(8px + var(--android-safe-right, 0px)) 0
+    calc(8px + var(--android-safe-left, 0px));
+  gap: 10px;
+}
+.android-app.android-landscape .app-header h1 {
+  order: -1;
+  font-size: 13px;
+  margin-right: auto;
+  gap: 8px;
+}
+.android-app.android-landscape .app-header h1 .brand-mark {
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+  flex-shrink: 0;
+}
+.android-app.android-landscape .mode-controls {
+  gap: 0;
+}
+.android-app.android-landscape .eyebrow,
+.android-app.android-landscape .header-actions .share-button,
+.android-app.android-landscape .demo-notice,
+.android-app.android-landscape .inspection-toolbar .zoom-preset,
+.android-app.android-landscape .inspection-toolbar .zoom-readout,
+.android-app.android-landscape .toolbar-separator {
+  display: none;
+}
+.android-app.android-landscape .segmented {
+  padding: 0;
+}
+.android-app.android-landscape .segmented button,
+.android-app.android-landscape .header-actions button {
+  min-height: 44px;
+  padding: 7px 10px;
+}
+.android-app.android-landscape .header-actions {
+  gap: 6px;
+}
+.android-app.android-landscape .android-images-toggle {
+  display: inline-flex;
+}
+.android-app.android-landscape .comparison-layout {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+.android-app.android-landscape .viewer-content {
+  border: 0;
+  border-radius: 0;
+}
+.android-app.android-landscape .image-selection-bar {
+  display: none;
+}
+.android-app.android-landscape .image-selection-bar.android-image-panel-open {
+  display: grid;
+  position: absolute;
+  z-index: 4;
+  left: calc(8px + var(--android-safe-left, 0px));
+  right: calc(8px + var(--android-safe-right, 0px));
+  bottom: calc(64px + var(--android-overlay-bottom));
+  min-height: 76px;
+  max-height: calc(100% - 76px - var(--android-overlay-bottom));
+  overflow-y: auto;
+  margin: 0;
+  border-radius: 7px;
+  box-shadow: 0 4px 16px #0009;
+}
+.android-app.android-landscape .image-selector {
+  flex-wrap: wrap;
+  padding: 8px;
+  gap: 4px 8px;
+}
+.android-app.android-landscape .select-image select,
+.android-app.android-landscape .rename-label input,
+.android-app.android-landscape .swap-button {
+  min-height: 44px;
+}
+.android-app.android-landscape .rename-label {
+  flex-basis: 100%;
+  height: 44px;
+}
+.android-app.android-landscape .inspection-toolbar {
+  left: auto;
+  right: calc(8px + var(--android-safe-right, 0px));
+  bottom: calc(8px + var(--android-overlay-bottom));
+  transform: none;
+  padding: 2px;
+  gap: 0;
+  max-width: calc(100% - var(--android-safe-left, 0px) - var(--android-safe-right, 0px) - 16px);
+  overflow-x: auto;
+}
+.android-app.android-landscape .inspection-toolbar button {
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+}
+.android-app.android-landscape .android-zoom-select {
+  display: block;
+  min-height: 44px;
+  width: 76px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 4px;
+  color: #c6e7af;
+  background: #20251d;
+  font-size: 11px;
+}
+.android-app.android-landscape .badge-a {
+  left: calc(8px + var(--android-safe-left, 0px));
+}
+.android-app.android-landscape .badge-b {
+  right: calc(8px + var(--android-safe-right, 0px));
+}
+@media (max-width: 760px) {
+  .android-app.android-landscape .segmented button span,
+  .android-app.android-landscape .header-actions button span {
+    display: none;
+  }
+  .android-app.android-landscape .segmented button,
+  .android-app.android-landscape .header-actions button {
+    min-width: 44px;
+    padding: 7px;
+  }
+}
 .app.android-comparison-fullscreen {
   min-height: 0;
   overscroll-behavior: none;
@@ -1367,7 +1554,8 @@ input[type='checkbox'] {
 .app.android-comparison-fullscreen .comparison-layout > :not(.viewer-content),
 .app.android-comparison-fullscreen .image-badge,
 .app.android-comparison-fullscreen .alignment-warning,
-.app.android-comparison-fullscreen .inspection-toolbar {
+.app.android-comparison-fullscreen .inspection-toolbar,
+.app.android-comparison-fullscreen.android-landscape .image-selection-bar.android-image-panel-open {
   display: none;
 }
 .app.android-comparison-fullscreen > .comparison-layout {
@@ -1382,8 +1570,8 @@ input[type='checkbox'] {
 }
 .app.android-comparison-fullscreen .android-fullscreen-exit {
   position: absolute;
-  right: max(12px, env(safe-area-inset-right, 0px));
-  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  right: calc(12px + var(--android-safe-right, 0px));
+  bottom: calc(12px + var(--android-overlay-bottom));
   z-index: 3;
   width: 48px;
   min-height: 48px;
@@ -1398,6 +1586,6 @@ input[type='checkbox'] {
 /* Leave room above the exit target for the divider handle in very short windows. */
 @media (max-height: 160px) {
   .app.android-comparison-fullscreen .divider-handle {
-    top: min(50%, calc(100% - 88px));
+    top: min(50%, calc(100% - var(--android-overlay-bottom) - 92px));
   }
 }

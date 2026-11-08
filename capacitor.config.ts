@@ -6,7 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'dist-android',
   android: { zoomEnabled: false },
   plugins: {
-    SystemBars: { insetsHandling: 'native', hidden: false },
+    // DisplayLayout owns edge-to-edge insets and the orientation-dependent bar policy.
+    SystemBars: { insetsHandling: 'disable', hidden: false, style: 'DARK' },
     App: { disableBackButtonHandler: true },
   },
 };

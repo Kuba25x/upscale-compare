@@ -109,8 +109,3 @@ export async function saveAndroidSession(session: {
 export async function discardOriginals(images: LocalImage[]) {
   await Originals.discard({ ids: images.map((i) => (i as AndroidImage).id) });
 }
-
-const SystemBars = registerPlugin<{ show(): Promise<void> }>('SystemBars');
-export async function ensureAndroidSystemBarsVisible() {
-  await SystemBars.show();
-}
