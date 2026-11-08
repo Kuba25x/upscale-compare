@@ -163,6 +163,35 @@ public class DisplayIntegrationTest {
   }
 
   private void screenshot(String name) throws Exception {
+    try {
+      assertScreenshot(name);
+    } catch (AssertionError | Exception failure) {
+      shell("mkdir -p /data/local/tmp/upscale-compare-system-ui");
+      shell("screencap -p /data/local/tmp/upscale-compare-system-ui/" + name + "-failed.png");
+      System.err.println(
+          "Visual failure DOM: "
+              + js(
+                  "JSON.stringify({scrollX,scrollY,header:document.querySelector('.app-header').getBoundingClientRect().toJSON(),app:document.querySelector('.app').getBoundingClientRect().toJSON(),stage:document.querySelector('.stage').getBoundingClientRect().toJSON(),background:getComputedStyle(document.querySelector('.app-header')).backgroundColor,active:document.activeElement?.outerHTML.slice(0,300),viewport:{height:visualViewport.height,offsetTop:visualViewport.offsetTop,pageTop:visualViewport.pageTop}})"));
+      scenario.onActivity(
+          a -> {
+            var web = a.getBridge().getWebView();
+            int[] location = new int[2];
+            web.getLocationOnScreen(location);
+            System.err.println(
+                "Visual failure native: "
+                    + a.displayLayout.snapshot()
+                    + ", scroll="
+                    + web.getScrollX()
+                    + ","
+                    + web.getScrollY()
+                    + ", location="
+                    + java.util.Arrays.toString(location));
+          });
+      throw failure;
+    }
+  }
+
+  private void assertScreenshot(String name) throws Exception {
     awaitVisualFrame();
     AtomicReference<JSObject> state = new AtomicReference<>();
     AtomicReference<Integer> statusHeight = new AtomicReference<>();
@@ -196,7 +225,12 @@ public class DisplayIntegrationTest {
               int y = minimalist ? 2 : state.get().getInteger("layoutTop") + 2;
               int pixel = frame.getPixel(frame.getWidth() / 4, y);
               assertTrue(
-                  "Screenshot still shows the previous application mode: " + name,
+                  "Unexpected mode pixel: "
+                      + name
+                      + ", color="
+                      + Integer.toHexString(pixel)
+                      + ", y="
+                      + y,
                   minimalist ? colorNear(pixel, 23, 25, 30) : colorNear(pixel, 20, 21, 25));
             }
           } finally {
