@@ -135,7 +135,74 @@ public class DisplayIntegrationTest {
     }
   }
 
+  private void awaitVisualFrame() throws Exception {
+    CountDownLatch presented = new CountDownLatch(1);
+    scenario.onActivity(
+        a -> {
+          var web = a.getBridge().getWebView();
+          web.postVisualStateCallback(
+              System.nanoTime(),
+              new android.webkit.WebView.VisualStateCallback() {
+                @Override
+                public void onComplete(long requestId) {
+                  // The next draw includes the DOM updates acknowledged by WebView. Wait across
+                  // two animation frames so that draw can reach the screen compositor.
+                  web.postOnAnimation(() -> web.postOnAnimation(presented::countDown));
+                }
+              });
+        });
+    assertTrue(
+        "WebView did not present the requested visual state",
+        presented.await(10, TimeUnit.SECONDS));
+  }
+
+  private boolean colorNear(int pixel, int red, int green, int blue) {
+    return Math.abs(Color.red(pixel) - red) <= 2
+        && Math.abs(Color.green(pixel) - green) <= 2
+        && Math.abs(Color.blue(pixel) - blue) <= 2;
+  }
+
   private void screenshot(String name) throws Exception {
+    awaitVisualFrame();
+    AtomicReference<JSObject> state = new AtomicReference<>();
+    AtomicReference<Integer> statusHeight = new AtomicReference<>();
+    scenario.onActivity(
+        a -> {
+          state.set(a.displayLayout.snapshot());
+          statusHeight.set(
+              ViewCompat.getRootWindowInsets(a.getWindow().getDecorView())
+                  .getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars())
+                  .top);
+        });
+    // Native visibility/DOM callbacks can precede presentation. The synthetic fixture
+    // leaves a known background at these sample points, independently of layout flags.
+    eventually(
+        () -> {
+          Bitmap frame =
+              InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+          assertNotNull(frame);
+          try {
+            if (name.equals("landscape-transient-bars")) {
+              int white = 0;
+              for (int y = 0; y < statusHeight.get() * .6; y++)
+                for (int x = 0; x < frame.getWidth(); x++) {
+                  int pixel = frame.getPixel(x, y);
+                  if (Color.red(pixel) > 220 && Color.green(pixel) > 220 && Color.blue(pixel) > 220)
+                    white++;
+                }
+              assertTrue("Transient status icons have not reached the compositor", white > 10);
+            } else {
+              boolean minimalist = state.get().getBool("minimalist");
+              int y = minimalist ? 2 : state.get().getInteger("layoutTop") + 2;
+              int pixel = frame.getPixel(frame.getWidth() / 4, y);
+              assertTrue(
+                  "Screenshot still shows the previous application mode: " + name,
+                  minimalist ? colorNear(pixel, 23, 25, 30) : colorNear(pixel, 20, 21, 25));
+            }
+          } finally {
+            frame.recycle();
+          }
+        });
     if (name.equals("portrait-normal")) {
       // WindowInsets delivery precedes compositor presentation; sample a settled frame.
       eventually(

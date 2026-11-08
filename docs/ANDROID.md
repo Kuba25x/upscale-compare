@@ -324,6 +324,8 @@ of native window-manager behavior.
 Transient reveal is checked against native WindowManager policy: Android deliberately
 keeps transient visibility out of app insets so overlay bars do not resize content.
 Background pixel checks wait for compositor presentation after insets delivery.
+Screenshots also wait for WebView's visual-state callback and animation frames;
+fixture-background and transient-icon pixel checks reject captures of the previous mode.
 
 The test build is isolated as `io.github.kuba25x.upscalecompare.systemuitest`; it seeds
 only its own synthetic comparison. It cannot overwrite an installed user's normal
