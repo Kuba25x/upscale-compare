@@ -28,13 +28,19 @@ export function webPresentationTests() {
       { width: 900, height: 412 },
     ]) {
       await page.setViewportSize(viewport);
-      await expect(page.locator('.app')).not.toHaveClass(
-        /comparison-(edge-to-edge|compact|minimalist)/,
-      );
-      await expect(page.locator('.image-selection-bar')).toBeVisible();
-      await expect(page.getByRole('button', { name: '100%', exact: true })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Image controls' })).toHaveCount(0);
-      await expect(page.getByLabel('Zoom preset')).toHaveCount(0);
+      await expect(page.locator('.app')).not.toHaveClass(/android-app|comparison-minimalist/);
+      const compact = await page
+        .locator('.app')
+        .evaluate((node) => node.classList.contains('comparison-compact'));
+      if (compact) {
+        await expect(page.locator('.image-selection-bar')).toBeHidden();
+        await expect(page.getByLabel('Zoom preset')).toBeVisible();
+      } else {
+        await expect(page.locator('.image-selection-bar')).toBeVisible();
+        await expect(page.getByRole('button', { name: '100%', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Image controls' })).toHaveCount(0);
+        await expect(page.getByLabel('Zoom preset')).toHaveCount(0);
+      }
       await expect(page.locator('.minimalist-exit')).toHaveCount(0);
     }
     expect(

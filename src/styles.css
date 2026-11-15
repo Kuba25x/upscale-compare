@@ -1601,3 +1601,148 @@ input[type='checkbox'] {
 .android-app.comparison-compact .demo-notice {
   display: none;
 }
+
+/* Browser safe areas protect controls; source-image geometry stays in the viewer. */
+.web-app {
+  --web-header-gutter: 20px;
+  --web-footer-gutter: 24px;
+  --web-footer-bottom: 21px;
+  --comparison-safe-top: env(safe-area-inset-top, 0px);
+  --comparison-safe-right: env(safe-area-inset-right, 0px);
+  --comparison-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --comparison-safe-left: env(safe-area-inset-left, 0px);
+  --comparison-layout-top: 0px;
+  --comparison-layout-bottom: 0px;
+  --comparison-overlay-top: var(--comparison-safe-top);
+  --comparison-overlay-bottom: var(--comparison-safe-bottom);
+  padding-top: var(--comparison-safe-top);
+  padding-bottom: var(--comparison-safe-bottom);
+}
+.web-app:not(.comparison-compact) .app-header {
+  padding-left: max(var(--web-header-gutter), var(--comparison-safe-left));
+  padding-right: max(var(--web-header-gutter), var(--comparison-safe-right));
+}
+.web-app:not(.comparison-compact) .landing-footer {
+  left: max(var(--web-footer-gutter), var(--comparison-safe-left));
+  right: max(var(--web-footer-gutter), var(--comparison-safe-right));
+  bottom: max(var(--web-footer-bottom), var(--comparison-safe-bottom));
+}
+.web-app:not(.comparison-compact) .image-selection-bar {
+  margin-left: var(--comparison-safe-left);
+  margin-right: var(--comparison-safe-right);
+}
+.web-app:not(.comparison-compact) .inspection-toolbar {
+  left: calc(50% + (var(--comparison-safe-left) - var(--comparison-safe-right)) / 2);
+  max-width: calc(100% - max(12px, var(--comparison-safe-left) + var(--comparison-safe-right)));
+}
+.web-app .modal {
+  max-width: min(
+    calc(100vw - 28px),
+    calc(
+      var(--web-visual-width, 100vw) - var(--comparison-safe-left) - var(--comparison-safe-right) -
+        28px
+    )
+  );
+  max-height: min(
+    calc(100dvh - 40px),
+    calc(
+      var(--web-visual-height, 100dvh) - var(--comparison-safe-top) -
+        var(--comparison-safe-bottom) - 24px
+    )
+  );
+  translate: calc(
+      var(--web-visual-left, 0px) +
+        (
+          var(--web-visual-width, 100vw) - 100vw + var(--comparison-safe-left) -
+            var(--comparison-safe-right)
+        ) /
+        2
+    )
+    calc(
+      var(--web-visual-top, 0px) +
+        (
+          var(--web-visual-height, 100dvh) - 100dvh + var(--comparison-safe-top) -
+            var(--comparison-safe-bottom)
+        ) /
+        2
+    );
+}
+.web-app.comparison-compact {
+  padding-block: 0;
+}
+.web-app.comparison-compact .app-header {
+  padding-left: calc(8px + var(--comparison-safe-left));
+  padding-right: calc(8px + var(--comparison-safe-right));
+}
+.web-app.comparison-compact .image-selection-bar.image-panel-open {
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+  bottom: calc(64px + max(var(--comparison-safe-bottom), var(--web-visual-bottom, 0px)));
+  min-height: 0;
+  max-height: max(
+    44px,
+    min(
+      calc(100% - 76px - var(--comparison-safe-bottom)),
+      calc(var(--web-visual-height, 100dvh) - 128px - var(--comparison-safe-top))
+    )
+  );
+}
+.web-app.comparison-compact .swap-button {
+  width: 44px;
+  min-width: 44px;
+}
+.web-app.comparison-compact .inspection-toolbar {
+  bottom: calc(8px + max(var(--comparison-safe-bottom), var(--web-visual-bottom, 0px)));
+}
+.web-app.comparison-compact .image-panel-sharing {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+.web-app.comparison-compact .image-panel-sharing .share-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.web-app.comparison-compact .image-panel-sharing .demo-notice,
+.web-app.comparison-compact .image-panel-sharing .published-notice {
+  margin: 0;
+  height: auto;
+  text-align: left;
+}
+.web-app.comparison-compact .modal button,
+.web-app.comparison-compact .modal input,
+.web-app.comparison-compact .modal select {
+  min-height: 44px;
+}
+.web-app.comparison-compact .modal button {
+  min-width: 44px;
+}
+@media (max-width: 1120px) {
+  .web-app {
+    --web-header-gutter: 14px;
+  }
+}
+@media (max-width: 620px) {
+  .web-app {
+    --web-header-gutter: 10px;
+    --web-footer-gutter: 16px;
+    --web-footer-bottom: 15px;
+  }
+  .web-app .modal {
+    max-height: min(
+      calc(100dvh - 24px),
+      calc(
+        var(--web-visual-height, 100dvh) - var(--comparison-safe-top) -
+          var(--comparison-safe-bottom) - 24px
+      )
+    );
+  }
+}
+@media (pointer: coarse) and (hover: none) {
+  .web-app {
+    min-height: 0;
+  }
+}
