@@ -1,6 +1,6 @@
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ANDROID_MODE } from './config';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { presentationStyle, type ComparisonPresentation } from './comparison-presentation';
 
 export interface AndroidDisplayState {
   revision: number;
@@ -28,28 +28,46 @@ const DisplayLayout = registerPlugin<{
 }>('DisplayLayout');
 
 export function useAndroidDisplay(onError: (message: string) => void) {
-  const [display, setDisplay] = useState<AndroidDisplayState>();
+  const [presentation, setPresentation] = useState<ComparisonPresentation>({
+    edgeToEdge: true,
+    ready: false,
+    compact: false,
+    minimalist: false,
+  });
   const revision = useRef(-1);
   const apply = useCallback((state: AndroidDisplayState) => {
     if (state.revision < revision.current) return;
     revision.current = state.revision;
     // Native coordinates are physical pixels. Match the viewer's actual WebView DPR.
     const dpr = window.devicePixelRatio || 1;
-    for (const key of [
-      'layoutTop',
-      'layoutBottom',
-      'safeTop',
-      'safeRight',
-      'safeBottom',
-      'safeLeft',
-    ] as const) {
-      const name = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
-      document.documentElement.style.setProperty(`--android-${name}`, `${state[key] / dpr}px`);
-    }
-    setDisplay(state);
+    const next: ComparisonPresentation = {
+      edgeToEdge: true,
+      ready: state.width > 0,
+      compact: state.landscape,
+      minimalist: state.minimalist,
+      viewportKey: [
+        state.landscape,
+        state.layoutTop,
+        state.layoutBottom,
+        state.width,
+        state.height,
+      ].join(':'),
+      insets: {
+        layoutTop: state.layoutTop / dpr,
+        layoutBottom: state.layoutBottom / dpr,
+        safeTop: state.safeTop / dpr,
+        safeRight: state.safeRight / dpr,
+        safeBottom: state.safeBottom / dpr,
+        safeLeft: state.safeLeft / dpr,
+      },
+    };
+    // Publish the measured CSS variables before notifying React, as in the native layout path.
+    for (const [name, value] of Object.entries(presentationStyle(next)))
+      document.documentElement.style.setProperty(name, String(value));
+    setPresentation(next);
   }, []);
-  useEffect(() => {
-    if (!ANDROID_MODE) return;
+  // Start the display adapter before the child App's passive session/lifecycle effects.
+  useLayoutEffect(() => {
     let active = true;
     const accept = (state: AndroidDisplayState) => {
       if (active) apply(state);
@@ -75,5 +93,5 @@ export function useAndroidDisplay(onError: (message: string) => void) {
     },
     [apply, onError],
   );
-  return { display, setMinimalist };
+  return { presentation, setMinimalist };
 }

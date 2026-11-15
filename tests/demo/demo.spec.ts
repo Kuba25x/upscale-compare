@@ -171,7 +171,7 @@ test('keeps privacy information, pixel controls, keyboard shortcuts, and fullscr
   await expect(page.locator('.image-selection-bar')).toBeVisible();
   await expect(page.locator('.inspection-toolbar')).toBeVisible();
   await expect(page.locator('.image-badge').first()).toBeVisible();
-  await expect(page.locator('.android-fullscreen-exit')).toHaveCount(0);
+  await expect(page.locator('.minimalist-exit')).toHaveCount(0);
   await expect(page.locator('.inspection-toolbar > button').last()).toHaveAccessibleName(
     'Keyboard shortcuts',
   );

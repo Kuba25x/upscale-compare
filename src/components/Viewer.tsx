@@ -17,7 +17,7 @@ import {
   diagnosticViewport,
   type DiagnosticData,
 } from '../lib/gesture-diagnostics';
-import { ANDROID_MODE } from '../lib/config';
+import { WEB_PRESENTATION, type ComparisonPresentation } from '../lib/comparison-presentation';
 import { clamp, originFor, panBy, pinchAt, scaleFor, zoomAt } from '../lib/geometry';
 
 interface Props {
@@ -29,7 +29,7 @@ interface Props {
   onImageError?: () => void;
   fullscreenOverride?: boolean;
   onToggleFullscreen?: () => void | Promise<void>;
-  androidViewportKey?: string;
+  presentation?: ComparisonPresentation;
 }
 export function Viewer({
   images,
@@ -40,12 +40,12 @@ export function Viewer({
   onImageError,
   fullscreenOverride,
   onToggleFullscreen,
-  androidViewportKey,
+  presentation = WEB_PRESENTATION,
 }: Props) {
-  const comparisonFullscreen = ANDROID_MODE && fullscreenOverride === true;
+  const comparisonFullscreen = presentation.minimalist;
   const wasComparisonFullscreen = useRef(false);
   const stage = useRef<HTMLDivElement>(null);
-  const androidDividerDrag = useRef<{ pointer: number; offset: number } | null>(null);
+  const dividerDrag = useRef<{ pointer: number; offset: number } | null>(null);
   const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
   const [fullscreen, setFullscreen] = useState(false);
@@ -77,12 +77,12 @@ export function Viewer({
     const element = stage.current;
     const divider = element?.querySelector<HTMLElement>('[role="slider"]');
     if (
-      ANDROID_MODE &&
-      androidDividerDrag.current &&
-      divider?.hasPointerCapture(androidDividerDrag.current.pointer)
+      presentation.edgeToEdge &&
+      dividerDrag.current &&
+      divider?.hasPointerCapture(dividerDrag.current.pointer)
     )
-      divider.releasePointerCapture(androidDividerDrag.current.pointer);
-    androidDividerDrag.current = null;
+      divider.releasePointerCapture(dividerDrag.current.pointer);
+    dividerDrag.current = null;
     for (const pointerId of pointers.current.keys()) {
       if (element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
     }
@@ -91,7 +91,7 @@ export function Viewer({
     pinchRightPanel.current = null;
     if (gestureDiagnostics?.recording) gestureDiagnostics.record('cancel-all', {});
     setPanning(false);
-  }, []);
+  }, [presentation.edgeToEdge]);
   useEffect(() => {
     const visibilityChange = () => {
       if (document.hidden) cancelPanning();
@@ -194,9 +194,9 @@ export function Viewer({
     if (gestureDiagnostics.recording) gestureDiagnostics.record('commit', frame);
   }, [config, size, dpr, images]);
 
-  // Resize the existing image layers before painting the Android layout transition.
+  // Resize the existing image layers before painting a managed layout transition.
   useLayoutEffect(() => {
-    if (!ANDROID_MODE || !stage.current) return;
+    if (!presentation.edgeToEdge || !stage.current) return;
     cancelPanning();
     const rect = stage.current.getBoundingClientRect();
     setSize({ width: rect.width, height: rect.height, x: rect.left, y: rect.top });
@@ -207,12 +207,12 @@ export function Viewer({
         .querySelector<HTMLButtonElement>('.fullscreen-button')
         ?.focus({ preventScroll: true });
     wasComparisonFullscreen.current = comparisonFullscreen;
-  }, [comparisonFullscreen, androidViewportKey, cancelPanning]);
+  }, [comparisonFullscreen, presentation.edgeToEdge, presentation.viewportKey, cancelPanning]);
 
   useEffect(() => {
     const resize = () => {
       if (stage.current) {
-        if (ANDROID_MODE) cancelPanning();
+        if (presentation.edgeToEdge) cancelPanning();
         const rect = stage.current.getBoundingClientRect();
         setSize({ width: rect.width, height: rect.height, x: rect.left, y: rect.top });
         setDpr(window.devicePixelRatio || 1);
@@ -228,7 +228,7 @@ export function Viewer({
       window.removeEventListener('resize', resize);
       document.removeEventListener('fullscreenchange', fullscreenChange);
     };
-  }, []);
+  }, [presentation.edgeToEdge, cancelPanning]);
   const updateView = (action: (view: View) => View) =>
     onChange((previous) => ({ ...previous, view: action(previous.view) }));
   const setZoom = (zoom: number | null) =>
@@ -601,7 +601,7 @@ export function Viewer({
   };
   const fullscreenButton = (
     <button
-      className={ANDROID_MODE ? 'icon-button fullscreen-button' : 'icon-button'}
+      className={presentation.edgeToEdge ? 'icon-button fullscreen-button' : 'icon-button'}
       aria-label={(fullscreenOverride ?? fullscreen) ? 'Exit fullscreen' : 'Enter fullscreen'}
       title="Fullscreen (F)"
       onClick={() => void toggleFullscreen()}
@@ -748,9 +748,9 @@ export function Viewer({
               style={
                 {
                   left: `clamp(18px, ${config.divider * 100}%, calc(100% - 18px))`,
-                  ...(ANDROID_MODE
+                  ...(presentation.edgeToEdge
                     ? {
-                        '--android-divider-position': `clamp(18px, ${config.divider * 100}cqw, calc(100cqw - 18px))`,
+                        '--comparison-divider-position': `clamp(18px, ${config.divider * 100}cqw, calc(100cqw - 18px))`,
                       }
                     : {}),
                 } as CSSProperties
@@ -767,16 +767,16 @@ export function Viewer({
                 // Keep pointer gestures in the viewer; Tab gives the slider keyboard focus.
                 stage.current?.focus({ preventScroll: true });
                 event.currentTarget.setPointerCapture(event.pointerId);
-                if (ANDROID_MODE) {
+                if (presentation.edgeToEdge) {
                   const rect = stage.current!.getBoundingClientRect();
-                  androidDividerDrag.current = {
+                  dividerDrag.current = {
                     pointer: event.pointerId,
                     offset: (event.target as HTMLElement).closest('.divider-handle')
                       ? event.clientX - rect.left - config.divider * rect.width
                       : 0,
                   };
                 }
-                setDivider(event.clientX - (androidDividerDrag.current?.offset ?? 0));
+                setDivider(event.clientX - (dividerDrag.current?.offset ?? 0));
               }}
               onPointerMove={(event) => {
                 if (event.pointerType === 'touch' && touchContacts.current.size > 0) return;
@@ -786,10 +786,10 @@ export function Viewer({
                   return;
                 }
                 if (event.currentTarget.hasPointerCapture(event.pointerId))
-                  setDivider(event.clientX - (androidDividerDrag.current?.offset ?? 0));
+                  setDivider(event.clientX - (dividerDrag.current?.offset ?? 0));
               }}
               onLostPointerCapture={() => {
-                androidDividerDrag.current = null;
+                dividerDrag.current = null;
               }}
               onKeyDown={(event) => {
                 if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
@@ -869,9 +869,9 @@ export function Viewer({
               {zoom * 100}%
             </button>
           ))}
-          {ANDROID_MODE && (
+          {presentation.edgeToEdge && (
             <select
-              className="android-zoom-select"
+              className="compact-zoom-select"
               aria-label="Zoom preset"
               onPointerDown={(event) => event.stopPropagation()}
               onTouchStart={(event) => event.stopPropagation()}
@@ -912,7 +912,7 @@ export function Viewer({
             <Plus size={15} />
           </button>
           <span className="toolbar-separator" />
-          {!ANDROID_MODE && fullscreenButton}
+          {!presentation.edgeToEdge && fullscreenButton}
           <button
             className="icon-button"
             aria-label="Comparison details"
@@ -929,11 +929,11 @@ export function Viewer({
           >
             <Keyboard size={17} />
           </button>
-          {ANDROID_MODE && fullscreenButton}
+          {presentation.edgeToEdge && fullscreenButton}
         </div>
         {comparisonFullscreen && (
           <button
-            className="android-fullscreen-exit"
+            className="minimalist-exit"
             aria-label="Exit fullscreen"
             title="Exit fullscreen"
             onClick={() => void toggleFullscreen()}

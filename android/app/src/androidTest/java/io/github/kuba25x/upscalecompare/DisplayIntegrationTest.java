@@ -139,7 +139,7 @@ public class DisplayIntegrationTest {
             assertEquals(
                 "true",
                 js(
-                    "document.querySelector('.app').classList.contains('android-landscape') === "
+                    "document.querySelector('.app').classList.contains('comparison-compact') === "
                         + landscape)));
   }
 
@@ -331,7 +331,7 @@ public class DisplayIntegrationTest {
                 "true",
                 js(
                     "(() => { const s=document.querySelector('.stage').getBoundingClientRect(),"
-                        + " e=document.querySelector('.android-fullscreen-exit').getBoundingClientRect();"
+                        + " e=document.querySelector('.minimalist-exit').getBoundingClientRect();"
                         + " return s.x===0 && s.y===0 && Math.abs(s.width-innerWidth)<1 &&"
                         + " e.right<=innerWidth && e.bottom<=s.bottom && e.width>=48; })()")));
     eventually(
@@ -361,7 +361,7 @@ public class DisplayIntegrationTest {
         "true",
         js(
             "(() => { const"
-                + " e=document.querySelector('.android-fullscreen-exit').getBoundingClientRect(),"
+                + " e=document.querySelector('.minimalist-exit').getBoundingClientRect(),"
                 + " d=devicePixelRatio; return e.left*d >= "
                 + state.getInteger("safeLeft")
                 + " && e.right*d <= innerWidth*d-"
@@ -394,7 +394,7 @@ public class DisplayIntegrationTest {
         assertEdgeToEdgeAndSafeExit();
         screenshot("landscape-minimalist-" + orientation);
       }
-      click(".android-fullscreen-exit");
+      click(".minimalist-exit");
       bars(false, false);
       eventually(
           () -> {
@@ -406,7 +406,7 @@ public class DisplayIntegrationTest {
                             + " m=document.querySelector('.mode-controls').getBoundingClientRect(),"
                             + " a=document.querySelector('.header-actions').getBoundingClientRect();"
                             + " return {header:h.height,"
-                            + " safeTop:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--android-safe-top')),"
+                            + " safeTop:parseFloat(getComputedStyle(document.querySelector('.app')).getPropertyValue('--comparison-safe-top')),"
                             + " stage:document.querySelector('.stage').getBoundingClientRect().height,"
                             + " height:innerHeight, modeCenter:m.y+m.height/2,"
                             + " actionsCenter:a.y+a.height/2}; })()"));
@@ -418,11 +418,11 @@ public class DisplayIntegrationTest {
                         < 2
                     && geometry.getDouble("stage") > geometry.getDouble("height") * .7);
           });
-      click(".android-images-toggle");
+      click(".images-toggle");
       assertEquals(
           "true",
           js("document.querySelector('.image-selection-bar').getBoundingClientRect().height > 0"));
-      click(".android-images-toggle");
+      click(".images-toggle");
       screenshot("landscape-normal");
       String viewportBeforeReveal =
           js("document.querySelector('.stage').getBoundingClientRect().height");
@@ -489,8 +489,8 @@ public class DisplayIntegrationTest {
               assertEquals(
                   "true",
                   js(
-                      "!!document.querySelector('.android-comparison-fullscreen"
-                          + " .android-fullscreen-exit')")));
+                      "!!document.querySelector('.comparison-minimalist"
+                          + " .minimalist-exit')")));
       bars(false, false);
       rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, false);
       bars(false, true);
@@ -502,7 +502,7 @@ public class DisplayIntegrationTest {
               assertEquals(
                   "false",
                   js(
-                      "document.querySelector('.app').classList.contains('android-comparison-fullscreen')")));
+                      "document.querySelector('.app').classList.contains('comparison-minimalist')")));
     }
   }
 }
