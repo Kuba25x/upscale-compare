@@ -112,8 +112,8 @@ Published manifests are immutable. Visitors may change navigation or selection i
 compact controls, minimalist presentation, a viewport transition key, and safe/layout
 insets in CSS pixels. The image panel's open state belongs to `App`. Shared
 `comparison-*` classes and CSS variables describe presentation without controlling
-system bars, orientation, or storage. The web entry keeps its existing layout and
-Fullscreen API behavior. Minimalist web mode is not enabled.
+system bars, orientation, or storage. Desktop web retains its existing layout and
+Fullscreen API behavior; mobile web can opt into the shared minimalist presentation.
 
 Only the Android entry dynamically loads `AndroidApp`, native services, and the
 Capacitor plugins. `useAndroidDisplay` accepts revision-ordered native measurements
@@ -149,8 +149,35 @@ The demo suite enables Firefox and WebKit coverage with `RUN_FIREFOX=true` and
 `RUN_WEBKIT=true`; CI installs these browsers. This emulation does not qualify real
 mobile browser chrome, keyboards or iOS Safari.
 
+### Mobile browser minimalist mode
+
+Primary coarse-pointer browsers without hover offer minimalist entry at widths up
+to 1120 CSS pixels in either orientation. `useMobileFullscreen` owns a presentation
+session independently of the browser's actual fullscreen element. Entry immediately
+shows only the image layers, split divider and safe-area-aware exit button. The
+standard Fullscreen API request runs in that same user action when request and exit
+methods are available. A missing, partial, throwing or rejected API leaves a usable
+CSS view inside the browser; it does not open help. Desktop fullscreen keeps its
+controls and its existing help-on-error behavior.
+
+`fullscreenchange` closes an observed fullscreen session on system exit. Exit and
+Escape also work in the CSS fallback, release active gestures through the existing
+viewer transition, and return focus to the entry control. Requests that complete
+after cancellation cannot reopen the view; overlapping entry/exit operations keep
+the latest presentation intent. Eligibility is checked at entry, so rotation or a
+wider viewport cannot unexpectedly abandon an active comparison. No orientation
+lock, Capacitor or native system-bar calls are made by this adapter.
+
+The same Viewer and original image nodes survive entry, rotation and exit. Selection,
+metadata, source center, divider, explicit zoom and physical-pixel mapping retain
+their values; Fit follows available space. Tests cover real Chromium/Firefox
+fullscreen, API outcomes, asynchronous cancellation, focus, CSS fallback, both modes,
+safe areas and image identity in Chromium/Firefox/WebKit. CDP touch injection and
+RGBA pixel sampling run in Chromium. Real Chrome/Firefox on Android and iOS Safari
+still require device acceptance before proceeding to the PWA phase.
+
 ## Demo build boundary
 
 `src/lib/config.ts` identifies Vite mode `demo` or an explicit `VITE_DEMO_MODE=true` flag. The Pages workflow defaults to `demo` and builds with `npm run build:demo`. A separate production-bundle browser suite requires no backend process. The default full-stack scripts and Worker implementation are preserved.
 
-In demo mode, the header keeps Share Comparison in its existing position, disabled and described by a visible notice. The sharing dialog never mounts. Direct hash routes explain that sharing is unavailable before fetching metadata or constructing image URLs. API helpers additionally reject requests/remote URL construction and expose no localhost fallback. A configured API URL or Turnstile key cannot enable networking in a demo build.
+In demo mode, Share Comparison stays disabled and described by a visible notice in the normal layout or compact image panel. Minimalist mode hides those controls. The sharing dialog never mounts. Direct hash routes explain that sharing is unavailable before fetching metadata or constructing image URLs. API helpers additionally reject requests/remote URL construction and expose no localhost fallback. A configured API URL or Turnstile key cannot enable networking in a demo build.

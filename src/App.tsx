@@ -50,7 +50,7 @@ interface AppProps {
 export default function App({
   android,
   presentation = WEB_PRESENTATION,
-  onSetMinimalist: changeNativeFullscreen,
+  onSetMinimalist,
   displayError,
 }: AppProps = {}) {
   const [images, setImages] = useState<LocalImage[]>([]);
@@ -62,7 +62,7 @@ export default function App({
   const [error, setError] = useState('');
   const [androidImageSource, setAndroidImageSource] = useState<AndroidImageSource>('photos');
   const [loading, setLoading] = useState(ANDROID_MODE);
-  const nativeFullscreen = presentation.minimalist;
+  const minimalist = presentation.minimalist;
   const compactLayout = presentation.compact;
   const [imagePanelOpen, setImagePanelOpen] = useState(false);
   const imagePanel = useRef<HTMLDivElement>(null);
@@ -158,33 +158,24 @@ export default function App({
     };
   }, [android, images, metadata, config, restored, loading]);
   useEffect(() => {
-    if (ANDROID_MODE && restored && !loading && nativeFullscreen && images.length < 2)
-      void changeNativeFullscreen?.(false);
-  }, [images.length, restored, loading, nativeFullscreen, changeNativeFullscreen]);
+    if (restored && !loading && minimalist && images.length < 2) void onSetMinimalist?.(false);
+  }, [images.length, restored, loading, minimalist, onSetMinimalist]);
   useEffect(() => {
     if (!android) return;
     // Intercept modal/fullscreen navigation; leave root predictive back to Android.
     void android.app.toggleBackButtonHandler({
-      enabled: Boolean(modal) || loading || nativeFullscreen || (compactLayout && imagePanelOpen),
+      enabled: Boolean(modal) || loading || minimalist || (compactLayout && imagePanelOpen),
     });
     const listener = android.app.addListener('backButton', () => {
       if (loading) return;
       if (modal) setModal(null);
-      else if (nativeFullscreen) void changeNativeFullscreen?.(false);
+      else if (minimalist) void onSetMinimalist?.(false);
       else if (compactLayout && imagePanelOpen) setImagePanelOpen(false);
     });
     return () => {
       void listener.then((handle) => handle.remove());
     };
-  }, [
-    android,
-    modal,
-    loading,
-    nativeFullscreen,
-    changeNativeFullscreen,
-    compactLayout,
-    imagePanelOpen,
-  ]);
+  }, [android, modal, loading, minimalist, onSetMinimalist, compactLayout, imagePanelOpen]);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadAction = useRef<UploadAction>({ kind: 'all' });
   const currentImages = useRef(images);
@@ -546,10 +537,8 @@ export default function App({
         <main className="comparison-layout">
           <Viewer
             presentation={presentation}
-            fullscreenOverride={android ? nativeFullscreen : undefined}
-            onToggleFullscreen={
-              android ? () => changeNativeFullscreen?.(!nativeFullscreen) : undefined
-            }
+            fullscreenOverride={onSetMinimalist ? minimalist : undefined}
+            onToggleFullscreen={onSetMinimalist ? () => onSetMinimalist(!minimalist) : undefined}
             onImageError={
               ANDROID_MODE
                 ? () =>

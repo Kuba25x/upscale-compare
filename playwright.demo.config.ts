@@ -55,7 +55,7 @@ export default defineConfig({
         ? [
             {
               name: `demo-${browserName}-landscape`,
-              testMatch: /mobile-landscape\.spec\.ts/,
+              testMatch: /mobile-(landscape|minimalist)\.spec\.ts/,
               use: {
                 browserName,
                 viewport: { width: 412, height: 900 },
