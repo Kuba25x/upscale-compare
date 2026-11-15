@@ -106,6 +106,23 @@ The canonical public link is `https://api-host/s/<16-hex-id>`. Its server-genera
 
 Published manifests are immutable. Visitors may change navigation or selection in memory but cannot change stored files, labels, or metadata. Uploading from a shared page creates a fresh local comparison. Deletion capabilities are stored in browser localStorage under API origin + comparison ID and can be downloaded privately. They are never part of public manifests, URLs, or logs.
 
+## Shared comparison presentation
+
+`App` and `Viewer` consume `ComparisonPresentation`: edge-to-edge layout readiness,
+compact controls, minimalist presentation, a viewport transition key, and safe/layout
+insets in CSS pixels. The image panel's open state belongs to `App`. Shared
+`comparison-*` classes and CSS variables describe presentation without controlling
+system bars, orientation, or storage. The web entry keeps its existing layout and
+Fullscreen API behavior; compact and minimalist web modes are not enabled.
+
+Only the Android entry dynamically loads `AndroidApp`, native services, and the
+Capacitor plugins. `useAndroidDisplay` accepts revision-ordered native measurements
+and converts physical pixels using the WebView DPR before passing presentation to
+the shared UI. Native display policy, Photo Picker/Files import, session persistence,
+Back, and lifecycle handling retain their existing behavior. Layout transitions
+resize the existing image layers rather than remounting the viewer. Android's
+offline sharing visibility policy remains separate from the shared layout styles.
+
 ## Demo build boundary
 
 `src/lib/config.ts` identifies Vite mode `demo` or an explicit `VITE_DEMO_MODE=true` flag. The Pages workflow defaults to `demo` and builds with `npm run build:demo`. A separate production-bundle browser suite requires no backend process. The default full-stack scripts and Worker implementation are preserved.

@@ -25,15 +25,13 @@ import { readDeletionKey, ShareDialog, type Published } from './components/Share
 import { PublicationRecoveryDialog } from './components/PublicationRecoveryDialog';
 import { JOURNAL_CHANGED, pendingPublications } from './lib/publication-journal';
 
+import type { AndroidImageSource } from './lib/android';
+import type { AndroidServices } from './lib/android-services';
 import {
-  pickOriginals,
-  restoreAndroidSession,
-  saveAndroidSession,
-  discardOriginals,
-  type AndroidImageSource,
-} from './lib/android';
-import { App as NativeApp } from '@capacitor/app';
-import { useAndroidDisplay } from './lib/android-display';
+  WEB_PRESENTATION,
+  presentationClasses,
+  type ComparisonPresentation,
+} from './lib/comparison-presentation';
 
 const SOURCE = 'https://github.com/Kuba25x/upscale-compare';
 const initialConfig: Config = {
@@ -43,7 +41,18 @@ const initialConfig: Config = {
   view: { zoom: null, center: { x: 0, y: 0 } },
 };
 type UploadAction = { kind: 'all' | 'add' | 'one'; index?: number };
-export default function App() {
+interface AppProps {
+  android?: AndroidServices;
+  presentation?: ComparisonPresentation;
+  onSetMinimalist?: (minimalist: boolean) => Promise<void>;
+  displayError?: { message: string };
+}
+export default function App({
+  android,
+  presentation = WEB_PRESENTATION,
+  onSetMinimalist: changeNativeFullscreen,
+  displayError,
+}: AppProps = {}) {
   const [images, setImages] = useState<LocalImage[]>([]);
   const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
   const [config, setConfig] = useState<Config>(initialConfig);
@@ -53,10 +62,12 @@ export default function App() {
   const [error, setError] = useState('');
   const [androidImageSource, setAndroidImageSource] = useState<AndroidImageSource>('photos');
   const [loading, setLoading] = useState(ANDROID_MODE);
-  const { display, setMinimalist: changeNativeFullscreen } = useAndroidDisplay(setError);
-  const nativeFullscreen = display?.minimalist ?? false;
-  const androidLandscape = ANDROID_MODE && display?.landscape === true;
+  const nativeFullscreen = presentation.minimalist;
+  const compactLayout = presentation.compact;
   const [imagePanelOpen, setImagePanelOpen] = useState(false);
+  useEffect(() => {
+    if (displayError) setError(displayError.message);
+  }, [displayError]);
   const [restored, setRestored] = useState(!ANDROID_MODE);
   const [dragging, setDragging] = useState(false);
   const [route, setRoute] = useState(location.hash);
@@ -77,11 +88,13 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    if (!ANDROID_MODE) return;
-    const listener = NativeApp.addListener('appRestoredResult', (result) => {
+    if (!android) return;
+    const listener = android.app.addListener('appRestoredResult', (result) => {
       if (result.pluginId !== 'Originals' || result.methodName !== 'pick') return;
       if (result.success && Array.isArray(result.data?.images)) {
-        void discardOriginals(result.data.images).catch((reason) => setError(reason.message));
+        void android
+          .discardOriginals(result.data.images)
+          .catch((reason) => setError(reason.message));
       }
       setError(
         'Import was interrupted when Android restarted the app. Please choose the files again.',
@@ -90,11 +103,12 @@ export default function App() {
     return () => {
       void listener.then((handle) => handle.remove());
     };
-  }, []);
+  }, [android]);
   useEffect(() => {
-    if (!ANDROID_MODE) return;
+    if (!android) return;
     let active = true;
-    restoreAndroidSession()
+    android
+      .restoreAndroidSession()
       .then((session) => {
         if (!active) return;
         setRestored(true);
@@ -114,45 +128,53 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [android]);
   useEffect(() => {
-    if (!ANDROID_MODE || !restored || loading) return;
+    if (!android || !restored || loading) return;
     const save = () =>
-      saveAndroidSession({ images, metadata, config })
+      android
+        .saveAndroidSession({ images, metadata, config })
         .then((result) => {
           if (result.warning) setError(result.warning);
         })
         .catch((reason) => setError(`Could not save the local session: ${reason.message}`));
     const timer = window.setTimeout(() => void save(), 250);
-    const listener = NativeApp.addListener('appStateChange', ({ isActive }) => {
+    const listener = android.app.addListener('appStateChange', ({ isActive }) => {
       if (!isActive) void save();
     });
     return () => {
       clearTimeout(timer);
       void listener.then((handle) => handle.remove());
     };
-  }, [images, metadata, config, restored, loading]);
+  }, [android, images, metadata, config, restored, loading]);
   useEffect(() => {
     if (ANDROID_MODE && restored && !loading && nativeFullscreen && images.length < 2)
-      void changeNativeFullscreen(false);
+      void changeNativeFullscreen?.(false);
   }, [images.length, restored, loading, nativeFullscreen, changeNativeFullscreen]);
   useEffect(() => {
-    if (!ANDROID_MODE) return;
+    if (!android) return;
     // Intercept modal/fullscreen navigation; leave root predictive back to Android.
-    void NativeApp.toggleBackButtonHandler({
-      enabled:
-        Boolean(modal) || loading || nativeFullscreen || (androidLandscape && imagePanelOpen),
+    void android.app.toggleBackButtonHandler({
+      enabled: Boolean(modal) || loading || nativeFullscreen || (compactLayout && imagePanelOpen),
     });
-    const listener = NativeApp.addListener('backButton', () => {
+    const listener = android.app.addListener('backButton', () => {
       if (loading) return;
       if (modal) setModal(null);
-      else if (nativeFullscreen) void changeNativeFullscreen(false);
-      else if (androidLandscape && imagePanelOpen) setImagePanelOpen(false);
+      else if (nativeFullscreen) void changeNativeFullscreen?.(false);
+      else if (compactLayout && imagePanelOpen) setImagePanelOpen(false);
     });
     return () => {
       void listener.then((handle) => handle.remove());
     };
-  }, [modal, loading, nativeFullscreen, changeNativeFullscreen, androidLandscape, imagePanelOpen]);
+  }, [
+    android,
+    modal,
+    loading,
+    nativeFullscreen,
+    changeNativeFullscreen,
+    compactLayout,
+    imagePanelOpen,
+  ]);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadAction = useRef<UploadAction>({ kind: 'all' });
   const currentImages = useRef(images);
@@ -221,15 +243,16 @@ export default function App() {
     };
   }, [route]);
   const requestFiles = (action: UploadAction, source: AndroidImageSource = androidImageSource) => {
-    if (ANDROID_MODE) {
+    if (android) {
       setAndroidImageSource(source);
       setLoading(true);
       setError('');
-      void pickOriginals(
-        action.kind === 'one' ? 1 : action.kind === 'add' ? 4 - images.length : 4,
-        action.kind === 'all' || readOnly ? 2 : 1,
-        source,
-      )
+      void android
+        .pickOriginals(
+          action.kind === 'one' ? 1 : action.kind === 'add' ? 4 - images.length : 4,
+          action.kind === 'all' || readOnly ? 2 : 1,
+          source,
+        )
         .then((selected) => upload(selected, action, true))
         .catch((reason) => setError(reason.message || 'Could not import the selected originals.'))
         .finally(() => setLoading(false));
@@ -250,7 +273,7 @@ export default function App() {
         ? images.length
         : images.length + files.length;
     if (total < 2 || total > 4 || (action.kind === 'one' && files.length !== 1)) {
-      if (native) await discardOriginals(files as LocalImage[]);
+      if (native) await android!.discardOriginals(files as LocalImage[]);
       setError(
         'Select two to four images for a comparison. You can replace one image at a time in Upload Images.',
       );
@@ -291,14 +314,14 @@ export default function App() {
           }
         : config;
       try {
-        const result = await saveAndroidSession({
+        const result = await android!.saveAndroidSession({
           images: nextImages,
           config: nextConfig,
           metadata: replacingAll ? emptyMetadata() : metadata,
         });
         if (result.warning) setError(result.warning);
       } catch (reason) {
-        await discardOriginals(loaded);
+        await android!.discardOriginals(loaded);
         throw reason;
       }
     }
@@ -371,7 +394,7 @@ export default function App() {
   };
   return (
     <div
-      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ''}${ANDROID_MODE && display && display.width > 0 ? ' android-layout-ready' : ''}${androidLandscape ? ' android-landscape' : ''}${ANDROID_MODE && nativeFullscreen ? ' android-comparison-fullscreen' : ''}`}
+      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ''} ${presentationClasses(presentation)}`}
       onDragEnter={(event) => {
         if (ANDROID_MODE || !event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
@@ -442,12 +465,12 @@ export default function App() {
         </h1>
         {ready && (
           <div className="header-actions">
-            {ANDROID_MODE && (
+            {presentation.edgeToEdge && (
               <button
-                className="android-images-toggle"
+                className="images-toggle"
                 aria-label="Image controls"
-                aria-expanded={androidLandscape && imagePanelOpen}
-                aria-controls="android-image-controls"
+                aria-expanded={compactLayout && imagePanelOpen}
+                aria-controls="image-controls"
                 onClick={() => setImagePanelOpen((open) => !open)}
               >
                 <ChevronDown size={17} />
@@ -485,20 +508,10 @@ export default function App() {
       {ready ? (
         <main className="comparison-layout">
           <Viewer
-            androidViewportKey={
-              ANDROID_MODE && display
-                ? [
-                    display.landscape,
-                    display.layoutTop,
-                    display.layoutBottom,
-                    display.width,
-                    display.height,
-                  ].join(':')
-                : undefined
-            }
-            fullscreenOverride={ANDROID_MODE ? nativeFullscreen : undefined}
+            presentation={presentation}
+            fullscreenOverride={android ? nativeFullscreen : undefined}
             onToggleFullscreen={
-              ANDROID_MODE ? () => changeNativeFullscreen(!nativeFullscreen) : undefined
+              android ? () => changeNativeFullscreen?.(!nativeFullscreen) : undefined
             }
             onImageError={
               ANDROID_MODE
@@ -515,8 +528,8 @@ export default function App() {
             onHelp={help}
           />
           <div
-            id={ANDROID_MODE ? 'android-image-controls' : undefined}
-            className={`image-selection-bar${ANDROID_MODE && imagePanelOpen ? ' android-image-panel-open' : ''}`}
+            id="image-controls"
+            className={`image-selection-bar${imagePanelOpen ? ' image-panel-open' : ''}`}
           >
             {([0, 1] as const).map((slot) => {
               const index = config.selected[slot],

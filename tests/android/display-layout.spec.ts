@@ -35,6 +35,58 @@ async function insets(page: Page, values: Record<string, number>) {
     (window as any).emitDisplayState();
   }, values);
 }
+
+test('native measurements feed shared presentation and stale revisions cannot change it', async ({
+  page,
+}) => {
+  await open(page);
+  await expect(page.locator('.app')).toHaveClass(/comparison-edge-to-edge/);
+  const state = await page.evaluate(() => {
+    const app = document.querySelector<HTMLElement>('.app')!;
+    return {
+      style: document.documentElement.getAttribute('style'),
+      top: getComputedStyle(app).getPropertyValue('--comparison-safe-top'),
+      bottom: getComputedStyle(app).getPropertyValue('--comparison-safe-bottom'),
+    };
+  });
+  expect(state.top).toBe('32px');
+  expect(state.bottom).toBe('24px');
+  await page.evaluate(() => {
+    const win = window as any;
+    win['listener-layoutChange']({
+      ...win.displayState,
+      revision: -1,
+      landscape: true,
+      minimalist: true,
+      safeTop: 900,
+    });
+  });
+  await expect(page.locator('.app')).not.toHaveClass(/comparison-(compact|minimalist)/);
+  await expect(page.locator('html')).toHaveAttribute('style', state.style!);
+  await expect(page.locator('.app-header')).toBeVisible();
+});
+
+test('repeated native display failures remain visible after dismissing the previous error', async ({
+  page,
+}) => {
+  await open(page);
+  await page.evaluate(() => {
+    const cap = (window as any).Capacitor;
+    const call = cap.nativePromise;
+    cap.nativePromise = (plugin: string, method: string, args: unknown) => {
+      if (plugin === 'DisplayLayout' && method === 'setMode')
+        return Promise.reject(new Error('Test display failure'));
+      return call(plugin, method, args);
+    };
+  });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.getByRole('button', { name: 'Enter fullscreen' }).click();
+    await expect(page.getByRole('alert')).toHaveText('Could not change Android display mode.');
+    await expect(page.locator('.app-header')).toBeVisible();
+    await page.getByRole('button', { name: 'Dismiss error' }).click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  }
+});
 async function config(page: Page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('test-session')!).config);
 }
@@ -63,13 +115,13 @@ test('all four display modes use inset-aware controls and an edge-to-edge image 
   await assertBars(page, false, true);
   expect((await box(page, '.stage')).y).toBe(0);
   expect((await box(page, '.stage')).height).toBe(876);
-  expect((await box(page, '.android-fullscreen-exit')).y + 48).toBe(864);
+  expect((await box(page, '.minimalist-exit')).y + 48).toBe(864);
   await page.setViewportSize({ width: 900, height: 412 });
   for (const side of ['cutoutLeft', 'cutoutRight']) {
     await insets(page, { [side]: 46, gestureLeft: 12, gestureRight: 12, gestureBottom: 18 });
     await assertBars(page, false, false);
     expect(await box(page, '.stage')).toMatchObject({ x: 0, y: 0, width: 900, height: 412 });
-    const exit = await box(page, '.android-fullscreen-exit');
+    const exit = await box(page, '.minimalist-exit');
     expect(exit.x + exit.width).toBe(900 - 12 - (side === 'cutoutRight' ? 46 : 12));
     expect(exit.y + exit.height).toBe(412 - 18 - 12);
     await expect(page.locator('button:visible')).toHaveCount(1);
@@ -81,7 +133,7 @@ test('all four display modes use inset-aware controls and an edge-to-edge image 
   }
   await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click();
   await assertBars(page, false, false);
-  await expect(page.locator('.android-comparison-fullscreen')).toHaveCount(0);
+  await expect(page.locator('.comparison-minimalist')).toHaveCount(0);
   expect((await box(page, '.app-header')).height).toBe(52);
   expect((await box(page, '.stage')).height).toBeGreaterThan(412 * 0.8);
   expect((await box(page, '.stage')).x).toBe(0);

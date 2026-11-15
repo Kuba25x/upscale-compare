@@ -77,7 +77,7 @@ async function assertOriginalLayers(page: Page) {
   expect(await page.evaluate(() => (window as any).imageLoads)).toBe(0);
 }
 async function assertFullscreen(page: Page, mode: string) {
-  await expect(page.locator('.android-comparison-fullscreen')).toBeVisible();
+  await expect(page.locator('.comparison-minimalist')).toBeVisible();
   for (const selector of [
     '.app-header',
     '.mode-controls',
@@ -142,7 +142,7 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
     page,
   }) => {
     const requests = await openComparison(page, mode);
-    await expect(page.locator('.android-fullscreen-exit')).toHaveCount(0);
+    await expect(page.locator('.minimalist-exit')).toHaveCount(0);
     const enter = page.getByRole('button', { name: 'Enter fullscreen' });
     await expect(page.locator('.inspection-toolbar > button').last()).toHaveAccessibleName(
       'Enter fullscreen',
@@ -231,7 +231,7 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
     await expect(page.locator('.app-header')).toBeVisible();
     await expect(page.locator('.image-selection-bar')).toBeVisible();
     await expect(page.locator('.inspection-toolbar')).toBeVisible();
-    await expect(page.locator('.android-fullscreen-exit')).toHaveCount(0);
+    await expect(page.locator('.minimalist-exit')).toHaveCount(0);
     await expect.poll(() => savedConfig(page)).toEqual(fullscreenConfig);
     await assertOriginalLayers(page);
     expect(requests).toHaveLength(requestCount);
