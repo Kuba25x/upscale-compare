@@ -194,41 +194,78 @@ export function Viewer({
     if (gestureDiagnostics.recording) gestureDiagnostics.record('commit', frame);
   }, [config, size, dpr, images]);
 
+  const measurement = useRef<{
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+    dpr: number;
+  } | null>(null);
+  const measureStage = useCallback(
+    (cancelOnChange = false) => {
+      if (!stage.current) return;
+      const rect = stage.current.getBoundingClientRect();
+      const next = {
+        width: rect.width,
+        height: rect.height,
+        x: rect.left,
+        y: rect.top,
+        dpr: window.devicePixelRatio || 1,
+      };
+      const previous = measurement.current;
+      if (
+        previous &&
+        Object.keys(next).every(
+          (key) => next[key as keyof typeof next] === previous[key as keyof typeof next],
+        )
+      )
+        return;
+      if (cancelOnChange) cancelPanning();
+      measurement.current = next;
+      setSize({ width: next.width, height: next.height, x: next.x, y: next.y });
+      setDpr(next.dpr);
+    },
+    [cancelPanning],
+  );
+
   // Resize the existing image layers before painting a managed layout transition.
   useLayoutEffect(() => {
-    if (!presentation.edgeToEdge || !stage.current) return;
+    if ((!presentation.edgeToEdge && presentation.viewportKey === undefined) || !stage.current)
+      return;
     cancelPanning();
-    const rect = stage.current.getBoundingClientRect();
-    setSize({ width: rect.width, height: rect.height, x: rect.left, y: rect.top });
-    setDpr(window.devicePixelRatio || 1);
+    measureStage();
     if (comparisonFullscreen) stage.current.focus({ preventScroll: true });
     else if (wasComparisonFullscreen.current)
       stage.current
         .querySelector<HTMLButtonElement>('.fullscreen-button')
         ?.focus({ preventScroll: true });
     wasComparisonFullscreen.current = comparisonFullscreen;
-  }, [comparisonFullscreen, presentation.edgeToEdge, presentation.viewportKey, cancelPanning]);
+  }, [
+    comparisonFullscreen,
+    presentation.edgeToEdge,
+    presentation.viewportKey,
+    cancelPanning,
+    measureStage,
+  ]);
 
   useEffect(() => {
-    const resize = () => {
-      if (stage.current) {
-        if (presentation.edgeToEdge) cancelPanning();
-        const rect = stage.current.getBoundingClientRect();
-        setSize({ width: rect.width, height: rect.height, x: rect.left, y: rect.top });
-        setDpr(window.devicePixelRatio || 1);
-      }
-    };
+    const resize = () => measureStage(true);
     const observer = new ResizeObserver(resize);
     observer.observe(stage.current!);
     window.addEventListener('resize', resize);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener('resize', resize);
+    viewport?.addEventListener('scroll', resize);
     const fullscreenChange = () => setFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', fullscreenChange);
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', resize);
+      viewport?.removeEventListener('resize', resize);
+      viewport?.removeEventListener('scroll', resize);
       document.removeEventListener('fullscreenchange', fullscreenChange);
     };
-  }, [presentation.edgeToEdge, cancelPanning]);
+  }, [measureStage]);
   const updateView = (action: (view: View) => View) =>
     onChange((previous) => ({ ...previous, view: action(previous.view) }));
   const setZoom = (zoom: number | null) =>

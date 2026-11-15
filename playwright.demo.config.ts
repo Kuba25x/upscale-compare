@@ -50,6 +50,22 @@ export default defineConfig({
         launchOptions,
       },
     },
+    ...(['firefox', 'webkit'] as const).flatMap((browserName) =>
+      process.env[`RUN_${browserName.toUpperCase()}`] === 'true'
+        ? [
+            {
+              name: `demo-${browserName}-landscape`,
+              testMatch: /mobile-landscape\.spec\.ts/,
+              use: {
+                browserName,
+                viewport: { width: 412, height: 900 },
+                deviceScaleFactor: 2,
+                hasTouch: true,
+              },
+            },
+          ]
+        : [],
+    ),
   ],
   webServer: {
     command: 'npm run preview -- --mode demo --port 4174 --strictPort',

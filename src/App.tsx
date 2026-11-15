@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowLeftRight,
   Check,
@@ -65,6 +65,16 @@ export default function App({
   const nativeFullscreen = presentation.minimalist;
   const compactLayout = presentation.compact;
   const [imagePanelOpen, setImagePanelOpen] = useState(false);
+  const imagePanel = useRef<HTMLDivElement>(null);
+  const imagePanelToggle = useRef<HTMLButtonElement>(null);
+  const compactWeb = !ANDROID_MODE && compactLayout;
+  useLayoutEffect(() => {
+    if (!ANDROID_MODE) setImagePanelOpen(false);
+  }, [compactLayout]);
+  useLayoutEffect(() => {
+    if (compactWeb && !imagePanelOpen && imagePanel.current?.contains(document.activeElement))
+      imagePanelToggle.current?.focus({ preventScroll: true });
+  }, [compactWeb, imagePanelOpen]);
   useEffect(() => {
     if (displayError) setError(displayError.message);
   }, [displayError]);
@@ -392,9 +402,50 @@ export default function App({
     metadata,
     config,
   };
+  const shareControl = (
+    <button
+      className="share-button"
+      onClick={() => setModal('share')}
+      disabled={DEMO_MODE || loading || images.some((image) => !image.label.trim())}
+      aria-describedby={DEMO_MODE ? 'demo-sharing-note' : undefined}
+      title={
+        DEMO_MODE
+          ? SHARING_UNAVAILABLE_MESSAGE
+          : images.some((image) => !image.label.trim())
+            ? 'Give each image a label before sharing.'
+            : 'Create or copy a public comparison link'
+      }
+    >
+      <Share2 size={16} />
+      <span>Share Comparison</span>
+    </button>
+  );
+  const demoNotice = DEMO_MODE && (
+    <p id="demo-sharing-note" className="demo-notice">
+      {ANDROID_MODE
+        ? 'Offline · Public sharing is unavailable. Images stay on this device.'
+        : 'Demo · Public sharing is not available yet. Images stay in this browser.'}
+    </p>
+  );
+  const publishedNotice = readOnly && (
+    <div className="published-notice">
+      <Check size={12} />
+      {published?.deleted
+        ? 'Deleted comparison · local preview'
+        : 'Published comparison · read-only'}
+      <span>Your zoom and image selection are local to this view.</span>
+    </div>
+  );
   return (
     <div
-      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ''} ${presentationClasses(presentation)}`}
+      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ' web-app'} ${presentationClasses(presentation)}`}
+      onKeyDown={(event) => {
+        if (compactWeb && imagePanelOpen && !modal && event.key === 'Escape') {
+          event.preventDefault();
+          setImagePanelOpen(false);
+          imagePanelToggle.current?.focus({ preventScroll: true });
+        }
+      }}
       onDragEnter={(event) => {
         if (ANDROID_MODE || !event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
@@ -467,6 +518,7 @@ export default function App({
           <div className="header-actions">
             {presentation.edgeToEdge && (
               <button
+                ref={imagePanelToggle}
                 className="images-toggle"
                 aria-label="Image controls"
                 aria-expanded={compactLayout && imagePanelOpen}
@@ -477,22 +529,7 @@ export default function App({
                 <span>Images</span>
               </button>
             )}
-            <button
-              className="share-button"
-              onClick={() => setModal('share')}
-              disabled={DEMO_MODE || loading || images.some((image) => !image.label.trim())}
-              aria-describedby={DEMO_MODE ? 'demo-sharing-note' : undefined}
-              title={
-                DEMO_MODE
-                  ? SHARING_UNAVAILABLE_MESSAGE
-                  : images.some((image) => !image.label.trim())
-                    ? 'Give each image a label before sharing.'
-                    : 'Create or copy a public comparison link'
-              }
-            >
-              <Share2 size={16} />
-              <span>Share Comparison</span>
-            </button>
+            {!compactWeb && shareControl}
             <button
               className="primary"
               aria-label="Upload Images"
@@ -528,6 +565,7 @@ export default function App({
             onHelp={help}
           />
           <div
+            ref={imagePanel}
             id="image-controls"
             className={`image-selection-bar${imagePanelOpen ? ' image-panel-open' : ''}`}
           >
@@ -596,23 +634,16 @@ export default function App({
             >
               <ArrowLeftRight size={16} />
             </button>
+            {compactWeb && (
+              <div className="image-panel-sharing">
+                {shareControl}
+                {demoNotice}
+                {publishedNotice}
+              </div>
+            )}
           </div>
-          {readOnly && (
-            <div className="published-notice">
-              <Check size={12} />
-              {published?.deleted
-                ? 'Deleted comparison · local preview'
-                : 'Published comparison · read-only'}
-              <span>Your zoom and image selection are local to this view.</span>
-            </div>
-          )}
-          {DEMO_MODE && (
-            <p id="demo-sharing-note" className="demo-notice">
-              {ANDROID_MODE
-                ? 'Offline · Public sharing is unavailable. Images stay on this device.'
-                : 'Demo · Public sharing is not available yet. Images stay in this browser.'}
-            </p>
-          )}
+          {!compactWeb && publishedNotice}
+          {!compactWeb && demoNotice}
         </main>
       ) : (
         <main className="landing">

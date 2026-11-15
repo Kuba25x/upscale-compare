@@ -212,11 +212,8 @@ test('production demo refuses the development diagnostics flag', async ({ page }
     Object.defineProperty(window, '__diagnosticListeners', { value: observed });
     const add = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, listener, options) {
-      if (
-        (this === document && diagnosticEvents.has(type)) ||
-        (this === window.visualViewport && ['resize', 'scroll'].includes(type))
-      )
-        observed.push(type);
+      // Viewport listeners also serve normal mobile layout; document gesture recording is opt-in.
+      if (this === document && diagnosticEvents.has(type)) observed.push(type);
       return add.call(this, type, listener, options);
     };
   });

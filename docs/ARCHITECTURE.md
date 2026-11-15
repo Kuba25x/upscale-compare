@@ -113,7 +113,7 @@ compact controls, minimalist presentation, a viewport transition key, and safe/l
 insets in CSS pixels. The image panel's open state belongs to `App`. Shared
 `comparison-*` classes and CSS variables describe presentation without controlling
 system bars, orientation, or storage. The web entry keeps its existing layout and
-Fullscreen API behavior; compact and minimalist web modes are not enabled.
+Fullscreen API behavior. Minimalist web mode is not enabled.
 
 Only the Android entry dynamically loads `AndroidApp`, native services, and the
 Capacitor plugins. `useAndroidDisplay` accepts revision-ordered native measurements
@@ -122,6 +122,32 @@ the shared UI. Native display policy, Photo Picker/Files import, session persist
 Back, and lifecycle handling retain their existing behavior. Layout transitions
 resize the existing image layers rather than remounting the viewer. Android's
 offline sharing visibility policy remains separate from the shared layout styles.
+
+### Mobile browser landscape
+
+`WebApp` supplies browser presentation through `useWebViewport`, without loading
+Capacitor. Compact controls require a primary coarse pointer without hover, physical
+landscape orientation, a width of at most 1120 CSS pixels and a height of at most
+620 CSS pixels. Orientation comes from Screen Orientation, with legacy window angle
+and screen-dimension fallbacks. A portrait keyboard shrinking the viewport cannot
+enable landscape controls; mouse-first touchscreen desktops retain their normal UI.
+
+The compact header is 52 CSS pixels plus its safe top inset. Images opens an overlay
+for the existing A/B selectors, labels, swap, sharing button and sharing notice.
+Closing the panel releases keyboard focus to its toggle. Zoom presets use the shared
+selector, and metadata stays in the existing dialog. Demo sharing remains disabled.
+All four browser safe-area insets protect controls. ResizeObserver and VisualViewport
+events update measurements and keep panels/dialogs within the visible keyboard area.
+Changes to the actual stage rectangle, orientation or DPR cancel active gestures,
+preserve source center/divider/explicit zoom and resize the existing image layers.
+Fit recalculates for the available stage. Android still uses its native adapter.
+
+`tests/shared/mobile-landscape.ts` exercises 844×390, 900×412 and 500×240 layouts in
+both comparison modes, focus, keyboard/inset simulations, rotation and image identity.
+Chromium additionally verifies sampled pixels, touch interruption and DPR changes.
+The demo suite enables Firefox and WebKit coverage with `RUN_FIREFOX=true` and
+`RUN_WEBKIT=true`; CI installs these browsers. This emulation does not qualify real
+mobile browser chrome, keyboards or iOS Safari.
 
 ## Demo build boundary
 
