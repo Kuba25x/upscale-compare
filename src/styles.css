@@ -1693,6 +1693,19 @@ input[type='checkbox'] {
 .web-app.comparison-compact .inspection-toolbar {
   bottom: calc(8px + max(var(--comparison-safe-bottom), var(--web-visual-bottom, 0px)));
 }
+.web-app.comparison-compact .divider {
+  width: 44px;
+}
+.web-app.comparison-compact .divider-handle {
+  width: 44px;
+  height: 44px;
+  /* Keep the wider pointer target centered on the unchanged divider line. */
+  left: clamp(
+    calc(var(--comparison-safe-left) + 24px - var(--comparison-divider-position) + 22px),
+    22px,
+    calc(100cqw - var(--comparison-safe-right) - 24px - var(--comparison-divider-position) + 22px)
+  );
+}
 .web-app.comparison-compact .image-panel-sharing {
   grid-column: 1 / -1;
   display: flex;

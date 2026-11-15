@@ -88,6 +88,12 @@ export function mobileLandscapeTests(demo: boolean) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
           viewport.width,
         );
+        expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(
+          viewport.height,
+        );
+        const handle = (await page.locator('.divider-handle').boundingBox())!;
+        expect(handle.width).toBeGreaterThanOrEqual(44);
+        expect(handle.height).toBeGreaterThanOrEqual(44);
         await page.getByRole('button', { name: 'Image controls' }).click();
         await expect(page.getByLabel('Select image A', { exact: true })).toBeVisible();
         expect((await page.getByTestId('stage').boundingBox())!.height).toBe(stage.height);
@@ -300,6 +306,9 @@ export function mobileLandscapeTests(demo: boolean) {
       await expect
         .poll(async () => (await page.locator('.app-header').boundingBox())!.height)
         .toBe(70);
+      await expect
+        .poll(async () => Math.abs((await sourceCenter(page)).y - 240))
+        .toBeLessThanOrEqual(1);
       const before = await sourceCenter(page);
       await page.getByRole('button', { name: 'Image controls' }).click();
       await page.getByLabel('Label for image A').focus();
@@ -307,6 +316,13 @@ export function mobileLandscapeTests(demo: boolean) {
         (window as any).testVisualViewport = { height: 240, offsetTop: 20 };
         visualViewport!.dispatchEvent(new Event('resize'));
       });
+      await expect
+        .poll(() =>
+          page
+            .locator('html')
+            .evaluate((node) => getComputedStyle(node).getPropertyValue('--web-visual-height')),
+        )
+        .toBe('240px');
       await expect
         .poll(async () => (await page.locator('.image-selection-bar').boundingBox())!.y)
         .toBeGreaterThanOrEqual(70);
