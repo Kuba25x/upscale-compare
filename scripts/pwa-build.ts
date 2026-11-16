@@ -1,0 +1,90 @@
+import { readFile } from 'node:fs/promises';
+import type { Plugin } from 'vite';
+import { VitePWA, type VitePWAOptions } from 'vite-plugin-pwa';
+import { runtimeNotices } from './generate-notices.mjs';
+
+export const pwaIcons = [
+  { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+  { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+  { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+];
+export const appleTouchIcon = 'icons/apple-touch-icon.png';
+
+function navigationOptions(base: string) {
+  const entry = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return {
+    navigateFallback: `${base}index.html`,
+    navigateFallbackAllowlist: [new RegExp(`^${entry}(?:index\\.html)?(?:\\?.*)?$`)],
+  };
+}
+
+export function webPwaPlugins(): Plugin[] {
+  let base = '/';
+  const options: Partial<VitePWAOptions> = {
+    strategies: 'generateSW',
+    filename: 'sw.js',
+    injectRegister: false,
+    registerType: 'prompt',
+    devOptions: { enabled: false },
+    includeManifestIcons: false,
+    manifest: {
+      name: 'Upscale Compare',
+      short_name: 'Upscale Compare',
+      lang: 'en',
+      display: 'standalone',
+      theme_color: '#101114',
+      background_color: '#101114',
+      prefer_related_applications: false,
+      icons: pwaIcons,
+    },
+    workbox: {
+      cacheId: 'upscale-compare',
+      globPatterns: [
+        '**/*.{js,css,html}',
+        'icons/*.png',
+        'favicon.svg',
+        'third-party-licenses.txt',
+      ],
+      runtimeCaching: [],
+      skipWaiting: false,
+      clientsClaim: false,
+    },
+    integration: {
+      configureOptions(config, options) {
+        // Use Vite's resolved base, including CLI overrides, for every PWA URL.
+        base = config.base;
+        options.scope = base;
+        Object.assign(options.manifest!, { id: base, start_url: base, scope: base });
+        Object.assign(options.workbox!, navigationOptions(base));
+      },
+    },
+  };
+  return [
+    {
+      name: 'web-pwa-assets',
+      transformIndexHtml: () => [
+        {
+          tag: 'link',
+          attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: `${base}${appleTouchIcon}` },
+          injectTo: 'head',
+        },
+      ],
+      async generateBundle() {
+        for (const path of [...pwaIcons.map((icon) => icon.src), appleTouchIcon])
+          this.emitFile({
+            type: 'asset',
+            fileName: path,
+            source: await readFile(
+              new URL(`../assets/pwa/${path.split('/').at(-1)}`, import.meta.url),
+            ),
+          });
+        this.emitFile({
+          type: 'asset',
+          fileName: 'third-party-licenses.txt',
+          source: await runtimeNotices(true),
+        });
+      },
+    },
+    ...VitePWA(options),
+  ];
+}

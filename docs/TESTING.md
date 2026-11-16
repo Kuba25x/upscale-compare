@@ -1,5 +1,22 @@
 # Testing and verification
 
+## PWA artifact verification (roadmap stage D)
+
+`npm run test:pwa:build` checks temporary builds for demo, production and Android at
+both root and Pages bases, plus a resolved Vite base override and web development
+exclusion. It validates manifest identity/scope, PNG sizes and maskable safe area,
+precache entries/revisions, navigation boundaries, worker license coverage and
+the absence of Android PWA artifacts. It never registers a service worker.
+See [PWA build boundaries and commands](PWA_BUILDS.md).
+
+The demo browser suite fetches the manifest, icons, worker and extended license
+notices under `/upscale-compare/`, imports local images and checks that no worker
+registration or Cache Storage entries appear. This runs on Chromium desktop/mobile
+and, with `RUN_FIREFOX=true` / `RUN_WEBKIT=true`, on Firefox and WebKit. Android's
+browser suite independently verifies no manifest or worker/cache state. Existing
+gesture, fullscreen, orientation, original-image and sharing regressions remain in
+the full CI run; Android lint, JVM tests, APK and emulator checks remain required.
+
 ## Automated checks
 
 ```bash
