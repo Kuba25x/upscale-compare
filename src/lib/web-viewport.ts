@@ -25,8 +25,15 @@ export function compactWebLayout(
   return coarseWithoutHover && landscape && width <= 1120 && height <= 620;
 }
 
-export function useWebViewport(): ComparisonPresentation {
-  const [presentation, setPresentation] = useState(WEB_PRESENTATION);
+export function mobileWebControls(coarseWithoutHover: boolean, width: number): boolean {
+  return coarseWithoutHover && width <= 1120;
+}
+
+export function useWebViewport() {
+  const [viewportState, setViewportState] = useState({
+    presentation: WEB_PRESENTATION,
+    mobile: false,
+  });
   useLayoutEffect(() => {
     const root = document.documentElement;
     const probe = document.createElement('div');
@@ -80,8 +87,9 @@ export function useWebViewport(): ComparisonPresentation {
         '--web-visual-bottom': Math.max(0, height - visual.height - visual.top),
       }))
         root.style.setProperty(name, `${value}px`);
-      setPresentation((previous) =>
-        JSON.stringify(previous) === JSON.stringify(next) ? previous : next,
+      const nextState = { presentation: next, mobile: mobileWebControls(input.matches, width) };
+      setViewportState((previous) =>
+        JSON.stringify(previous) === JSON.stringify(nextState) ? previous : nextState,
       );
       if (!resolution || !resolution.matches) {
         resolution?.removeEventListener('change', schedule);
@@ -114,5 +122,5 @@ export function useWebViewport(): ComparisonPresentation {
         root.style.removeProperty(`--web-visual-${name}`);
     };
   }, []);
-  return presentation;
+  return viewportState;
 }

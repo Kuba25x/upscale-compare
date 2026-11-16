@@ -45,6 +45,7 @@ export function Viewer({
   const comparisonFullscreen = presentation.minimalist;
   const wasComparisonFullscreen = useRef(false);
   const stage = useRef<HTMLDivElement>(null);
+  const fullscreenTrigger = useRef<HTMLButtonElement>(null);
   const dividerDrag = useRef<{ pointer: number; offset: number } | null>(null);
   const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
@@ -236,9 +237,7 @@ export function Viewer({
     measureStage();
     if (comparisonFullscreen) stage.current.focus({ preventScroll: true });
     else if (wasComparisonFullscreen.current)
-      stage.current
-        .querySelector<HTMLButtonElement>('.fullscreen-button')
-        ?.focus({ preventScroll: true });
+      fullscreenTrigger.current?.focus({ preventScroll: true });
     wasComparisonFullscreen.current = comparisonFullscreen;
   }, [
     comparisonFullscreen,
@@ -638,6 +637,7 @@ export function Viewer({
   };
   const fullscreenButton = (
     <button
+      ref={fullscreenTrigger}
       className={presentation.edgeToEdge ? 'icon-button fullscreen-button' : 'icon-button'}
       aria-label={(fullscreenOverride ?? fullscreen) ? 'Exit fullscreen' : 'Enter fullscreen'}
       title="Fullscreen (F)"

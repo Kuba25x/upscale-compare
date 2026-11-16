@@ -167,14 +167,25 @@ test('keeps privacy information, pixel controls, keyboard shortcuts, and fullscr
   );
   await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
-  await expect(page.locator('.app-header')).toBeVisible();
-  await expect(page.locator('.image-selection-bar')).toBeVisible();
-  await expect(page.locator('.inspection-toolbar')).toBeVisible();
-  await expect(page.locator('.image-badge').first()).toBeVisible();
-  await expect(page.locator('.minimalist-exit')).toHaveCount(0);
-  await expect(page.locator('.inspection-toolbar > button').last()).toHaveAccessibleName(
-    'Keyboard shortcuts',
+  const mobile = await page.evaluate(
+    () => matchMedia('(pointer: coarse) and (hover: none)').matches && innerWidth <= 1120,
   );
+  if (mobile) {
+    await expect(page.locator('.app')).toHaveClass(/comparison-minimalist/);
+    await expect(page.locator('.app-header')).toBeHidden();
+    await expect(page.locator('.inspection-toolbar')).toBeHidden();
+    await expect(page.locator('.minimalist-exit')).toBeVisible();
+    await expect(page.locator('button:visible')).toHaveCount(1);
+  } else {
+    await expect(page.locator('.app-header')).toBeVisible();
+    await expect(page.locator('.image-selection-bar')).toBeVisible();
+    await expect(page.locator('.inspection-toolbar')).toBeVisible();
+    await expect(page.locator('.image-badge').first()).toBeVisible();
+    await expect(page.locator('.minimalist-exit')).toHaveCount(0);
+    await expect(page.locator('.inspection-toolbar > button').last()).toHaveAccessibleName(
+      'Keyboard shortcuts',
+    );
+  }
   await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click();
 });
 

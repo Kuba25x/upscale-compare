@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { compactWebLayout, isLandscapeScreen } from '../../src/lib/web-viewport';
+import { compactWebLayout, isLandscapeScreen, mobileWebControls } from '../../src/lib/web-viewport';
 
 it('requires the primary coarse pointer, no hover, physical landscape and both size limits', () => {
   for (const [width, height] of [
@@ -27,4 +27,10 @@ it('prefers Screen Orientation, then the legacy angle, then screen dimensions ra
   expect(isLandscapeScreen(undefined, 180, landscape)).toBe(false);
   expect(isLandscapeScreen(undefined, undefined, portrait)).toBe(false);
   expect(isLandscapeScreen(undefined, undefined, landscape)).toBe(true);
+});
+
+it('offers minimalist entry to mobile primary input in either orientation without changing desktop fullscreen', () => {
+  for (const width of [390, 900, 1120]) expect(mobileWebControls(true, width)).toBe(true);
+  expect(mobileWebControls(true, 1121)).toBe(false);
+  expect(mobileWebControls(false, 390)).toBe(false);
 });

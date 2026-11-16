@@ -70,6 +70,12 @@ In a restricted environment where your home configuration directory is not writa
 
 At explicit integer magnifications the image origin is snapped to physical pixels and nearest-neighbor rendering is used. Fit can resample the display to show the complete image; it never changes the underlying file. Browser zoom and display changes are reflected through `devicePixelRatio`. Color management is controlled by the browser; this is not an HDR or raw-color analysis tool.
 
+On mobile touch devices, Fullscreen shows only the comparison, its split divider and
+an exit button. The comparison view also works when the browser keeps its own bars
+visible. Use Exit fullscreen or Escape to restore the controls; leaving browser
+fullscreen also restores them. Rotation preserves the selected images, labels,
+metadata and zoom. Desktop fullscreen retains the normal interface.
+
 ## Development and validation
 
 ```bash

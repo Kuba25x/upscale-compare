@@ -1693,10 +1693,10 @@ input[type='checkbox'] {
 .web-app.comparison-compact .inspection-toolbar {
   bottom: calc(8px + max(var(--comparison-safe-bottom), var(--web-visual-bottom, 0px)));
 }
-.web-app.comparison-compact .divider {
+.web-app:is(.comparison-compact, .comparison-minimalist) .divider {
   width: 44px;
 }
-.web-app.comparison-compact .divider-handle {
+.web-app:is(.comparison-compact, .comparison-minimalist) .divider-handle {
   width: 44px;
   height: 44px;
   /* Keep the wider pointer target centered on the unchanged divider line. */
@@ -1758,4 +1758,11 @@ input[type='checkbox'] {
   .web-app {
     min-height: 0;
   }
+}
+
+.web-app.comparison-minimalist {
+  padding: 0;
+}
+.web-app.comparison-minimalist .minimalist-exit {
+  bottom: calc(12px + max(var(--comparison-safe-bottom), var(--web-visual-bottom, 0px)));
 }
