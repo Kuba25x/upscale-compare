@@ -28,7 +28,7 @@ tasks.register('releaseDependencyNotices') {
             if (id instanceof ModuleComponentIdentifier) {
                 def supported = id.group.startsWith('androidx.') ||
                     id.group.startsWith('org.jetbrains.') || id.group.startsWith('org.jetbrains.kotlinx') ||
-                    id.group in ['org.apache.cordova', 'org.jspecify', 'javax.inject', 'com.google.guava']
+                    id.group in ['org.jetbrains', 'org.apache.cordova', 'org.jspecify', 'javax.inject', 'com.google.guava']
                 if (!supported) throw new GradleException("Review license/source requirements for " + id)
                 def coordinate = id.group + ':' + id.module + ':' + id.version
                 def base = id.group.startsWith('androidx.') ?

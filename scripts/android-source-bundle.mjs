@@ -43,13 +43,31 @@ try {
       return;
     }
     const parent = xml.match(/<parent>([\s\S]*?)<\/parent>/)?.[1];
-    const field = (name) => parent?.match(new RegExp('<' + name + '>([^<]+)</' + name + '>'))?.[1].trim();
-    const group = field('groupId'), artifact = field('artifactId'), version = field('version');
+    const field = (name) =>
+      parent?.match(new RegExp('<' + name + '>([^<]+)</' + name + '>'))?.[1].trim();
+    const group = field('groupId'),
+      artifact = field('artifactId'),
+      version = field('version');
     if (![group, artifact, version].every((value) => /^[A-Za-z0-9_.-]+$/.test(value || ''))) {
       throw new Error('Missing auditable Maven runtime license: ' + url);
     }
-    const root = url.startsWith('https://dl.google.com/') ? 'https://dl.google.com/dl/android/maven2/' : 'https://repo.maven.apache.org/maven2/';
-    await auditPom(root + group.replaceAll('.', '/') + '/' + artifact + '/' + version + '/' + artifact + '-' + version + '.pom', depth + 1);
+    const root = url.startsWith('https://dl.google.com/')
+      ? 'https://dl.google.com/dl/android/maven2/'
+      : 'https://repo.maven.apache.org/maven2/';
+    await auditPom(
+      root +
+        group.replaceAll('.', '/') +
+        '/' +
+        artifact +
+        '/' +
+        version +
+        '/' +
+        artifact +
+        '-' +
+        version +
+        '.pom',
+      depth + 1,
+    );
   }
   for (const entry of native) {
     await auditPom(entry.pom);
