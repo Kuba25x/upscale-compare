@@ -6,7 +6,7 @@
 
 **See the difference between your game screenshots.**
 
-Compare DLSS, FSR, XeSS, anti-aliasing settings or any two images with synchronized
+Compare DLSS, FSR, XeSS, other anti-aliasing methods or any two images with synchronized
 zoom and precise pixel inspection. Open two to four screenshots, choose your A/B
 pair, and inspect the originals locally.
 
