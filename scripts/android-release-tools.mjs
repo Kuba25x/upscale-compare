@@ -76,7 +76,7 @@ export function readSourceProvenance(archive) {
   const input = openSync(archive, 'r');
   try {
     return JSON.parse(
-      execFileSync(tarCommand(), ['-xOf', '-', './DEPENDENCY-SOURCES.json'], {
+      execFileSync(tarCommand(), ['-xzOf', '-', './DEPENDENCY-SOURCES.json'], {
         stdio: [input, 'pipe', 'pipe'],
         encoding: 'utf8',
         maxBuffer: 16 * 1024 * 1024,
