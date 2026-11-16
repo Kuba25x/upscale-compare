@@ -16,7 +16,15 @@ await appendFile(
 );
 
 await copyFile('LICENSE', 'dist-android/LICENSE.txt');
-const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+let commit;
+try {
+  commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+} catch {
+  // A corresponding-source archive has no .git directory.
+  commit = process.env.SOURCE_COMMIT;
+}
+if (!/^[a-f0-9]{40}$/.test(commit || '')) throw new Error('Set SOURCE_COMMIT for an extracted source archive');
+if (process.env.SOURCE_COMMIT && process.env.SOURCE_COMMIT !== commit) throw new Error('SOURCE_COMMIT differs from checkout');
 await writeFile(
   'dist-android/build-info.json',
   JSON.stringify(

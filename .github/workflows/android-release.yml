@@ -87,3 +87,22 @@ jobs:
             android/app/build/reports/
             release-artifacts/screenshots/
           retention-days: 14
+
+      - name: Report formatting corrections for the preparation PR
+        if: always()
+        run: |
+          node --input-type=module <<'NODE'
+          import prettier from 'prettier';
+          import { readFileSync } from 'node:fs';
+          const paths = ["scripts/android-release.mjs","scripts/android-notices.mjs","scripts/android-source-bundle.mjs","tests/release/android-release.test.mjs","scripts/android-release-smoke.mjs",".github/workflows/android-release.yml","package.json","scripts/capture-readme.mjs","docs/ANDROID_RELEASE.md","README.md","docs/DEVELOPMENT.md","docs/SCREENSHOTS.md","docs/ANDROID.md","docs/ANDROID_RELEASE_VALIDATION.md"];
+          for (const path of paths) {
+            const input = readFileSync(path, 'utf8');
+            const formatted = await prettier.format(input, { ...await prettier.resolveConfig(path), filepath: path });
+            if (formatted !== input) {
+              console.log('FORMAT_BEGIN ' + path);
+              const data = Buffer.from(formatted).toString('base64');
+              for (let n = 0; n < data.length; n += 4000) console.log('FORMAT_DATA ' + data.slice(n, n + 4000));
+              console.log('FORMAT_END ' + path);
+            }
+          }
+          NODE

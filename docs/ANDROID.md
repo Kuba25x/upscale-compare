@@ -1,6 +1,8 @@
 # Android offline app
 
-Status: debug implementation; Xiaomi 15T / Android 16 device qualification is pending.
+Status: implemented offline preview with automated browser/JVM/API 36 instrumentation
+coverage. First signed public pre-release preparation is in progress; no public
+release is claimed. Xiaomi 15T / Android 16 physical-device qualification is pending.
 The 256 MiB file ceiling is provisional, not a guarantee that WebView can decode
 or display every accepted file. Do not describe this build as device-certified.
 
@@ -29,7 +31,8 @@ Metadata and bounds are checked both before copying and on the private copy;
 WebView performs the actual image decode. A header check is not full codec validation.
 EXIF display orientation is accounted for without rewriting original bytes.
 
-Cloud-only files are not available offline. Providers must return the actual
+Cloud-backed files become available offline only after their original stream has
+been copied successfully into private storage. Providers must return the actual
 original document stream; the app preserves that stream, not a provider-generated
 thumbnail. Provider metadata and declared file size are not trusted as quotas.
 
@@ -107,9 +110,9 @@ The artifact includes SHA256SUMS and COMMIT and is retained for 14 days.
 
 CI uses a disposable debug signing key. Builds from different runners may not
 update an existing installation: uninstall first, which deletes its private
-comparison, or use local builds signed by the same local debug key. Stable CI
-signing is deliberately not simulated with a committed private key; configure a
-protected test signing secret in a future trusted release workflow if needed.
+comparison, or use local builds signed by the same local debug key. Production signing is deliberately separate: the release preparation workflow
+builds an unsigned, non-debuggable APK; the owner signs it offline using a stable
+private key on a trusted computer. No production key or signing secret goes to CI.
 These APKs are test builds, not Play Store releases. Distribution must include
 corresponding source under AGPL-3.0; Android/MIT notices are bundled in the assets.
 
@@ -163,23 +166,36 @@ fixtures, memory/frame measurements and a region/tile-renderer recommendation.
 Do not introduce that larger renderer change without owner approval. No renderer
 qualification or physical-device results are claimed by this implementation.
 
-## Recorded implementation checks — 2026-11-04
+## Current verification evidence
 
-On the implementation branch, `npm run build`, all **305** Vitest unit/integration
-checks, **31** demo, **45** E2E, **37** local production-sharing and **5** diagnostics
-browser checks passed. The focused Android/guard subset passed **9** checks;
-these are already included in the Vitest total. `npm audit --audit-level=high`
-reported zero vulnerabilities. Formatting and diff whitespace checks passed.
+Historical implementation snapshots are not a qualification of a later APK.
+Use the checks and artifacts attached to the exact release-preparation PR commit.
+Current results are recorded in [ANDROID_RELEASE_VALIDATION.md](ANDROID_RELEASE_VALIDATION.md).
 
-The Android-mode browser suite passed both real synthetic 4K/8K image cases with
-a mocked native bridge. It checks decoded pixel samples, pinch, session restore,
-clear/cancel and fullscreen/back routing. The initial local signed APK build
-passed lint/JVM tests; the final branch is also built and signed independently
-in the Android debug APK workflow, including **7** native policy JVM tests.
-Consult the PR checks/artifact for the exact final CI commit and outcome.
+| Layer | What it establishes | What it does not establish |
+| --- | --- | --- |
+| Frontend/backend unit and browser suites | Shared geometry, pixels, offline adapter, gestures, web/sharing regressions | Android window manager or real device memory |
+| JVM/Robolectric tests | Streaming hashes/limits, URI contracts, cancellation, rollback and lifecycle protocol | OEM Photo Picker UI or Chromium renderer behavior |
+| API 36 emulator instrumentation | Native insets, cutout policy, bars/icons, transitions, Back, picker return and Activity recreation | HyperOS-specific behavior or sustained 8K performance on Xiaomi |
+| Release preparation and disposable-key signing | Non-debuggable APK, package/version, alignment, source provenance, certificate/hash checks | Production key custody, signed-release device acceptance or public publication |
+| Physical Xiaomi 15T / Android 16 | Qualification checklist below, still pending | No measurements are inferred from browser/emulator tests |
 
-No physical Xiaomi measurements or native picker/lifecycle test results are
-claimed. These remain the release-qualification gate described above.
+No physical-device performance, memory, HDR/color precision or OEM system-UI
+certification is claimed. Automatic results must be tied to a successful run and
+exact source SHA; compilation alone is not an instrumentation pass.
+
+## Signed public preview preparation
+
+The planned first version is 0.1.0-android-preview.1 (versionCode 2), declared in
+android/release.properties. Debug APKs remain available for testing. A separate
+read-only release workflow produces an unsigned candidate, source/dependency
+archive, notices, manifest and SHA-256 checksums. It neither tags nor publishes.
+The owner must generate/retain the permanent key on a trusted computer, sign
+offline, verify the public certificate and qualify the signed build.
+
+Follow [the owner release runbook](ANDROID_RELEASE.md) for exact commands, source
+distribution obligations, update testing and the manual publication gate. There
+is no public APK download until the owner explicitly publishes a pre-release.
 
 ## Android comparison-only fullscreen — 2026-11-07
 
@@ -203,8 +219,9 @@ state preservation, pan/pinch, divider movement, portrait/landscape and short
 viewports, button placement/visibility, unchanged image nodes/URLs/load counts,
 display-policy adapter calls and Back/modal routing. Native bridge calls are
 mocked. Desktop/mobile web tests cover the unchanged HTML fullscreen behavior.
-Real Android 16 insets, system-bar visibility and physical touch behavior still
-require verification on Xiaomi 15T; no hardware results are claimed here.
+API 36 instrumentation exercises native insets/system bars separately. Xiaomi 15T
+still requires OEM insets, physical touch and memory qualification; no phone
+measurements are claimed here.
 
 ## System Photo Picker and Files fallback
 
@@ -260,14 +277,13 @@ picker UI or real-device performance.
 References: [Android Photo Picker](https://developer.android.com/training/data-storage/shared/photo-picker),
 [Capacitor Android plugins](https://capacitorjs.com/docs/plugins/android).
 
-Implementation checks: 22 JVM/Robolectric tests, 309 frontend/backend unit and
-integration tests, 9 Android browser tests, 32 demo tests and 45 E2E tests passed
-locally. Android lint, debug APK assembly, type checking and formatting passed.
-The CI build/artifact for the exact PR head is linked in PR #20.
+The current native/frontend regression suites run in CI; consult the exact source
+commit's checks and the current verification record rather than historical PR #20
+counts. Device acceptance remains a separate step.
 
 ## Edge-to-edge display and compact landscape interface
 
-`feat/android-edge-to-edge` starts from merged PR #20 at main `dddd663`.
+The merged Android implementation includes edge-to-edge and compact landscape UI.
 `AndroidDisplayLayout` owns the window with AndroidX `WindowCompat`,
 `WindowInsetsControllerCompat` and measured `WindowInsetsCompat`. Capacitor's built-in
 SystemBars inset handling is disabled to avoid competing decor padding; its initial

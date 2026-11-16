@@ -1,171 +1,154 @@
+<p align="center">
+  <img src="public/favicon.svg" width="72" height="72" alt="Upscale Compare logo">
+</p>
+
 # Upscale Compare
 
-A focused, open-source image quality comparison tool for game screenshots. Compare DLSS, FSR, XeSS, or any other AA solution directly in your browser. **Screenshots stay local until you explicitly publish.**
+**See the difference between your game screenshots.**
 
-## Features
+Compare DLSS, FSR, XeSS, anti-aliasing settings or any two images with synchronized
+zoom and precise pixel inspection. Open two to four screenshots, choose your A/B
+pair, and inspect the originals locally.
 
-- Minimal dark interface: centered title, a central upload button, an almost full-screen viewer, and a compact A/B selection bar.
-- Two to four PNG, JPEG, or static WebP screenshots, editable labels, and original resolution/file information.
-- Split Screen with an accessible draggable divider and synchronized Side-by-Side inspection.
-- Cursor-centered wheel zoom, drag navigation, touch pan and pinch, fullscreen, and keyboard shortcuts.
-- Fit plus physical-pixel 100%, 200%, and 400% presets. 100% means one source pixel per physical display pixel, including on HiDPI displays.
-- Optional game, upscaler, preset, rendering resolution, GPU, graphics settings, and description metadata.
-- Explicit public publishing, immutable comparison snapshots, short share links, social preview metadata, private deletion keys, and operator moderation.
-- Original file bytes are stored and served without re-encoding. Different dimensions use the same scale and top-left origin; images are never stretched to match.
+**[Open the web app](https://kuba25x.github.io/upscale-compare/) ·
+[Android APK downloads](https://github.com/Kuba25x/upscale-compare/releases) ·
+[Report an issue](https://github.com/Kuba25x/upscale-compare/issues)**
 
-## Frontend-only demo
+> **Android Preview is being prepared.** There is no public Android release yet.
+> The planned first pre-release is v0.1.0-android-preview.1.
+> Until it is published, temporary debug APKs are available from
+> [GitHub Actions](https://github.com/Kuba25x/upscale-compare/actions/workflows/android.yml).
+> **Share Comparison is not publicly available** in the web app or Android APK.
 
-The GitHub Pages demo works without Cloudflare or any backend configuration. All local comparison tools remain available. **Share Comparison is disabled**, and published comparison links show an explanation instead of contacting a server. Images, labels, and metadata remain in browser memory and are lost on refresh. No Turnstile widget is loaded.
+## Made for close inspection
 
-```bash
+- **Split Screen** with a draggable divider, or synchronized **Side-by-Side**.
+- **Fit, 100%, 200% and 400%** zoom. At 100%, one source pixel maps to one physical
+  display pixel, including on high-density screens.
+- Mouse-wheel zoom, drag-to-pan, one-finger pan and two-finger pinch.
+- Two to four PNG, JPEG or static WebP originals, editable labels and quick A/B swapping.
+- Correct aspect ratios and common pixel scale for images with different dimensions.
+- Minimalist comparison mode on Android and mobile web; desktop browser fullscreen.
+- A compact Android landscape interface with expandable image controls.
+- **Original bytes stay intact:** importing/comparing never recompresses or resizes
+  the source files. Fit scales the displayed view, not the file.
+
+## Screenshots
+
+Actual screenshots of the running web app, captured with the repository's
+synthetic test images. These are not game footage, Android device photographs
+or UI mockups. [Capture instructions and provenance](docs/SCREENSHOTS.md).
+
+**Desktop — Split Screen**
+
+![Upscale Compare desktop Split Screen with synthetic test images](docs/images/desktop-split.jpg)
+
+**Mobile web — Side-by-Side**
+
+<img src="docs/images/mobile-side-by-side.jpg" width="360" alt="Upscale Compare mobile web Side-by-Side with synthetic test images">
+
+## Web or Android?
+
+| | Web app | Android Preview APK |
+| --- | --- | --- |
+| Start | Open the link in a modern browser | Install an APK from Releases when available |
+| Local comparison | Yes; no image upload | Yes; bundled app works offline |
+| Image selection | Browser file input | System Photo Picker; Browse files / Files alternative |
+| Session storage | Browser memory; refresh loses the local comparison | Original copies and session in private app storage |
+| File ceiling | 20 MiB per file | Provisional 256 MiB per file |
+| Image bounds | 36 million pixels; 16,384 pixels per side | Same pixel/dimension bounds |
+| Public Share Comparison | Unavailable | Unavailable |
+
+Both versions accept two to four images and share the comparison geometry.
+A file passing the Android size ceiling is not guaranteed to decode successfully.
+4K/8K memory use depends on the device and WebView; Xiaomi 15T / Android 16
+qualification is still pending.
+
+The web app needs its assets loaded from the website; it does not offer an
+installed PWA or a guaranteed offline cache. Once loaded, local comparisons do
+not send your images to a server. The APK contains the frontend and needs no
+GitHub Pages, Cloudflare or network connection to compare successfully imported
+local images. Cloud-backed Photo Picker items need to finish downloading and
+copying before they are available offline.
+
+## Download and install Android
+
+1. Open [Releases](https://github.com/Kuba25x/upscale-compare/releases) and choose
+   the Android Preview **pre-release** once published.
+2. Download its signed APK. Compare its SHA-256 with SHA256SUMS; release notes will
+   also identify the source commit and the public signing-certificate fingerprint.
+3. On Android 7.0 / API 24 or later, allow **Install unknown apps** for the browser
+   or file manager you use, then open the APK. Older supported API levels have
+   not yet been qualified; Xiaomi 15T with Android 16 is the primary target.
+
+No Google Play listing or public APK is claimed before that first release.
+Preview builds may have device-specific limitations. Android System WebView
+must be available and reasonably current.
+
+Originals are streamed into private app storage with SHA-256 verification. Your
+source files are not edited or deleted. A completed session can be restored
+offline after restarting the app. Use **Clear comparison** to remove its private
+copies; uninstalling or clearing app data deletes the session and stored originals.
+Copies use real device space: up to 1 GiB per committed comparison, with a bounded
+replacement allowance and a free-space reserve. See [storage and limits](docs/ANDROID.md#storage-and-lifecycle).
+
+Updates need the same signing key and a higher versionCode. Temporary CI debug
+builds use disposable keys; moving from debug to the official release generally
+requires uninstalling, which deletes app-private data. Keep your source images
+elsewhere before uninstalling.
+
+[Android guide and device checklist](docs/ANDROID.md) ·
+[Owner release/signing runbook](docs/ANDROID_RELEASE.md)
+
+## Quick start for contributors
+
+For the local frontend-only version, no Cloudflare account is needed:
+
+~~~sh
 npm ci
-npm run build:demo
-npm run preview -- --mode demo
-```
+npm run dev:demo
+~~~
 
-Open [http://localhost:4173/upscale-compare/](http://localhost:4173/upscale-compare/). For development, use `npm run dev:demo`. Public `.env.demo` configuration sets the `/upscale-compare/` asset base automatically; it contains no secrets. `npm run test:demo` builds and tests this production bundle with no Worker, D1, or R2 process.
+Open the URL printed by Vite. Use Node 24 in CI (minimum Node 22.12 for the web
+toolchain). Android builds use pinned Node 24.19.0, npm 11.9.0, JDK 21 and the
+committed Gradle wrapper.
 
-For the approved GitHub Pages destination, follow [manual demo deployment](docs/DEPLOYMENT.md#frontend-only-github-pages-demo). Choose **demo** and explicitly confirm **DEPLOY** in the workflow. No API URL, Turnstile key, or Cloudflare credentials are needed. The source is prepared for [https://kuba25x.github.io/upscale-compare/](https://kuba25x.github.io/upscale-compare/); this documentation does not indicate that deployment has been performed.
-
-The original full-stack build and backend remain available. Use the existing commands below, or select **production** in the Pages workflow after configuring the sharing service.
-
-## Quick start
-
-Requires Node.js 22.12 or later (Node.js 24 is used in CI) and npm. No Cloudflare account is required for local development.
-
-```bash
-npm ci
-cp .env.example .env
-npm run db:local
-npm run costs:local # Generous local-only test limits; never a production policy
-npm run dev:api
-```
-
-In a second terminal:
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173). Upload two screenshots. Local sharing uses Wrangler's persistent D1 and R2 emulation on port 8787. Local share URLs work only while that service is running and are not Internet-public. Do not expose the development Worker to the Internet.
-
-In a restricted environment where your home configuration directory is not writable, prefix Wrangler commands with `XDG_CONFIG_HOME=/tmp/upscale-compare-config`. Disable optional Wrangler telemetry with `WRANGLER_SEND_METRICS=false`.
-
-## Controls
-
-| Action                      | Control                                                           |
-| --------------------------- | ----------------------------------------------------------------- |
-| Pan both images             | Drag / arrow keys                                                 |
-| Zoom at the cursor          | Mouse wheel                                                       |
-| Touch navigation            | One-finger drag / two-finger pinch                                |
-| Fit complete images         | `0`                                                               |
-| 100%, 200%, 400%            | `1`, `2`, `4`                                                     |
-| Zoom in / out               | `+`, `-`                                                          |
-| Split Screen / Side-by-Side | `S`, `V`                                                          |
-| Swap A and B                | `X`                                                               |
-| Previous / next image for A | `[`, `]`                                                          |
-| Fullscreen                  | `F`                                                               |
-| Help                        | `?`                                                               |
-| Move divider                | Drag handle; focus it and use arrow keys, Shift+arrows, Home, End |
-
-At explicit integer magnifications the image origin is snapped to physical pixels and nearest-neighbor rendering is used. Fit can resample the display to show the complete image; it never changes the underlying file. Browser zoom and display changes are reflected through `devicePixelRatio`. Color management is controlled by the browser; this is not an HDR or raw-color analysis tool.
-
-On mobile touch devices, Fullscreen shows only the comparison, its split divider and
-an exit button. The comparison view also works when the browser keeps its own bars
-visible. Use Exit fullscreen or Escape to restore the controls; leaving browser
-fullscreen also restores them. Rotation preserves the selected images, labels,
-metadata and zoom. Desktop fullscreen retains the normal interface.
-
-## Development and validation
-
-```bash
-npm run typecheck
+~~~sh
 npm run build
 npm test
 npm run test:e2e
 npm run test:demo
-```
+npm run test:android:web
+~~~
 
-Playwright uses `/usr/bin/chromium` by default. On other systems:
+See [development and controls](docs/DEVELOPMENT.md),
+[testing](docs/TESTING.md), [contributing](CONTRIBUTING.md) and
+[Android builds](docs/ANDROID.md). New UI strings, code and documentation are in English.
 
-```bash
-npx playwright install chromium
-CHROMIUM_PATH=/path/to/chromium npm run test:e2e
-npm run test:demo
-```
+## Technical documentation
 
-Use `node -e "console.log(require('playwright').chromium.executablePath())"` to locate the downloaded browser. End-to-end tests launch Vite and local Wrangler automatically. Unit and API tests use isolated Miniflare D1/R2 instances. See [testing](docs/TESTING.md) for coverage and executed results.
+Public sharing remains unavailable. Backend code and local test tools are retained
+for development; production Cloudflare workflows remain locked. No preview release
+enables hosting, public uploads or billing. PWA installation is not a shipped feature.
 
-## Architecture
+| Topic | Documentation |
+| --- | --- |
+| Architecture and API | [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md) |
+| Original bytes and image geometry | [Fidelity and restoration](docs/ORIGINAL_FIDELITY.md), [resource limits](docs/RESOURCE_LIMITS.md) |
+| Security, privacy and deletion | [Security](SECURITY.md), [privacy](docs/PRIVACY.md) |
+| Deployment and production locks | [Deployment](docs/DEPLOYMENT.md), [operations](docs/OPERATIONS.md) |
+| Cost policy and emergency stop | [Free-tier operations](docs/FREE_TIER_OPERATIONS.md), [cost controls](docs/COST_CONTROLS.md) |
+| Local sharing tests and recovery | [Validation](docs/LOCAL_SHARING_VALIDATION.md), [recovery](docs/PUBLICATION_RECOVERY.md), [retries](docs/PUBLICATION_RETRIES.md) |
+| Research and outstanding feasibility work | [Sharing](docs/FREE_SHARING_FEASIBILITY.md), [storage](docs/FREE_STORAGE_RESEARCH.md), [execution](docs/FREE_VALIDATION_EXECUTION_RESEARCH.md) |
+| Project status | [Progress](PROGRESS.md) |
 
-```text
-Browser (React + TypeScript + Vite)
-  ├─ Local object URLs → image inspection; no image network traffic
-  └─ Explicit publish → Cloudflare Worker
-                         ├─ D1: immutable manifests, deletion hashes, rate limits, quota
-                         └─ Private R2: unmodified originals
-GitHub Pages → frontend (/upscale-compare/ supported)
-Worker /s/<id> → Open Graph metadata → frontend #c/<id>
-```
+## License
 
-Hash routes make direct links and browser refreshes work on GitHub Pages without server rewrites. The Worker share URL provides server-generated social metadata. Frontend and backend deployments are independent. See [architecture](docs/ARCHITECTURE.md), [API](docs/API.md), and [deployment](docs/DEPLOYMENT.md).
+Upscale Compare is licensed under **AGPL-3.0-only**. See [LICENSE](LICENSE).
+Redistributing an APK requires its Corresponding Source and applicable notices;
+modified hosted versions also have network-source obligations.
 
-## Limits and security
-
-Defaults: 2–4 images, 20 MiB per file, 40 MiB total per publication, 36 megapixels per image, and 16,384 pixels per side. The server also enforces configurable request, storage, comparison-count, and IP rate limits. Public PNG publishing accepts non-interlaced still images. Rotated/mirrored EXIF images must be exported with normalized orientation before publishing. JPEG/WebP validation checks container structure and dimensions; PNG validation additionally checks chunk CRCs and the complete bounded decompressed raster. See [security](SECURITY.md) for scope and limitations.
-
-Production sharing requires an allowed HTTPS frontend origin, private R2, initialized D1, a Turnstile challenge, and operator-configured moderation. The owner requires **zero charges on Workers/D1 Free and included R2 Standard usage**. Production workflows are main-only and currently **locked**, pending measured resource suitability and enforceable R2 zero-overage protection. `npm run ops:check` intentionally exits 1; no confirmation or variable overrides this lock. The Pages demo remains available through its manual deployment workflow. See [guarded operations and owner decisions](docs/OPERATIONS.md) and [the Free-only envelope](docs/FREE_TIER_OPERATIONS.md).
-
-The [Free-only feasibility investigation](docs/FREE_SHARING_FEASIBILITY.md) adds local CPU/codec evidence and compares storage/execution alternatives. It does not approve an architecture, unlock deployment or begin stage 8.
-
-The [local SQLite DO/KV and complete-codec research](docs/FREE_STORAGE_RESEARCH.md) adds isolated prototypes and failure/resource evidence. SQLite DO storage is the recommended research direction; full 8K validation and provider limits remain blockers. Production R2 and the deployment lock are unchanged.
-
-The [phase A/B execution comparison](docs/FREE_VALIDATION_EXECUTION_RESEARCH.md) adds public-limit clarification, unsent Cloudflare questions and 216 local workerd/Chromium validation jobs. Local Chromium is not Browser Run; actual browser resources, large-file transport and the 600-second daily allowance remain unqualified. No production migration or later phase is authorized by these results.
-
-Upload parsing and image validation also enforce fixed structural and memory
-ceilings. See [resource limits](docs/RESOURCE_LIMITS.md) for details, overload
-behavior and the remaining production verification requirements.
-
-Publication now reserves quota together with its pending record and retains
-cleanup markers after interrupted storage operations. See [publication recovery](docs/PUBLICATION_RECOVERY.md)
-for retry behavior, deletion grace and migration requirements.
-
-Publication attempts also save their private key before uploading and support
-24-hour result recovery without resending images. Interrupted attempts appear
-under **Recover publication**, including after a refresh. See [recoverable retries](docs/PUBLICATION_RETRIES.md)
-for identifier binding, migration 0003 and remaining limitations.
-
-Migration 0004 adds shared daily admissions, publication and image-read budgets,
-plus a persistent emergency publishing stop without redeployment. New production
-policy defaults to paused with zero daily limits. See [cost controls and the stop runbook](docs/COST_CONTROLS.md)
-for accounting, budget recommendations, closed hostnames and remaining billing risks.
-
-`npm run test:sharing:local` validates the built production sharing flow with a
-production-mode local Worker, D1/R2 and offline verification doubles, including
-the repository subpath, retries and owner deletion. See [local sharing validation](docs/LOCAL_SHARING_VALIDATION.md)
-for setup, coverage and the limits of this evidence. It does not contact real
-Turnstile or enable any production service.
-
-Original bytes and comparison restoration are covered by a generated PNG/JPEG/WebP
-matrix, SHA-256 round trips and production browser checks at multiple display
-densities. See [original fidelity and restoration](docs/ORIGINAL_FIDELITY.md) for
-the exact guarantees, remaining color/device limits and real-screenshot acceptance
-checklist.
-
-## Privacy and deletion
-
-Unpublished images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. Private publication/deletion keys are saved in browser storage before uploading; download a backup and keep it private. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. Keys are not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](docs/PRIVACY.md).
-
-## Contributing and license
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [PROGRESS.md](PROGRESS.md). All project content is in English. This project is licensed under the existing **GNU Affero General Public License v3.0**; see [LICENSE](LICENSE). Modified hosted versions must provide corresponding source under the AGPL. The interface includes a source-code link; update it when operating a fork.
-
-Runtime dependency license notices are included in [third-party licenses](public/third-party-licenses.txt) and regenerated by `npm run notices`. React, React DOM, Scheduler and Zod use MIT; Lucide uses ISC and includes its upstream icon notices.
-
-## Android offline preview
-
-The Capacitor Android debug app packages the same React comparison tools for
-offline use. Native document import preserves original bytes and uses private
-device storage. See [Android build, APK download and device qualification](docs/ANDROID.md).
-The provisional 256 MiB limit is Android-only; existing web and publication limits
-are unchanged. Xiaomi 15T / Android 16 memory and gesture qualification is pending.
+[Frontend dependency notices](public/third-party-licenses.txt) are generated with
+npm run notices. Android adds Capacitor and native runtime notices to the APK;
+the release preparation bundle includes exact project/dependency source and a
+resolved inventory. See [distribution requirements](docs/ANDROID_RELEASE.md#license-and-dependency-distribution).

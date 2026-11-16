@@ -59,4 +59,4 @@ tasks.register('releaseDependencyNotices') {
         file('src/main/assets/public/third-party-licenses.txt').setText(notices, 'UTF-8')
     }
 }
-tasks.named('preReleaseBuild').configure { dependsOn('releaseDependencyNotices') }
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn('releaseDependencyNotices') }
