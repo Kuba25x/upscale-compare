@@ -1,0 +1,89 @@
+name: Android release preparation
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'shared/**'
+      - 'android/**'
+      - 'tests/**'
+      - 'package*.json'
+      - '*config.ts'
+      - 'scripts/android-*'
+      - 'scripts/capture-readme.mjs'
+      - '.github/workflows/android-release.yml'
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: 'Full reviewed main commit SHA (40 lowercase hex characters)'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: android-release-preparation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unsigned-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select the exact reviewed main commit for a manual candidate
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_COMMIT_INPUT: ${{ inputs.source_commit }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          [[ "$SOURCE_COMMIT_INPUT" =~ ^[a-f0-9]{40}$ ]]
+          git merge-base --is-ancestor "$SOURCE_COMMIT_INPUT" origin/main
+          git checkout --detach "$SOURCE_COMMIT_INPUT"
+      - name: Record exact build source
+        run: echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - run: npm install --global npm@11.9.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Test release validation policy
+        run: node --test tests/release/*.test.mjs
+      - run: npm run android:sync
+      - name: Build and lint an unsigned non-debuggable release
+        working-directory: android
+        run: ./gradlew --no-daemon lintRelease assembleRelease
+      - name: Collect matching project and dependency source
+        run: node scripts/android-source-bundle.mjs
+      - name: Verify APK metadata, unsigned state, alignment, licenses and provenance
+        run: node scripts/android-release.mjs prepare release-artifacts/unsigned
+      - name: Test signing using a disposable key
+        run: node scripts/android-release-smoke.mjs release-artifacts/unsigned
+      - name: Capture authentic README screenshots
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/capture-readme.mjs --emit-base64
+      - name: Publish preparation artifact (not an installable signed release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: upscale-compare-UNSIGNED-${{ env.SOURCE_COMMIT }}
+          path: release-artifacts/unsigned/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-release-reports-${{ github.sha }}
+          path: |
+            android/app/build/reports/
+            release-artifacts/screenshots/
+          retention-days: 14

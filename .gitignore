@@ -15,3 +15,14 @@ coverage/
 worker/wrangler.production.json
 
 dist-android/
+
+# Signing material must stay outside the repository, including untracked files.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+*.pem
+*.apk
+*.idsig
+release-artifacts/

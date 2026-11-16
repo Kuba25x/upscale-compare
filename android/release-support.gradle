@@ -1,0 +1,62 @@
+// Release-only inventory and notices. No production signing configuration lives in Gradle.
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
+
+def releaseReport = layout.buildDirectory.file('reports/release-dependencies.json')
+tasks.register('releaseDependencyNotices') {
+    outputs.upToDateWhen { false }
+    doLast {
+        def artifacts = configurations.releaseRuntimeClasspath.incoming.artifacts.artifacts
+        def inventory = []
+        def upstreamNotices = []
+        def collectNotices = { stream, origin ->
+            def zip = new ZipInputStream(stream)
+            try {
+                def entry
+                while ((entry = zip.nextEntry) != null) {
+                    if (!entry.directory && entry.name ==~ /(?i).*(?:^|\/)(?:LICENSE|NOTICE|COPYING)(?:[._-].*)?/) {
+                        upstreamNotices << "\n$ORIGIN!/$ENTRY\n$BODY\n".replace('$ORIGIN', origin).replace('$ENTRY', entry.name).replace('$BODY', new String(zip.readAllBytes(), 'UTF-8'))
+                    }
+                }
+            } finally { zip.close() }
+        }
+        artifacts.each { artifact ->
+            def id = artifact.id.componentIdentifier
+            if (id instanceof ModuleComponentIdentifier) {
+                def supported = id.group.startsWith('androidx.') ||
+                    id.group.startsWith('org.jetbrains.') || id.group.startsWith('org.jetbrains.kotlinx') ||
+                    id.group in ['org.apache.cordova', 'org.jspecify', 'javax.inject', 'com.google.guava']
+                if (!supported) throw new GradleException("Review license/source requirements for " + id)
+                def coordinate = id.group + ':' + id.module + ':' + id.version
+                def base = id.group.startsWith('androidx.') ?
+                    'https://dl.google.com/dl/android/maven2' : 'https://repo.maven.apache.org/maven2'
+                def relative = id.group.replace('.', '/') + '/' + id.module + '/' + id.version + '/' + id.module + '-' + id.version
+                inventory << [
+                    coordinate: coordinate, license: 'Apache-2.0',
+                    pom: base + '/' + relative + '.pom',
+                    source: base + '/' + relative + '-sources.jar',
+                ]
+                collectNotices(new FileInputStream(artifact.file), coordinate)
+                if (artifact.file.name.endsWith('.aar')) {
+                    def aar = new ZipFile(artifact.file)
+                    try {
+                        def classes = aar.getEntry('classes.jar')
+                        if (classes != null) collectNotices(aar.getInputStream(classes), coordinate + '/classes.jar')
+                    } finally { aar.close() }
+                }
+            }
+        }
+        inventory = inventory.unique { it.coordinate }.sort { it.coordinate }
+        def report = releaseReport.get().asFile
+        report.parentFile.mkdirs()
+        report.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(inventory)) + '\n'
+        def original = rootProject.file('../dist-android/third-party-licenses.txt').getText('UTF-8')
+        def notices = original + '\nResolved Android release runtime components (Apache-2.0):\n' +
+            inventory.collect { it.coordinate + ' — ' + it.license + '\nSource: ' + it.source + '\n' }.join('\n') +
+            upstreamNotices.join('\n')
+        rootProject.file('../dist-android/third-party-licenses.txt').setText(notices, 'UTF-8')
+        file('src/main/assets/public/third-party-licenses.txt').setText(notices, 'UTF-8')
+    }
+}
+tasks.named('preReleaseBuild').configure { dependsOn('releaseDependencyNotices') }

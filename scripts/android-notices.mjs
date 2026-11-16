@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { copyFile, writeFile } from 'node:fs/promises';
 import { readFile, appendFile } from 'node:fs/promises';
+import { readVersion } from './android-release.mjs';
 for (const name of ['core', 'android', 'app']) {
   const base = `node_modules/@capacitor/${name}`;
   const metadata = JSON.parse(await readFile(`${base}/package.json`, 'utf8'));
@@ -21,6 +22,7 @@ await writeFile(
   JSON.stringify(
     {
       commit,
+      ...readVersion(await readFile('android/release.properties', 'utf8')),
       source: `https://github.com/Kuba25x/upscale-compare/tree/${commit}`,
       deviceQualified: false,
     },
