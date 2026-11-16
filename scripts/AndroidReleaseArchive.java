@@ -1,4 +1,4 @@
-// Read only bounded public APK metadata. No extraction, application code or private keys.
+// Trusted SDK entry point and bounded APK metadata reader. No extraction or password transport.
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.zip.ZipFile;

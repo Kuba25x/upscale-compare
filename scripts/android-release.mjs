@@ -9,7 +9,7 @@ import {
   requireInteractiveSigning,
   runTool,
   spawnTool,
-  tarCommand,
+  readSourceProvenance,
 } from './android-release-tools.mjs';
 
 export const applicationId = 'io.github.kuba25x.upscalecompare';
@@ -133,9 +133,7 @@ function verifyBundle(directory, commit, certificate) {
   if (readFileSync(join(directory, 'SHA256SUMS'), 'utf8') !== checksums)
     throw new Error('SHA256SUMS mismatch');
   const sourceName = 'corresponding-source-' + commit + '.tar.gz';
-  const source = JSON.parse(
-    run(tarCommand(), ['-xOf', join(directory, sourceName), './DEPENDENCY-SOURCES.json']),
-  );
+  const source = readSourceProvenance(join(directory, sourceName));
   if (source.commit !== commit || !Array.isArray(source.archives) || source.archives.length < 5) {
     throw new Error('Corresponding-source provenance mismatch');
   }

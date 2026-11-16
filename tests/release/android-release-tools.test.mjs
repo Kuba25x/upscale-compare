@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { crc32, deflateRawSync } from 'node:zlib';
+import { crc32, deflateRawSync, gzipSync } from 'node:zlib';
 import {
   toolCommand,
   tarCommand,
   readApkAssets,
+  readSourceProvenance,
   requireInteractiveSigning,
 } from '../../scripts/android-release-tools.mjs';
 
@@ -145,6 +146,31 @@ test('JDK ZIP reading rejects missing, duplicate and oversized public metadata',
       writeFileSync(apk, zip(entries));
       assert.throws(() => readApkAssets(apk));
     }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('source provenance streams through a binary handle with Unicode archive paths', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'Source żółć & %! '));
+  try {
+    const data = Buffer.from(JSON.stringify({ commit: 'a'.repeat(40), archives: [] }));
+    const header = Buffer.alloc(512);
+    header.write('./DEPENDENCY-SOURCES.json');
+    header.write('0000644\0', 100);
+    header.write('0000000\0', 108);
+    header.write('0000000\0', 116);
+    header.write(data.length.toString(8).padStart(11, '0') + '\0', 124);
+    header.write('00000000000\0', 136);
+    header.fill(32, 148, 156);
+    header[156] = 48;
+    header.write('ustar' + String.fromCharCode(0) + '00', 257);
+    const sum = header.reduce((total, value) => total + value, 0);
+    header.write(sum.toString(8).padStart(6, '0') + '\0 ', 148);
+    const tar = Buffer.concat([header, data, Buffer.alloc(512 - data.length), Buffer.alloc(1024)]);
+    const archive = join(directory, 'archive (test); %!.tar.gz');
+    writeFileSync(archive, gzipSync(tar));
+    assert.deepEqual(readSourceProvenance(archive), JSON.parse(data));
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

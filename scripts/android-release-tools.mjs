@@ -1,6 +1,6 @@
 // Trusted native executables only: never pass signing paths through cmd.exe or a batch file.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, openSync, closeSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -68,6 +68,24 @@ export function tarCommand(env = process.env, platform = process.platform) {
     throw new Error('Windows system directory is unavailable');
   }
   return path.win32.join(env.SystemRoot, 'System32', 'tar.exe');
+}
+
+export function readSourceProvenance(archive) {
+  // Pass a binary file handle, not a filename through tar.exe's native code page.
+  // This also avoids PowerShell's text pipelines and does not consume console input.
+  const input = openSync(archive, 'r');
+  try {
+    return JSON.parse(
+      execFileSync(tarCommand(), ['-xOf', '-', './DEPENDENCY-SOURCES.json'], {
+        stdio: [input, 'pipe', 'pipe'],
+        encoding: 'utf8',
+        maxBuffer: 16 * 1024 * 1024,
+        shell: false,
+      }),
+    );
+  } finally {
+    closeSync(input);
+  }
 }
 
 export function readApkAssets(apk) {

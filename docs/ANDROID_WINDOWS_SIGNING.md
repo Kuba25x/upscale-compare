@@ -9,7 +9,8 @@ on the owner's Windows computer. No production key or password goes to Actions.
 
 Install trusted Node 24.19.0, a full **JDK 21 including javac**, and Android SDK
 Build Tools **35.0.0** before making the release key accessible. Windows 11 includes
-System32/tar.exe, used to read the source archive's provenance without extraction.
+System32/tar.exe, used to read source provenance through a binary file handle.
+The archive filename does not cross tar's native code page or a PowerShell text pipeline.
 There is no unzip, npm install, Gradle, WSL or network dependency while signing.
 
 ```powershell
