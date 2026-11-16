@@ -13,9 +13,13 @@ for (const name of ['core', 'android', 'app']) {
 const tslib = JSON.parse(await readFile('node_modules/tslib/package.json', 'utf8'));
 await appendFile(
   'dist-android/third-party-licenses.txt',
-  '\ntslib ' + tslib.version + ' — 0BSD\n' +
-    await readFile('node_modules/tslib/CopyrightNotice.txt', 'utf8') + '\n' +
-    await readFile('node_modules/tslib/LICENSE.txt', 'utf8') + '\n',
+  '\ntslib ' +
+    tslib.version +
+    ' — 0BSD\n' +
+    (await readFile('node_modules/tslib/CopyrightNotice.txt', 'utf8')) +
+    '\n' +
+    (await readFile('node_modules/tslib/LICENSE.txt', 'utf8')) +
+    '\n',
 );
 await appendFile(
   'dist-android/third-party-licenses.txt',

@@ -1,9 +1,10 @@
 // End-to-end signing test with a disposable CI-only key, never a production key.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
+import { checkBadging } from './android-release.mjs';
 
 const bundle = resolve(process.argv[2]);
 const commit = process.env.SOURCE_COMMIT;
@@ -18,6 +19,33 @@ const command = (args, options = {}) =>
     ...options,
   });
 try {
+  const extracted = join(temporary, 'source-rebuild');
+  mkdirSync(extracted);
+  execFileSync('tar', [
+    '-xzf',
+    join(bundle, 'corresponding-source-' + commit + '.tar.gz'),
+    '-C',
+    extracted,
+  ]);
+  const project = join(extracted, 'project');
+  const options = { cwd: project, stdio: 'pipe', maxBuffer: 16 * 1024 * 1024 };
+  execFileSync('npm', ['ci'], options);
+  execFileSync('npm', ['run', 'android:release:unsigned'], options);
+  const rebuilt = join(project, 'android/app/build/outputs/apk/release/app-release-unsigned.apk');
+  const originalManifest = JSON.parse(readFileSync(join(bundle, 'release-manifest.json'), 'utf8'));
+  checkBadging(
+    execFileSync(join(sdk, 'build-tools/35.0.0/aapt'), ['dump', 'badging', rebuilt], {
+      encoding: 'utf8',
+    }),
+    originalManifest,
+  );
+  const embedded = JSON.parse(
+    execFileSync('unzip', ['-p', rebuilt, 'assets/public/build-info.json'], { encoding: 'utf8' }),
+  );
+  assert.equal(embedded.commit, commit);
+  assert.equal(embedded.versionCode, originalManifest.versionCode);
+  assert.equal(embedded.versionName, originalManifest.versionName);
+  console.log('PASS: corresponding-source archive rebuild without Git metadata');
   execFileSync(
     'keytool',
     [

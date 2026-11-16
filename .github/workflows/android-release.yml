@@ -67,7 +67,7 @@ jobs:
         run: node scripts/android-source-bundle.mjs
       - name: Verify APK metadata, unsigned state, alignment, licenses and provenance
         run: node scripts/android-release.mjs prepare release-artifacts/unsigned
-      - name: Test signing using a disposable key
+      - name: Test source rebuild and signing using a disposable key
         run: node scripts/android-release-smoke.mjs release-artifacts/unsigned
       - name: Capture authentic README screenshots
         run: |
@@ -92,7 +92,6 @@ jobs:
         run: |
           npx prettier --check scripts/android-*.mjs scripts/capture-readme.mjs tests/release/*.mjs README.md docs/ANDROID*.md docs/DEVELOPMENT.md docs/SCREENSHOTS.md .github/workflows/android-release.yml package.json PROGRESS.md android/upstream-sources.json tests/shared/web-presentation.ts
           git diff --check
-
 
       - name: Diagnose formatting differences
         if: failure()
