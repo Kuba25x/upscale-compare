@@ -16,6 +16,9 @@ const bundle = join(temporary, 'Unsigned bundle żółć & (test); %!');
 cpSync(originalBundle, bundle, { recursive: true });
 const key = join(temporary, 'TEST-ONLY.p12');
 const signingOnly = process.argv[3] === '--signing-only';
+// Android lint parses project paths as arguments; keep its rebuild root conventional.
+// Signing still exercises the separate Unicode/metacharacter paths above.
+const sourceTemporary = signingOnly ? null : mkdtempSync(join(tmpdir(), 'upscale-source-rebuild-'));
 const command = (args, options = {}) => {
   // CI-only library harness: the production CLI refuses piped password input.
   const parameters =
@@ -31,7 +34,7 @@ const command = (args, options = {}) => {
 };
 try {
   if (!signingOnly) {
-    const extracted = join(temporary, 'source-rebuild');
+    const extracted = join(sourceTemporary, 'project-extraction');
     mkdirSync(extracted);
     execFileSync(tarCommand(), [
       '-xzf',
@@ -169,4 +172,5 @@ try {
   );
 } finally {
   rmSync(temporary, { recursive: true, force: true });
+  if (sourceTemporary) rmSync(sourceTemporary, { recursive: true, force: true });
 }
