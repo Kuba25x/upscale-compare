@@ -49,15 +49,15 @@ or UI mockups. [Capture instructions and provenance](docs/SCREENSHOTS.md).
 
 ## Web or Android?
 
-| | Web app | Android Preview APK |
-| --- | --- | --- |
-| Start | Open the link in a modern browser | Install an APK from Releases when available |
-| Local comparison | Yes; no image upload | Yes; bundled app works offline |
-| Image selection | Browser file input | System Photo Picker; Browse files / Files alternative |
-| Session storage | Browser memory; refresh loses the local comparison | Original copies and session in private app storage |
-| File ceiling | 20 MiB per file | Provisional 256 MiB per file |
-| Image bounds | 36 million pixels; 16,384 pixels per side | Same pixel/dimension bounds |
-| Public Share Comparison | Unavailable | Unavailable |
+|                         | Web app                                            | Android Preview APK                                   |
+| ----------------------- | -------------------------------------------------- | ----------------------------------------------------- |
+| Start                   | Open the link in a modern browser                  | Install an APK from Releases when available           |
+| Local comparison        | Yes; no image upload                               | Yes; bundled app works offline                        |
+| Image selection         | Browser file input                                 | System Photo Picker; Browse files / Files alternative |
+| Session storage         | Browser memory; refresh loses the local comparison | Original copies and session in private app storage    |
+| File ceiling            | 20 MiB per file                                    | Provisional 256 MiB per file                          |
+| Image bounds            | 36 million pixels; 16,384 pixels per side          | Same pixel/dimension bounds                           |
+| Public Share Comparison | Unavailable                                        | Unavailable                                           |
 
 Both versions accept two to four images and share the comparison geometry.
 A file passing the Android size ceiling is not guaranteed to decode successfully.
@@ -104,22 +104,22 @@ elsewhere before uninstalling.
 
 For the local frontend-only version, no Cloudflare account is needed:
 
-~~~sh
+```sh
 npm ci
 npm run dev:demo
-~~~
+```
 
 Open the URL printed by Vite. Use Node 24 in CI (minimum Node 22.12 for the web
 toolchain). Android builds use pinned Node 24.19.0, npm 11.9.0, JDK 21 and the
 committed Gradle wrapper.
 
-~~~sh
+```sh
 npm run build
 npm test
 npm run test:e2e
 npm run test:demo
 npm run test:android:web
-~~~
+```
 
 See [development and controls](docs/DEVELOPMENT.md),
 [testing](docs/TESTING.md), [contributing](CONTRIBUTING.md) and
@@ -131,16 +131,16 @@ Public sharing remains unavailable. Backend code and local test tools are retain
 for development; production Cloudflare workflows remain locked. No preview release
 enables hosting, public uploads or billing. PWA installation is not a shipped feature.
 
-| Topic | Documentation |
-| --- | --- |
-| Architecture and API | [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md) |
-| Original bytes and image geometry | [Fidelity and restoration](docs/ORIGINAL_FIDELITY.md), [resource limits](docs/RESOURCE_LIMITS.md) |
-| Security, privacy and deletion | [Security](SECURITY.md), [privacy](docs/PRIVACY.md) |
-| Deployment and production locks | [Deployment](docs/DEPLOYMENT.md), [operations](docs/OPERATIONS.md) |
-| Cost policy and emergency stop | [Free-tier operations](docs/FREE_TIER_OPERATIONS.md), [cost controls](docs/COST_CONTROLS.md) |
-| Local sharing tests and recovery | [Validation](docs/LOCAL_SHARING_VALIDATION.md), [recovery](docs/PUBLICATION_RECOVERY.md), [retries](docs/PUBLICATION_RETRIES.md) |
+| Topic                                     | Documentation                                                                                                                                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture and API                      | [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md)                                                                                       |
+| Original bytes and image geometry         | [Fidelity and restoration](docs/ORIGINAL_FIDELITY.md), [resource limits](docs/RESOURCE_LIMITS.md)                                              |
+| Security, privacy and deletion            | [Security](SECURITY.md), [privacy](docs/PRIVACY.md)                                                                                            |
+| Deployment and production locks           | [Deployment](docs/DEPLOYMENT.md), [operations](docs/OPERATIONS.md)                                                                             |
+| Cost policy and emergency stop            | [Free-tier operations](docs/FREE_TIER_OPERATIONS.md), [cost controls](docs/COST_CONTROLS.md)                                                   |
+| Local sharing tests and recovery          | [Validation](docs/LOCAL_SHARING_VALIDATION.md), [recovery](docs/PUBLICATION_RECOVERY.md), [retries](docs/PUBLICATION_RETRIES.md)               |
 | Research and outstanding feasibility work | [Sharing](docs/FREE_SHARING_FEASIBILITY.md), [storage](docs/FREE_STORAGE_RESEARCH.md), [execution](docs/FREE_VALIDATION_EXECUTION_RESEARCH.md) |
-| Project status | [Progress](PROGRESS.md) |
+| Project status                            | [Progress](PROGRESS.md)                                                                                                                        |
 
 ## License
 

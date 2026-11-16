@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readVersion, requireCommit, fingerprint, checkBadging, checkSignature } from '../../scripts/android-release.mjs';
+import { readVersion, requireCommit, fingerprint, checkBadging, checkSignature, validateManifest } from '../../scripts/android-release.mjs';
 
 test('release versions are explicit and bounded by the Android versionCode ceiling', () => {
   assert.deepEqual(readVersion('# Preview\nversionCode=2\nversionName=0.1.0-android-preview.1\n'), { versionCode: 2, versionName: '0.1.0-android-preview.1' });
@@ -35,4 +35,32 @@ test('signed APK needs a verified v2 signature from exactly the expected certifi
   assert.throws(() => checkSignature(signature, 'cd'.repeat(32)));
   assert.throws(() => checkSignature(signature.replace('true', 'false'), 'ab'.repeat(32)));
   assert.throws(() => checkSignature(signature + '\nSigner #2 certificate SHA-256 digest: ' + 'ab'.repeat(32), 'ab'.repeat(32)));
+});
+
+const commit = 'a'.repeat(40);
+const bundle = {
+  schema: 1, kind: 'unsigned', applicationId: 'io.github.kuba25x.upscalecompare', ...version,
+  commit, source: 'https://github.com/Kuba25x/upscale-compare/tree/' + commit,
+  files: Object.fromEntries([
+    'upscale-compare-' + version.versionName + '-unsigned.apk',
+    'corresponding-source-' + commit + '.tar.gz',
+    'LICENSE.txt', 'THIRD_PARTY_NOTICES.txt', 'DEPENDENCIES.json',
+  ].map((name) => [name, 'b'.repeat(64)])),
+};
+test('release bundles require exact provenance and the complete source/license file set', () => {
+  validateManifest(bundle, commit);
+  for (const change of [{ schema: 2 }, { kind: 'debug' }, { commit: 'c'.repeat(40) }, { source: 'https://github.com/Kuba25x/upscale-compare/tree/main' }]) {
+    assert.throws(() => validateManifest({ ...bundle, ...change }, commit));
+  }
+  const incomplete = structuredClone(bundle);
+  delete incomplete.files['LICENSE.txt'];
+  assert.throws(() => validateManifest(incomplete, commit));
+});
+test('release bundle paths and digests cannot redirect local signing to arbitrary files', () => {
+  const unsafe = structuredClone(bundle);
+  unsafe.files['../outside.apk'] = 'b'.repeat(64);
+  assert.throws(() => validateManifest(unsafe, commit));
+  const badHash = structuredClone(bundle);
+  badHash.files['LICENSE.txt'] = 'invalid';
+  assert.throws(() => validateManifest(badHash, commit));
 });

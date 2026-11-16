@@ -17,11 +17,11 @@ inside the application are not modified.
 
 To reproduce on a trusted development checkout:
 
-~~~sh
+```sh
 npm ci
 npx playwright install --with-deps chromium
 node scripts/capture-readme.mjs
-~~~
+```
 
 The script builds the demo, starts a local preview, imports the repository's
 generated images and waits for image decode, fonts and rendering before

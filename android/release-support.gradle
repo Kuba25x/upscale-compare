@@ -7,7 +7,9 @@ def releaseReport = layout.buildDirectory.file('reports/release-dependencies.jso
 tasks.register('releaseDependencyNotices') {
     outputs.upToDateWhen { false }
     doLast {
-        def artifacts = configurations.releaseRuntimeClasspath.incoming.artifacts.artifacts
+        def artifacts = configurations.releaseRuntimeClasspath.incoming.artifactView {
+            componentFilter { it instanceof ModuleComponentIdentifier }
+        }.artifacts.artifacts
         def inventory = []
         def upstreamNotices = []
         def collectNotices = { stream, origin ->

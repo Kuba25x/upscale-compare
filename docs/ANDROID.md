@@ -172,13 +172,13 @@ Historical implementation snapshots are not a qualification of a later APK.
 Use the checks and artifacts attached to the exact release-preparation PR commit.
 Current results are recorded in [ANDROID_RELEASE_VALIDATION.md](ANDROID_RELEASE_VALIDATION.md).
 
-| Layer | What it establishes | What it does not establish |
-| --- | --- | --- |
-| Frontend/backend unit and browser suites | Shared geometry, pixels, offline adapter, gestures, web/sharing regressions | Android window manager or real device memory |
-| JVM/Robolectric tests | Streaming hashes/limits, URI contracts, cancellation, rollback and lifecycle protocol | OEM Photo Picker UI or Chromium renderer behavior |
-| API 36 emulator instrumentation | Native insets, cutout policy, bars/icons, transitions, Back, picker return and Activity recreation | HyperOS-specific behavior or sustained 8K performance on Xiaomi |
-| Release preparation and disposable-key signing | Non-debuggable APK, package/version, alignment, source provenance, certificate/hash checks | Production key custody, signed-release device acceptance or public publication |
-| Physical Xiaomi 15T / Android 16 | Qualification checklist below, still pending | No measurements are inferred from browser/emulator tests |
+| Layer                                          | What it establishes                                                                                | What it does not establish                                                     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Frontend/backend unit and browser suites       | Shared geometry, pixels, offline adapter, gestures, web/sharing regressions                        | Android window manager or real device memory                                   |
+| JVM/Robolectric tests                          | Streaming hashes/limits, URI contracts, cancellation, rollback and lifecycle protocol              | OEM Photo Picker UI or Chromium renderer behavior                              |
+| API 36 emulator instrumentation                | Native insets, cutout policy, bars/icons, transitions, Back, picker return and Activity recreation | HyperOS-specific behavior or sustained 8K performance on Xiaomi                |
+| Release preparation and disposable-key signing | Non-debuggable APK, package/version, alignment, source provenance, certificate/hash checks         | Production key custody, signed-release device acceptance or public publication |
+| Physical Xiaomi 15T / Android 16               | Qualification checklist below, still pending                                                       | No measurements are inferred from browser/emulator tests                       |
 
 No physical-device performance, memory, HDR/color precision or OEM system-UI
 certification is claimed. Automatic results must be tied to a successful run and

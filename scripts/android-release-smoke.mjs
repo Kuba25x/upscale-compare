@@ -28,6 +28,14 @@ try {
   assert.notEqual(command(['verify', output, commit, '00'.repeat(32)]).status, 0, 'Wrong certificate must fail');
   assert.notEqual(command(['verify', output, 'a'.repeat(40), certificate]).status, 0, 'Wrong commit must fail');
   assert.notEqual(command(['sign', output, commit, key, 'TEST-ONLY', certificate, join(temporary, 'repeat')]).status, 0, 'Signed input must be rejected');
+  const wrongCommit = join(temporary, 'wrong-commit-file');
+  cpSync(bundle, wrongCommit, { recursive: true });
+  writeFileSync(join(wrongCommit, 'COMMIT'), 'b'.repeat(40) + '\n');
+  assert.notEqual(command(['verify', wrongCommit, commit]).status, 0, 'Changed COMMIT sidecar must fail');
+  const wrongChecksums = join(temporary, 'wrong-checksums');
+  cpSync(bundle, wrongChecksums, { recursive: true });
+  writeFileSync(join(wrongChecksums, 'SHA256SUMS'), 'untrusted');
+  assert.notEqual(command(['verify', wrongChecksums, commit]).status, 0, 'Changed checksum sidecar must fail');
   const damaged = join(temporary, 'damaged');
   cpSync(bundle, damaged, { recursive: true });
   const manifest = JSON.parse(readFileSync(join(damaged, 'release-manifest.json'), 'utf8'));

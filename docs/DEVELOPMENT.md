@@ -103,7 +103,7 @@ Hash routes make direct links and browser refreshes work on GitHub Pages without
 
 ## Limits and security
 
-Defaults: 2–4 images, 20 MiB per file, 40 MiB total per publication, 36 megapixels per image, and 16,384 pixels per side. The server also enforces configurable request, storage, comparison-count, and IP rate limits. Public PNG publishing accepts non-interlaced still images. Rotated/mirrored EXIF images must be exported with normalized orientation before publishing. JPEG/WebP validation checks container structure and dimensions; PNG validation additionally checks chunk CRCs and the complete bounded decompressed raster. See [security](SECURITY.md) for scope and limitations.
+Defaults: 2–4 images, 20 MiB per file, 40 MiB total per publication, 36 megapixels per image, and 16,384 pixels per side. The server also enforces configurable request, storage, comparison-count, and IP rate limits. Public PNG publishing accepts non-interlaced still images. Rotated/mirrored EXIF images must be exported with normalized orientation before publishing. JPEG/WebP validation checks container structure and dimensions; PNG validation additionally checks chunk CRCs and the complete bounded decompressed raster. See [security](../SECURITY.md) for scope and limitations.
 
 Production sharing requires an allowed HTTPS frontend origin, private R2, initialized D1, a Turnstile challenge, and operator-configured moderation. The owner requires **zero charges on Workers/D1 Free and included R2 Standard usage**. Production workflows are main-only and currently **locked**, pending measured resource suitability and enforceable R2 zero-overage protection. `npm run ops:check` intentionally exits 1; no confirmation or variable overrides this lock. The Pages demo remains available through its manual deployment workflow. See [guarded operations and owner decisions](OPERATIONS.md) and [the Free-only envelope](FREE_TIER_OPERATIONS.md).
 
@@ -146,4 +146,3 @@ checklist.
 ## Privacy and deletion in the local full-stack build
 
 Unpublished web images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. Private publication/deletion keys are saved in browser storage before uploading; download a backup and keep it private. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. Keys are not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](PRIVACY.md).
-

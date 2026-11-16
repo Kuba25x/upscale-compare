@@ -50,25 +50,26 @@ same version metadata but retain debug signing and the existing workflow.
    commands deliberately prompt for passwords rather than putting them in
    shell history or process arguments:
 
-   ~~~sh
+   ```sh
    umask 077
    mkdir -p /path/to/private-signing
    keytool -genkeypair \
      -keystore /path/to/private-signing/upscale-compare-release.p12 \
      -storetype PKCS12 -alias upscale-compare \
      -keyalg RSA -keysize 4096 -validity 10000
-   ~~~
+   ```
 
    Enter the certificate identity and strong password locally. Do not run this
    step in Actions or an untrusted remote workspace. Do not send the result or
    password to anyone assisting with development.
+
 3. Make encrypted recovery backups in separate controlled locations. Store
    recovery instructions and passwords in a trusted password manager. Test
    restoration before the first public release.
 4. Inspect/export the **public certificate**, record its fingerprint independently,
    and publish that fingerprint in the eventual release notes and signing policy:
 
-   ~~~sh
+   ```sh
    keytool -list -v \
      -keystore /path/to/private-signing/upscale-compare-release.p12 \
      -alias upscale-compare
@@ -76,7 +77,7 @@ same version metadata but retain debug signing and the existing workflow.
      -keystore /path/to/private-signing/upscale-compare-release.p12 \
      -alias upscale-compare \
      -file /path/to/private-signing/upscale-compare-public-certificate.pem
-   ~~~
+   ```
 
    The certificate export contains no private key. No placeholder fingerprint
    in this repository is an approved production identity. The owner must choose
@@ -101,7 +102,7 @@ Never label a PR merge SHA as an already released main commit.
 
 The workflow uses the toolchain documented in [ANDROID.md](ANDROID.md). It runs:
 
-~~~sh
+```sh
 npm ci
 npm run test:android:release
 npm run android:release:unsigned
@@ -109,7 +110,7 @@ node scripts/android-source-bundle.mjs
 export SOURCE_COMMIT="$(git rev-parse HEAD)"
 node scripts/android-release.mjs prepare release-artifacts/unsigned
 node scripts/android-release-smoke.mjs release-artifacts/unsigned
-~~~
+```
 
 On a clean local checkout these commands reproduce the same build procedure.
 They pin package/Gradle inputs and record source/signing identity; they do not
@@ -119,16 +120,16 @@ or signing implementations.
 Download upscale-compare-UNSIGNED-<commit> from the successful run (14-day
 retention). It includes:
 
-| File | Purpose |
-| --- | --- |
-| upscale-compare-<versionName>-unsigned.apk | Non-debuggable APK; not yet installable |
-| corresponding-source-<commit>.tar.gz | Project at that exact commit plus preferred upstream runtime sources |
-| release-manifest.json | Package/version, exact SHA, run URL and file SHA-256 values |
-| COMMIT | Full source SHA |
-| SHA256SUMS | Checksums for the files, manifest and COMMIT |
-| LICENSE.txt | Unmodified AGPL-3.0 license |
-| THIRD_PARTY_NOTICES.txt | Frontend/Capacitor licenses, native inventory and available upstream notices |
-| DEPENDENCIES.json | Resolved native runtime coordinates, licenses, source/POM locations |
+| File                                       | Purpose                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------- |
+| upscale-compare-<versionName>-unsigned.apk | Non-debuggable APK; not yet installable                                      |
+| corresponding-source-<commit>.tar.gz       | Project at that exact commit plus preferred upstream runtime sources         |
+| release-manifest.json                      | Package/version, exact SHA, run URL and file SHA-256 values                  |
+| COMMIT                                     | Full source SHA                                                              |
+| SHA256SUMS                                 | Checksums for the files, manifest and COMMIT                                 |
+| LICENSE.txt                                | Unmodified AGPL-3.0 license                                                  |
+| THIRD_PARTY_NOTICES.txt                    | Frontend/Capacitor licenses, native inventory and available upstream notices |
+| DEPENDENCIES.json                          | Resolved native runtime coordinates, licenses, source/POM locations          |
 
 The source collector fails if an expected upstream archive is unavailable.
 It resolves upstream release refs to immutable commits and records download
@@ -150,7 +151,7 @@ and workflow URL against the successful main run and the reviewed commit. Verify
 the GitHub artifact download/digest where available. Checksums detect corruption;
 a checksum shipped beside an untrusted APK does not independently authenticate it.
 
-~~~sh
+```sh
 export ANDROID_HOME=/path/to/trusted/android-sdk
 export UC_COMMIT=FULL_40_CHARACTER_REVIEWED_MAIN_SHA
 export UC_CERT_SHA256=YOUR_INDEPENDENTLY_VERIFIED_PUBLIC_CERTIFICATE_SHA256
@@ -166,7 +167,7 @@ node scripts/android-release.mjs sign \
 
 node scripts/android-release.mjs verify \
   /path/to/new-signed-output "$UC_COMMIT" "$UC_CERT_SHA256"
-~~~
+```
 
 Replace the placeholders; commit and certificate fingerprint are public values.
 apksigner prompts for the password locally. There are no password flags or
@@ -184,12 +185,12 @@ regenerated for the signed distribution. The private key never enters the output
 
 Independent final checks:
 
-~~~sh
+```sh
 "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify \
   --verbose --print-certs /path/to/new-signed-output/upscale-compare-0.1.0-android-preview.1.apk
 cd /path/to/new-signed-output
 sha256sum -c SHA256SUMS
-~~~
+```
 
 On macOS use shasum -a 256 -c SHA256SUMS. Compare the certificate against the
 independent owner record, not just the fingerprint inside the downloaded bundle.

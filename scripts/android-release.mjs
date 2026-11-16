@@ -69,7 +69,7 @@ function apkPolicy(apk, manifest) {
     }
   }
 }
-function validateManifest(manifest, commit) {
+export function validateManifest(manifest, commit) {
   requireCommit(commit);
   if (manifest.schema !== 1 || manifest.commit !== commit ||
       manifest.applicationId !== applicationId ||
@@ -97,6 +97,15 @@ function verifyBundle(directory, commit, certificate) {
   validateManifest(manifest, commit);
   for (const [name, sha] of Object.entries(manifest.files)) {
     if (hash(join(directory, name)) !== sha) throw new Error('SHA-256 mismatch: ' + name);
+  }
+  if (readFileSync(join(directory, 'COMMIT'), 'utf8').trim() !== commit) throw new Error('COMMIT provenance mismatch');
+  const checksumNames = [...Object.keys(manifest.files), 'release-manifest.json', 'COMMIT'];
+  const checksums = checksumNames.map((name) => hash(join(directory, name)) + '  ' + name).join('\n') + '\n';
+  if (readFileSync(join(directory, 'SHA256SUMS'), 'utf8') !== checksums) throw new Error('SHA256SUMS mismatch');
+  const sourceName = 'corresponding-source-' + commit + '.tar.gz';
+  const source = JSON.parse(run('tar', ['-xOf', join(directory, sourceName), './DEPENDENCY-SOURCES.json']));
+  if (source.commit !== commit || !Array.isArray(source.archives) || source.archives.length < 5) {
+    throw new Error('Corresponding-source provenance mismatch');
   }
   const apk = join(directory, Object.keys(manifest.files).find((name) => name.endsWith('.apk')));
   apkPolicy(apk, manifest);
