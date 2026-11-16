@@ -59,6 +59,9 @@ thumbnail. Provider metadata and declared file size are not trusted as quotas.
 - **Clear comparison** in the existing upload dialog commits an empty session and
   removes the unreferenced private originals. Cleanup failures are reported; any
   leftovers still count against the storage quota and are retried on startup/save.
+- Calls arriving from a destroyed Activity are rejected before scheduling storage
+  work, including a delayed save or picker result. They cannot write/clean originals
+  through a stopped executor; the recreated Activity restores the committed journal.
 - Back closes an open dialog (busy import prevents dismissal), then leaves comparison-only
   fullscreen or closes the expanded landscape image panel. Root back remains under
   Android's predictive-back navigation. AndroidDisplayLayout owns native bar visibility,

@@ -1,78 +1,79 @@
 # Android Preview preparation validation
 
-These are automated results, not Xiaomi 15T qualification. No production key,
+These are automated results, not physical-device qualification. No production key,
 public tag or GitHub Release has been created.
 
-## Confirmed runs before the final documentation/source-pin cleanup
+## Confirmed evidence
 
-Preparation head: 69d99473ee21a1e3d6a3c1b1eba85a2efdb8339c.
-The workflows build PR merge commit 035cc751858e509400cfe56658e8131bc675a6ed.
+The preparation branch incorporates main 5dc582e8e6e219855904e5e3395cc761abd4ea9c,
+including PR #25's isolated PWA build preparation. Its runtime registration,
+offline/update flows remain disabled and Android omits the PWA integration.
 
-- [Release preparation 43847091584](https://github.com/Kuba25x/upscale-compare/actions/runs/43847091584):
-  lintRelease/assembleRelease, 7 release-policy tests, collection and license audit
-  of 47 native runtime artifacts and 5 upstream source repositories, unsigned
-  APK/alignment/provenance checks and real-APK disposable-key signing all passed.
-  Wrong certificate/commit, already signed input, changed COMMIT/checksum sidecars
-  and damaged APK are rejected. The disposable key and test-signed APK are removed.
-- [Android debug 43847091685](https://github.com/Kuba25x/upscale-compare/actions/runs/43847091685):
-  Android browser tests (15), adapter/config subset (13), Android lint, JVM tests,
-  debug assembly/signature checks and one API 36 native instrumentation scenario
-  all passed. Native reports and captured frames are attached to that run.
-- [Earlier complete web regression 43845112126](https://github.com/Kuba25x/upscale-compare/actions/runs/43845112126)
-  passed: 312 unit/integration, 95 E2E, 135 demo, 37 local-sharing and 7 diagnostics
-  cases, production/subpath builds, TypeScript checks and npm audit (zero findings).
-  These web source files remain unchanged by this PR.
+| Run                                                                                                    | Source                                            | Confirmed result                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Web validation 43850299539](https://github.com/Kuba25x/upscale-compare/actions/runs/43850299539)      | PR merge 892fbaf9ec1933d32cfede5a38ce920265bc43bd | 312 unit/integration, 95 E2E, 139 demo, 37 local sharing, 7 diagnostics; production/subpath builds and TypeScript passed; PWA build/isolation job passed                               |
+| [Release preparation 43851187349](https://github.com/Kuba25x/upscale-compare/actions/runs/43851187349) | PR merge b4be1cc7bc095c233fc84f5943bb603c854cbc31 | lintRelease/assembleRelease, 7 release-policy cases, 47 native source/license audits, 6 pinned upstream repositories, metadata/alignment/hash checks and disposable-key signing passed |
+| Same release preparation run                                                                           | Same commit                                       | Extracted corresponding-source archive rebuilt successfully without .git; package/version and embedded commit matched                                                                  |
+| [Android 43850299471](https://github.com/Kuba25x/upscale-compare/actions/runs/43850299471)             | PR merge 892fbaf9ec1933d32cfede5a38ce920265bc43bd | Android browser, adapter/config, lint, JVM, debug assembly/signature checks and one API 36 native scenario passed                                                                      |
 
-The final PR checks are authoritative for the final head. The run links above
-are immutable evidence for the stated commits, not a claim that an older binary
-contains subsequent documentation or source-pin changes. After merge, use the
-manual main workflow for the actual candidate.
+The final [PR #26 checks](https://github.com/Kuba25x/upscale-compare/pull/26/checks)
+are authoritative for the final head, including the lifecycle guard below.
+These immutable snapshots do not claim that an older binary contains later fixes.
+After merge, run the manual main workflow for the actual release candidate.
 
-## Evidence boundaries and remaining owner work
+Signing tests reject a wrong certificate/commit, signed input, modified COMMIT or
+checksum sidecars and damaged APK bytes. The signed APK's actual v2 signature,
+certificate fingerprint and embedded license texts are checked. The disposable
+key and test-signed APK are deleted; they are never uploaded as release assets.
 
-The Android browser bridge is mocked. The API 36 emulator tests actual native
-window/inset policy, cutout/gesture safe regions, both landscape rotations,
-minimalist transitions, Back, picker return, resume and Activity recreation.
-Neither layer proves HyperOS behavior, OEM picker UX or sustained 4K/8K memory use.
+All npm runtime entries, including transitive tslib (0BSD), have pinned preferred
+source and retained notices. Native sources are exact Maven versions; their POM
+licenses are audited and archive hashes recorded. npm audit --audit-level=high
+passes. PR #25's build-tool dependencies currently produce **2 low and 4 moderate**
+findings, documented in [PWA_BUILDS.md](PWA_BUILDS.md). These are not Android runtime
+dependencies. No override/downgrade is introduced to hide the findings.
 
-The signed release still requires Xiaomi 15T / Android 16 acceptance, including
-memory traces, repeated import/replace cycles, pinch/pan, Fit and physical-pixel
-presets, system bars/cutout, cloud/Files imports, failure cleanup and offline
-restoration. Record the signed APK hash, source commit, public certificate
-fingerprint, WebView/HyperOS version and results. Test a higher-versionCode update
-with the same owner key. Existing historical web-pinch device reports do not
-qualify this native release.
+## Failures found and addressed
 
-Production key generation, encrypted backup/recovery and offline signing are
-owner-only steps in [ANDROID_RELEASE.md](ANDROID_RELEASE.md). CI uses a throwaway
-test key solely to validate the process. No hardware or production-key test is
-claimed.
+An intermediate demo-mobile test read the previous compact class before React's
+scheduled rotation measurement. The test now waits for the expected layout.
+Visibility, native-bridge isolation and retained-image assertions remain; web
+application behavior is unchanged.
 
-The PR does not change src/, shared/, worker/, web limits, import/storage policies,
-Share Comparison, the existing Android debug workflow or production deployment
-controls. AGPL source/notices are included in the preparation bundle. The owner
-must review and retain them alongside any future public signed APK.
+[Android run 43851187374](https://github.com/Kuba25x/upscale-compare/actions/runs/43851187374)
+exposed a real Activity-destruction race: a delayed save called execute on the
+stopped OriginalsPlugin executor, escaping as RejectedExecutionException and
+crashing the process. The shared submission helper now rejects closed-executor
+calls before any storage access, including a late picker callback. It does not
+resubmit work, alter original bytes, change quotas or modify journal/cleanup policy.
 
-## Intermediate browser-test race
+Two deterministic native regressions destroy the plugin, then submit all four
+storage methods and a successful picker result. They require an explicit closed
+Activity rejection, zero provider opens and unchanged journal/original bytes.
+The existing API 36 scenario still exercises Activity recreation with real
+Capacitor/WebView dispatch. Final PR checks provide its post-fix result; the
+failed run is retained as evidence rather than being described as a device pass.
 
-[Run 43847091692](https://github.com/Kuba25x/upscale-compare/actions/runs/43847091692)
-reported one demo-mobile failure after rotation: the test read the old compact
-class before the scheduled React viewport update, then asserted the wrong set of
-controls. The regression now waits for the expected portrait/landscape class.
-Visibility, native-bridge isolation and retained-image assertions are preserved;
-no web application code is changed. Final PR checks include the corrected test.
+## Physical device and owner gates
 
-The final license review also identified transitive tslib (0BSD). Its copyright,
-license and pinned source are now included, bringing upstream source repositories
-to six. The collector checks every non-development npm lockfile entry so an
-unlisted transitive runtime dependency fails preparation.
+Browser tests mock the native bridge. API 36 instrumentation checks actual
+window/inset policy, cutout/gesture regions, both landscape rotations, minimalist
+transitions, Back, picker return, resume and recreation. Neither establishes
+HyperOS behavior, OEM picker UX, sustained 4K/8K memory stability or HDR precision.
 
-## Main update during preparation
+The signed release still requires Xiaomi 15T / Android 16 acceptance: memory traces,
+repeated imports/replacements, pinch/pan and pixel presets, bars/cutout, cloud/Files
+imports, cleanup failures and offline restoration. Record the signed APK hash,
+source SHA, public certificate fingerprint and WebView/HyperOS version. Test an
+update with a higher versionCode signed by the same owner key. Historical
+mobile-web pinch reports do not qualify this native release.
 
-Main advanced to 5dc582e8e6e219855904e5e3395cc761abd4ea9c (merged PR #25) during
-this task. Its isolated PWA build tooling, lockfile, documentation and CI job are
-preserved. PWA registration/offline/update flows remain disabled; Android still
-omits the integration. Final validation also runs the new PWA build and Android
-isolation checks. The new build-only dependency tree has low/moderate audit
-findings documented in PWA_BUILDS.md; the current threshold is no high/critical
-findings, rather than the earlier zero-finding snapshot.
+Owner-only key generation, encrypted backup/recovery and offline signing are
+documented in [ANDROID_RELEASE.md](ANDROID_RELEASE.md). No hardware or production-key
+test is claimed. The provisional 256 MiB ceiling remains unqualified.
+
+The PR does not change web application code, backend/deployment controls,
+Share Comparison, file limits, storage quotas or the existing debug workflow.
+The streaming importer is retained; its only behavior change is rejecting calls
+submitted to a destroyed plugin instead of crashing. Corresponding source,
+licenses and notices must accompany any future publicly distributed signed APK.
