@@ -38,8 +38,20 @@ public class OriginalsPlugin extends Plugin {
     void run() throws Exception;
   }
 
+  private void submit(PluginCall call, Runnable work) {
+    try {
+      io.execute(work);
+    } catch (RejectedExecutionException closed) {
+      // Capacitor may dispatch an old WebView call while its Activity is being destroyed.
+      // Reject it before any storage access; the new Activity restores the committed journal.
+      picking.set(false);
+      call.reject("The Android activity has closed. Reopen the comparison and try again.");
+    }
+  }
+
   private void run(PluginCall call, Work work) {
-    io.execute(
+    submit(
+        call,
         () -> {
           try {
             initialize();
@@ -270,7 +282,8 @@ public class OriginalsPlugin extends Plugin {
       call.reject(e.getMessage());
       return;
     }
-    io.execute(
+    submit(
+        call,
         () -> {
           List<String> batch = new ArrayList<>();
           try {

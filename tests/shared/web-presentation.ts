@@ -4,6 +4,7 @@ import { imageFile } from '../e2e/fixtures';
 export function webPresentationTests() {
   test('uploads on the web without initializing Capacitor or enabling native presentation', async ({
     page,
+    isMobile,
   }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -29,13 +30,14 @@ export function webPresentationTests() {
     ]) {
       await page.setViewportSize(viewport);
       await expect(page.locator('.app')).not.toHaveClass(/android-app|comparison-minimalist/);
-      const compact = await page
-        .locator('.app')
-        .evaluate((node) => node.classList.contains('comparison-compact'));
+      // Resize is measured on an animation frame; wait for the expected new layout.
+      const compact = isMobile && viewport.width > viewport.height;
       if (compact) {
+        await expect(page.locator('.app')).toHaveClass(/comparison-compact/);
         await expect(page.locator('.image-selection-bar')).toBeHidden();
         await expect(page.getByLabel('Zoom preset')).toBeVisible();
       } else {
+        await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
         await expect(page.locator('.image-selection-bar')).toBeVisible();
         await expect(page.getByRole('button', { name: '100%', exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Image controls' })).toHaveCount(0);

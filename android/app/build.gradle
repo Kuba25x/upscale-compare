@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+def releaseVersion = new Properties()
+rootProject.file('release.properties').withInputStream { releaseVersion.load(it) }
+def releaseCode = releaseVersion.getProperty('versionCode', '')
+def releaseName = releaseVersion.getProperty('versionName', '')
+if (!(releaseCode ==~ /[1-9][0-9]{0,9}/) ||
+        releaseCode.toLong() > 2100000000L ||
+        !(releaseName ==~ /[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?/)) {
+    throw new GradleException('Invalid android/release.properties')
+}
+
 android {
     namespace = "io.github.kuba25x.upscalecompare"
     buildToolsVersion '35.0.0'
@@ -8,8 +18,8 @@ android {
         applicationId "io.github.kuba25x.upscalecompare"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.1.0-android-preview"
+        versionCode releaseCode.toInteger()
+        versionName releaseName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -22,6 +32,9 @@ android {
     testBuildType 'systemUi'
     buildTypes {
         release {
+            debuggable false
+            // Production signing is performed offline, outside Gradle and CI.
+            signingConfig null
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -66,3 +79,5 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+apply from: rootProject.file('release-support.gradle')

@@ -196,4 +196,36 @@ public class OriginalsUriImportTest {
     for (File retained : root.listFiles())
       assertArrayEquals(bytes, Files.readAllBytes(retained.toPath()));
   }
+  @Test
+  public void storageCallsAfterDestroyRejectWithoutChangingCommittedOriginals() throws Exception {
+    File journal = new File(plugin.getContext().getNoBackupFilesDir(), "comparison.json");
+    byte[] committed = Files.readAllBytes(journal.toPath());
+    plugin.handleOnDestroy();
+    for (String method : new String[] {"restore", "paths", "save", "discard"}) {
+      var call = new OriginalsPickerLifecycleTest.Call("closed-" + method, new JSObject());
+      OriginalsPlugin.class.getMethod(method, com.getcapacitor.PluginCall.class).invoke(plugin, call);
+      assertTrue(call.done.await(5, java.util.concurrent.TimeUnit.SECONDS));
+      assertTrue(call.error.contains("activity has closed"));
+      assertNull(call.result);
+    }
+    assertArrayEquals(committed, Files.readAllBytes(journal.toPath()));
+    assertEquals(0, provider.opens);
+    assertEquals(2, root.listFiles().length);
+    for (File retained : root.listFiles())
+      assertArrayEquals(bytes, Files.readAllBytes(retained.toPath()));
+  }
+
+  @Test
+  public void pickerResultAfterDestroyRejectsBeforeOpeningStreams() throws Exception {
+    File journal = new File(plugin.getContext().getNoBackupFilesDir(), "comparison.json");
+    byte[] committed = Files.readAllBytes(journal.toPath());
+    plugin.handleOnDestroy();
+    assertTrue(pick("first", "second").error.contains("activity has closed"));
+    assertEquals(0, provider.opens);
+    assertEquals(2, root.listFiles().length);
+    assertArrayEquals(committed, Files.readAllBytes(journal.toPath()));
+    for (File retained : root.listFiles())
+      assertArrayEquals(bytes, Files.readAllBytes(retained.toPath()));
+  }
+
 }
