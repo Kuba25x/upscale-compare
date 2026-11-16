@@ -1,52 +1,65 @@
 // End-to-end signing test with a disposable CI-only key, never a production key.
 import { execFileSync, spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { checkBadging } from './android-release.mjs';
+import { readApkAssets, runTool, tarCommand } from './android-release-tools.mjs';
 
-const bundle = resolve(process.argv[2]);
+const originalBundle = resolve(process.argv[2]);
 const commit = process.env.SOURCE_COMMIT;
-const temporary = mkdtempSync(join(tmpdir(), 'upscale-signing-test-'));
-const password = 'disposable-test-only';
+const temporary = mkdtempSync(join(tmpdir(), 'Upscale signing żółć & (test); %! '));
+const password = randomBytes(32).toString('hex');
+const bundle = join(temporary, 'Unsigned bundle żółć & (test); %!');
+cpSync(originalBundle, bundle, { recursive: true });
 const key = join(temporary, 'TEST-ONLY.p12');
-const sdk = process.env.ANDROID_HOME;
-const apksigner = join(sdk, 'build-tools/35.0.0/apksigner');
-const command = (args, options = {}) =>
-  spawnSync(process.execPath, ['scripts/android-release.mjs', ...args], {
-    encoding: 'utf8',
-    ...options,
-  });
+const signingOnly = process.argv[3] === '--signing-only';
+const command = (args, options = {}) => {
+  // CI-only library harness: the production CLI refuses piped password input.
+  const parameters =
+    args[0] === 'sign'
+      ? [
+          '--input-type=module',
+          '--eval',
+          "import { signBundle } from './scripts/android-release.mjs'; signBundle(...process.argv.slice(1));",
+          ...args.slice(1),
+        ]
+      : ['scripts/android-release.mjs', ...args];
+  return spawnSync(process.execPath, parameters, { encoding: 'utf8', shell: false, ...options });
+};
 try {
-  const extracted = join(temporary, 'source-rebuild');
-  mkdirSync(extracted);
-  execFileSync('tar', [
-    '-xzf',
-    join(bundle, 'corresponding-source-' + commit + '.tar.gz'),
-    '-C',
-    extracted,
-  ]);
-  const project = join(extracted, 'project');
-  const options = { cwd: project, stdio: 'pipe', maxBuffer: 16 * 1024 * 1024 };
-  execFileSync('npm', ['ci'], options);
-  execFileSync('npm', ['run', 'android:release:unsigned'], options);
-  const rebuilt = join(project, 'android/app/build/outputs/apk/release/app-release-unsigned.apk');
-  const originalManifest = JSON.parse(readFileSync(join(bundle, 'release-manifest.json'), 'utf8'));
-  checkBadging(
-    execFileSync(join(sdk, 'build-tools/35.0.0/aapt'), ['dump', 'badging', rebuilt], {
-      encoding: 'utf8',
-    }),
-    originalManifest,
-  );
-  const embedded = JSON.parse(
-    execFileSync('unzip', ['-p', rebuilt, 'assets/public/build-info.json'], { encoding: 'utf8' }),
-  );
-  assert.equal(embedded.commit, commit);
-  assert.equal(embedded.versionCode, originalManifest.versionCode);
-  assert.equal(embedded.versionName, originalManifest.versionName);
-  console.log('PASS: corresponding-source archive rebuild without Git metadata');
-  execFileSync(
+  if (!signingOnly) {
+    const extracted = join(temporary, 'source-rebuild');
+    mkdirSync(extracted);
+    execFileSync(tarCommand(), [
+      '-xzf',
+      join(bundle, 'corresponding-source-' + commit + '.tar.gz'),
+      '-C',
+      extracted,
+    ]);
+    const project = join(extracted, 'project');
+    const options = { cwd: project, stdio: 'pipe', maxBuffer: 16 * 1024 * 1024 };
+    execFileSync('npm', ['ci'], options);
+    execFileSync('npm', ['run', 'android:release:unsigned'], options);
+    const rebuilt = join(project, 'android/app/build/outputs/apk/release/app-release-unsigned.apk');
+    const originalManifest = JSON.parse(
+      readFileSync(join(bundle, 'release-manifest.json'), 'utf8'),
+    );
+    checkBadging(
+      runTool('aapt', ['dump', 'badging', rebuilt], {
+        encoding: 'utf8',
+      }),
+      originalManifest,
+    );
+    const embedded = JSON.parse(readApkAssets(rebuilt)['build-info.json']);
+    assert.equal(embedded.commit, commit);
+    assert.equal(embedded.versionCode, originalManifest.versionCode);
+    assert.equal(embedded.versionName, originalManifest.versionName);
+    console.log('PASS: corresponding-source archive rebuild without Git metadata');
+  }
+  runTool(
     'keytool',
     [
       '-genkeypair',
@@ -56,10 +69,6 @@ try {
       'PKCS12',
       '-alias',
       'TEST-ONLY',
-      '-storepass',
-      password,
-      '-keypass',
-      password,
       '-keyalg',
       'RSA',
       '-keysize',
@@ -69,12 +78,12 @@ try {
       '-dname',
       'CN=Disposable CI Test Key',
     ],
-    { stdio: 'pipe' },
+    { input: password + '\n' + password + '\n' },
   );
-  const certificate = execFileSync(
+  const certificate = runTool(
     'keytool',
-    ['-list', '-v', '-keystore', key, '-storepass', password],
-    { encoding: 'utf8', env: { ...process.env, JAVA_TOOL_OPTIONS: '-Duser.language=en' } },
+    ['-J-Duser.language=en', '-J-Duser.country=US', '-list', '-v', '-keystore', key],
+    { input: password + '\n' },
   ).match(/SHA256: ([A-F0-9:]+)/)?.[1];
   assert.ok(certificate);
   const output = join(temporary, 'signed');
@@ -82,6 +91,23 @@ try {
     input: password + '\n',
   });
   assert.equal(signed.status, 0, signed.stdout + signed.stderr);
+  assert.ok(!signed.stdout.includes(password) && !signed.stderr.includes(password));
+  const redirected = spawnSync(
+    process.execPath,
+    [
+      'scripts/android-release.mjs',
+      'sign',
+      bundle,
+      commit,
+      key,
+      'TEST-ONLY',
+      certificate,
+      join(temporary, 'redirected'),
+    ],
+    { encoding: 'utf8', input: password + '\n', shell: false },
+  );
+  assert.notEqual(redirected.status, 0);
+  assert.match(redirected.stderr, /interactive terminal/);
   const verified = command(['verify', output, commit, certificate]);
   assert.equal(verified.status, 0, verified.stdout + verified.stderr);
   assert.notEqual(
@@ -137,7 +163,7 @@ try {
     output,
     Object.keys(signedManifest.files).find((name) => name.endsWith('.apk')),
   );
-  execFileSync(apksigner, ['verify', '--verbose', signedApk], { stdio: 'pipe' });
+  runTool('apksigner', ['verify', '--verbose', signedApk], { stdio: 'pipe' });
   console.log(
     'PASS: real APK offline signing, verification, wrong key/commit, signed-input and tampered-byte rejection',
   );

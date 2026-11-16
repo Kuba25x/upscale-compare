@@ -1,9 +1,16 @@
 // Android release preparation and offline signing. Never accepts passwords as arguments.
 import { createHash } from 'node:crypto';
-import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  readApkAssets,
+  requireInteractiveSigning,
+  runTool,
+  spawnTool,
+  tarCommand,
+} from './android-release-tools.mjs';
 
 export const applicationId = 'io.github.kuba25x.upscalecompare';
 export function readVersion(text) {
@@ -59,19 +66,13 @@ export function checkSignature(text, expected) {
 export function hash(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
-function tool(name) {
-  const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
-  if (!sdk) throw new Error('Set ANDROID_HOME to the trusted Android SDK');
-  const path = join(sdk, 'build-tools', '35.0.0', name);
-  if (!existsSync(path)) throw new Error('Missing Android Build Tools 35.0.0: ' + name);
-  return path;
-}
 function run(command, args) {
   return execFileSync(command, args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
 }
 function apkPolicy(apk, manifest, directory) {
-  checkBadging(run(tool('aapt'), ['dump', 'badging', apk]), manifest);
-  const build = JSON.parse(run('unzip', ['-p', apk, 'assets/public/build-info.json']));
+  checkBadging(runTool('aapt', ['dump', 'badging', apk]), manifest);
+  const assets = readApkAssets(apk);
+  const build = JSON.parse(assets['build-info.json']);
   if (
     build.commit !== manifest.commit ||
     build.source !== manifest.source ||
@@ -81,7 +82,7 @@ function apkPolicy(apk, manifest, directory) {
     throw new Error('Embedded APK build provenance mismatch');
   }
   for (const name of ['LICENSE.txt', 'third-party-licenses.txt']) {
-    const asset = run('unzip', ['-p', apk, 'assets/public/' + name]);
+    const asset = assets[name];
     const sidecar = name === 'LICENSE.txt' ? name : 'THIRD_PARTY_NOTICES.txt';
     if (asset.length < 1000 || asset !== readFileSync(join(directory, sidecar), 'utf8')) {
       throw new Error('Missing embedded license notices');
@@ -133,7 +134,7 @@ function verifyBundle(directory, commit, certificate) {
     throw new Error('SHA256SUMS mismatch');
   const sourceName = 'corresponding-source-' + commit + '.tar.gz';
   const source = JSON.parse(
-    run('tar', ['-xOf', join(directory, sourceName), './DEPENDENCY-SOURCES.json']),
+    run(tarCommand(), ['-xOf', join(directory, sourceName), './DEPENDENCY-SOURCES.json']),
   );
   if (source.commit !== commit || !Array.isArray(source.archives) || source.archives.length < 5) {
     throw new Error('Corresponding-source provenance mismatch');
@@ -151,18 +152,18 @@ function verifyBundle(directory, commit, certificate) {
   if (!dependencies.length || dependencies.some((entry) => !notices.includes(entry.coordinate))) {
     throw new Error('Incomplete native runtime notices');
   }
-  run(tool('zipalign'), ['-c', '-P', '16', '4', apk]);
+  runTool('zipalign', ['-c', '-P', '16', '4', apk]);
   if (manifest.kind === 'signed') {
     if (fingerprint(manifest.certificateSha256) !== fingerprint(certificate)) {
       throw new Error('Manifest signing certificate mismatch');
     }
     checkSignature(
-      run(tool('apksigner'), ['verify', '--verbose', '--print-certs', apk]),
+      runTool('apksigner', ['verify', '--verbose', '--print-certs', apk]),
       certificate,
     );
   } else {
     // Reject signed inputs. Verification of an unsigned APK must fail.
-    const result = spawnSync(tool('apksigner'), ['verify', apk], { encoding: 'utf8' });
+    const result = spawnTool('apksigner', ['verify', apk], { encoding: 'utf8' });
     if (result.error) throw result.error;
     if (result.status !== 1 || !result.stderr.includes('DOES NOT VERIFY')) {
       throw new Error('Expected an unsigned APK, not a signed or unreadable input');
@@ -221,7 +222,8 @@ function prepare(directory) {
   verifyBundle(directory, commit);
   console.log('Verified unsigned release bundle for ' + commit);
 }
-function sign(directory, commit, keystore, alias, certificate, output) {
+// The production CLI requires a real terminal. Tests invoke this core with a disposable key.
+export function signBundle(directory, commit, keystore, alias, certificate, output) {
   const expected = fingerprint(certificate);
   const { manifest, apk } = verifyBundle(directory, commit);
   if (manifest.kind !== 'unsigned') throw new Error('Signing requires a verified unsigned bundle');
@@ -230,8 +232,8 @@ function sign(directory, commit, keystore, alias, certificate, output) {
   mkdirSync(output, { recursive: false, mode: 0o700 });
   const signed = join(output, 'upscale-compare-' + manifest.versionName + '.apk');
   // No Gradle, npm, network operation or password environment variable is used here.
-  const result = spawnSync(
-    tool('apksigner'),
+  const result = spawnTool(
+    'apksigner',
     [
       'sign',
       '--ks',
@@ -254,10 +256,7 @@ function sign(directory, commit, keystore, alias, certificate, output) {
   );
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error('Signing failed; do not distribute partial output');
-  checkSignature(
-    run(tool('apksigner'), ['verify', '--verbose', '--print-certs', signed]),
-    expected,
-  );
+  checkSignature(runTool('apksigner', ['verify', '--verbose', '--print-certs', signed]), expected);
   for (const name of Object.keys(manifest.files).filter((name) => !name.endsWith('.apk'))) {
     copyFileSync(join(directory, name), join(output, name));
   }
@@ -286,7 +285,10 @@ export function main(args) {
     console.log('Release bundle verified for ' + commit);
     return;
   }
-  if (command === 'sign' && directory && commit) return sign(resolve(directory), commit, ...rest);
+  if (command === 'sign' && directory && commit) {
+    requireInteractiveSigning();
+    return signBundle(resolve(directory), commit, ...rest);
+  }
   throw new Error(
     'Usage: android-release.mjs prepare DIR | verify DIR COMMIT [CERT_SHA256] | sign DIR COMMIT KEYSTORE ALIAS CERT_SHA256 NEW_OUTPUT_DIR',
   );

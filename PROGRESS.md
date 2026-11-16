@@ -38,6 +38,16 @@ control is changed. Existing debug artifacts remain separate. See
 Xiaomi 15T / Android 16 signed-release memory/UI/update qualification is pending.
 Historical Android-browser pinch verification below does not certify this APK.
 
+## Native Windows signing follow-up
+
+PR #26 adds native Windows 11/PowerShell verification and offline signing using
+Node 24, JDK 21 and SDK Build Tools 35.0.0. SDK batch wrappers are avoided, public
+APK metadata is read through bounded ZipFile without extraction, and production
+signing requires an interactive password console. A Windows Server 2025 CI job
+uses only disposable test keys and preserves all provenance/hash/certificate checks.
+No production key, tag, Release or merge is created. See
+[Windows instructions](docs/ANDROID_WINDOWS_SIGNING.md).
+
 ## Earlier implementation and research status
 
 Share Comparison stages 1–7 are merged through PRs #10–#16; Free-sharing feasibility and storage/codec research are merged as PRs #17–#18. The separately authorized phase A/B execution research starts from `origin/main` at `07d83b6`, with isolated experiments under `research/free-sharing/`. The owner requires zero Cloudflare charges. Production remains locked: no provider CPU/peak-memory certification or enforceable R2 zero-overage arrangement exists. The [execution comparison](docs/FREE_VALIDATION_EXECUTION_RESEARCH.md) identifies trusted browser validation as a direction worth clarifying, while retaining unresolved Browser Run RAM/CPU, large-file transport, daily allowance, Free DO limits and exhausted-quota deletion concerns. Local Chromium is not Browser Run. No production architecture has been changed. Phases C–E, stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not authorized or started by this research.

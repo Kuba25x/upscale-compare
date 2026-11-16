@@ -39,12 +39,20 @@ integer up to 2,100,000,000. Set the tag to v followed by versionName. Version
 changes are reviewed in a PR before building the candidate. Debug builds use the
 same version metadata but retain debug signing and the existing workflow.
 
+## Windows 11 support
+
+Follow [native Windows 11 / PowerShell signing](ANDROID_WINDOWS_SIGNING.md) for
+setup, NTFS permissions, hidden password prompts and exact verification commands.
+WSL2 is optional. Linux/macOS commands continue below; all platforms retain the
+same package, source, hash, signature and certificate checks.
+
 ## One-time owner setup — trusted computer only
 
 1. Choose the long-term release-signing computer or offline signing workstation.
    Install a trusted JDK 21 and Android SDK Build Tools 35.0.0; record their
-   versions. The helper currently supports Linux/macOS with Node 24, unzip and
-   the SDK binaries on that computer. It does not require npm install to sign.
+   versions. The helper supports Windows 11 and Linux/macOS with Node 24, a full
+   JDK 21 and SDK binaries. It uses JDK ZipFile and system tar instead of unzip.
+   It does not require npm install to sign.
 2. Create a private directory **outside every repository and synchronized folder**,
    set restrictive permissions, and generate the permanent key there. These
    commands deliberately prompt for passwords rather than putting them in
@@ -144,8 +152,9 @@ tslib (0BSD); its source, copyright notice and license are retained.
 
 Review the scripts from the exact source commit **before connecting the key**.
 Finish dependency downloads/builds and disconnect networking before signing.
-Use a separately verified checkout/copy of scripts/android-release.mjs; it has
-only Node built-in dependencies. Do not execute scripts obtained solely from an
+Use a separately verified checkout/copy of scripts/android-release.mjs,
+scripts/android-release-tools.mjs and scripts/AndroidReleaseArchive.java. They
+use only Node built-ins, the trusted local JDK 21 and SDK. Do not execute scripts obtained solely from an
 unverified artifact while the production key is attached.
 
 Unzip the unsigned artifact into a new local directory. Compare its source SHA
@@ -154,6 +163,7 @@ the GitHub artifact download/digest where available. Checksums detect corruption
 a checksum shipped beside an untrusted APK does not independently authenticate it.
 
 ```sh
+export JAVA_HOME=/path/to/trusted/jdk-21
 export ANDROID_HOME=/path/to/trusted/android-sdk
 export UC_COMMIT=FULL_40_CHARACTER_REVIEWED_MAIN_SHA
 export UC_CERT_SHA256=YOUR_INDEPENDENTLY_VERIFIED_PUBLIC_CERTIFICATE_SHA256
@@ -172,7 +182,8 @@ node scripts/android-release.mjs verify \
 ```
 
 Replace the placeholders; commit and certificate fingerprint are public values.
-apksigner prompts for the password locally. There are no password flags or
+The sign CLI requires an interactive terminal and refuses redirected stdin/stdout.
+apksigner prompts for the password locally through the inherited Java console. There are no password flags or
 production-password environment variables in this command. The output directory
 must be new. If any check fails, do not distribute partial output; inspect the
 cause and start with a new output directory.

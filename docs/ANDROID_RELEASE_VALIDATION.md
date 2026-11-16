@@ -77,3 +77,19 @@ Share Comparison, file limits, storage quotas or the existing debug workflow.
 The streaming importer is retained; its only behavior change is rejecting calls
 submitted to a destroyed plugin instead of crashing. Corresponding source,
 licenses and notices must accompany any future publicly distributed signed APK.
+
+## Native Windows signing follow-up
+
+The signing helper now uses native SDK executables and Java's apksigner.jar
+without batch/shell interpolation. A bounded JDK ZipFile reader replaces unzip
+without extracting untrusted APK paths. System32/tar.exe reads source provenance.
+The production CLI requires an interactive terminal; no password flag, secret
+environment variable or CI bypass flag is added.
+
+The release workflow adds Windows Server 2025/PowerShell signing tests using the
+same unsigned artifact and disposable keys. They cover spaces/Unicode/metacharacter
+paths, input/output terminal requirements, metadata bounds/duplicates, successful
+signature/certificate verification and wrong-key/commit/tampering failures.
+Consult the final PR checks for results of this follow-up; no physical Windows 11
+console or owner-key test is inferred from server automation. See
+[the Windows runbook](ANDROID_WINDOWS_SIGNING.md).

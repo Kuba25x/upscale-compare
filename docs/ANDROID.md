@@ -196,6 +196,8 @@ archive, notices, manifest and SHA-256 checksums. It neither tags nor publishes.
 The owner must generate/retain the permanent key on a trusted computer, sign
 offline, verify the public certificate and qualify the signed build.
 
+Native Windows 11 signing is documented in
+[the PowerShell guide](ANDROID_WINDOWS_SIGNING.md); WSL2 is optional.
 Follow [the owner release runbook](ANDROID_RELEASE.md) for exact commands, source
 distribution obligations, update testing and the manual publication gate. There
 is no public APK download until the owner explicitly publishes a pre-release.
