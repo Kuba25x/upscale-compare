@@ -44,6 +44,15 @@ decoded arguments in the same JVM; its password console remains inherited.
 Keep the three reviewed helper files in an ASCII directory such as C:\Source\upscale-compare
 (the Java source launcher itself has a native-path limitation). APK/output and
 existing keystore paths may contain Unicode, spaces and shell metacharacters.
+aapt.exe and zipalign.exe also have code-page limitations. They inspect a
+byte-identical temporary **public APK** copy in an ASCII directory. SHA-256 is
+checked against the bundle before and after inspection; the copy is deleted.
+The original APK is not modified. No private key is copied. The default scratch
+location is beside the reviewed scripts; it must be writable. For a read-only
+tools directory, set the public UC_SIGNING_WORK_DIR environment variable to an
+existing, trusted, writable ASCII directory. Signing still reads the original APK
+and the original keystore through the SDK's Unicode-safe Java arguments.
+
 The Java source-file launcher uses the local JDK compiler; it downloads nothing.
 Its bounded ZipFile reader reads only the three public metadata/license entries
 and never extracts APK paths onto disk or reads imported screenshots/private keys.

@@ -1,6 +1,16 @@
 // Trusted native executables only: never pass signing paths through cmd.exe or a batch file.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, openSync, closeSync } from 'node:fs';
+import {
+  existsSync,
+  openSync,
+  closeSync,
+  mkdtempSync,
+  copyFileSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
+import { createHash } from 'node:crypto';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -85,6 +95,35 @@ export function readSourceProvenance(archive) {
     );
   } finally {
     closeSync(input);
+  }
+}
+
+export function withApkInspectionCopy(
+  apk,
+  expectedHash,
+  inspect,
+  directory = process.env.UC_SIGNING_WORK_DIR ||
+    (process.platform === 'win32' ? path.dirname(fileURLToPath(import.meta.url)) : tmpdir()),
+) {
+  if (process.platform === 'win32' && /[^\x00-\x7f]/.test(directory)) {
+    throw new Error('UC_SIGNING_WORK_DIR must be an ASCII-only writable directory.');
+  }
+  const temporary = mkdtempSync(path.join(directory, '.upscale-apk-check-'));
+  const copy = path.join(temporary, 'input.apk');
+  const hash = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
+  try {
+    // Only the public APK is copied, never the keystore. Do not re-encode the archive.
+    copyFileSync(apk, copy);
+    if (hash(copy) !== expectedHash || hash(apk) !== expectedHash) {
+      throw new Error('APK inspection copy SHA-256 mismatch');
+    }
+    const result = inspect(copy);
+    if (hash(copy) !== expectedHash || hash(apk) !== expectedHash) {
+      throw new Error('APK changed during inspection');
+    }
+    return result;
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
   }
 }
 

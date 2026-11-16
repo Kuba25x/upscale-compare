@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { crc32, deflateRawSync, gzipSync } from 'node:zlib';
@@ -9,6 +10,7 @@ import {
   tarCommand,
   readApkAssets,
   readSourceProvenance,
+  withApkInspectionCopy,
   requireInteractiveSigning,
 } from '../../scripts/android-release-tools.mjs';
 
@@ -171,6 +173,53 @@ test('source provenance streams through a binary handle with Unicode archive pat
     const archive = join(directory, 'archive (test); %!.tar.gz');
     writeFileSync(archive, gzipSync(tar));
     assert.deepEqual(readSourceProvenance(archive), JSON.parse(data));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('native APK inspection uses an identical copy, refuses mismatches and cleans up', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'upscale-inspection-'));
+  const original = join(directory, 'Original żółć.apk');
+  const bytes = Buffer.from('Public APK fixture');
+  writeFileSync(original, bytes);
+  const sha = createHash('sha256').update(bytes).digest('hex');
+  try {
+    withApkInspectionCopy(
+      original,
+      sha,
+      (copy) => {
+        assert.notEqual(copy, original);
+        assert.deepEqual(readFileSync(copy), bytes);
+      },
+      directory,
+    );
+    assert.throws(
+      () =>
+        withApkInspectionCopy(
+          original,
+          '0'.repeat(64),
+          () => {
+            assert.fail('A mismatched copy must not reach SDK tools');
+          },
+          directory,
+        ),
+      /SHA-256 mismatch/,
+    );
+    assert.throws(
+      () =>
+        withApkInspectionCopy(
+          original,
+          sha,
+          (copy) => {
+            writeFileSync(copy, 'changed');
+          },
+          directory,
+        ),
+      /changed during inspection/,
+    );
+    assert.deepEqual(readFileSync(original), bytes);
+    assert.deepEqual(readdirSync(directory), ['Original żółć.apk']);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

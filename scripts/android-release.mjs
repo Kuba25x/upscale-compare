@@ -10,6 +10,7 @@ import {
   runTool,
   spawnTool,
   readSourceProvenance,
+  withApkInspectionCopy,
 } from './android-release-tools.mjs';
 
 export const applicationId = 'io.github.kuba25x.upscalecompare';
@@ -141,7 +142,10 @@ function verifyBundle(directory, commit, certificate) {
     directory,
     Object.keys(manifest.files).find((name) => name.endsWith('.apk')),
   );
-  apkPolicy(apk, manifest, directory);
+  withApkInspectionCopy(apk, manifest.files[basename(apk)], (inspection) => {
+    apkPolicy(inspection, manifest, directory);
+    runTool('zipalign', ['-c', '-P', '16', '4', inspection]);
+  });
   const notices = readFileSync(join(directory, 'THIRD_PARTY_NOTICES.txt'), 'utf8');
   if (!notices.includes('tslib ') || !notices.includes('0BSD')) {
     throw new Error('Missing tslib runtime license');
@@ -150,7 +154,6 @@ function verifyBundle(directory, commit, certificate) {
   if (!dependencies.length || dependencies.some((entry) => !notices.includes(entry.coordinate))) {
     throw new Error('Incomplete native runtime notices');
   }
-  runTool('zipalign', ['-c', '-P', '16', '4', apk]);
   if (manifest.kind === 'signed') {
     if (fingerprint(manifest.certificateSha256) !== fingerprint(certificate)) {
       throw new Error('Manifest signing certificate mismatch');
