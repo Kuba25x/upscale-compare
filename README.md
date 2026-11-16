@@ -84,6 +84,7 @@ npm run build
 npm test
 npm run test:e2e
 npm run test:demo
+npm run test:pwa:build
 ```
 
 Playwright uses `/usr/bin/chromium` by default. On other systems:
@@ -95,6 +96,10 @@ npm run test:demo
 ```
 
 Use `node -e "console.log(require('playwright').chromium.executablePath())"` to locate the downloaded browser. End-to-end tests launch Vite and local Wrangler automatically. Unit and API tests use isolated Miniflare D1/R2 instances. See [testing](docs/TESTING.md) for coverage and executed results.
+
+Web builds also prepare [PWA manifest, icons and isolated build artifacts](docs/PWA_BUILDS.md).
+Worker registration and offline/update flows are not enabled. Development and Android
+builds omit the PWA integration.
 
 ## Architecture
 

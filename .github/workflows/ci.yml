@@ -6,6 +6,18 @@ on:
 permissions:
   contents: read
 jobs:
+  pwa-builds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Verify PWA build artifacts and Android isolation
+        run: npm run test:pwa:build
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
