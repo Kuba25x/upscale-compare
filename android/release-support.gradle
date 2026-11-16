@@ -18,7 +18,7 @@ tasks.register('releaseDependencyNotices') {
                 def entry
                 while ((entry = zip.nextEntry) != null) {
                     if (!entry.directory && entry.name ==~ /(?i).*(?:^|\/)(?:LICENSE|NOTICE|COPYING)(?:[._-].*)?/) {
-                        upstreamNotices << "\n$ORIGIN!/$ENTRY\n$BODY\n".replace('$ORIGIN', origin).replace('$ENTRY', entry.name).replace('$BODY', new String(zip.readAllBytes(), 'UTF-8'))
+                        upstreamNotices << '\n' + origin + '!/' + entry.name + '\n' + new String(zip.readAllBytes(), 'UTF-8') + '\n'
                     }
                 }
             } finally { zip.close() }
