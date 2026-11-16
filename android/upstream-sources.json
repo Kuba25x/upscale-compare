@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "repositories": [
+    {
+      "repository": "react/react",
+      "releaseRef": "v19.3.1",
+      "packages": {
+        "react": "19.3.1",
+        "react-dom": "19.3.1",
+        "scheduler": "0.28.0"
+      },
+      "commit": "61aa00df822d0eb76d0362eb8b6fdd3527693efe"
+    },
+    {
+      "repository": "lucide-icons/lucide",
+      "releaseRef": "0.468.0",
+      "commit": "f12b0de177fbc2a6795e99be065887e72b237123",
+      "packages": {
+        "lucide-react": "0.468.0"
+      }
+    },
+    {
+      "repository": "colinhacks/zod",
+      "releaseRef": "v4.6.7",
+      "commit": "b500a2ee95134f81d74da7911d7378dd2853d042",
+      "packages": {
+        "zod": "4.6.7"
+      }
+    },
+    {
+      "repository": "ionic-team/capacitor",
+      "releaseRef": "8.6.0",
+      "commit": "ef3ce6e4edfbc90b678f37138f387d1f524d6b35",
+      "packages": {
+        "@capacitor/core": "8.6.0",
+        "@capacitor/android": "8.6.0"
+      }
+    },
+    {
+      "repository": "ionic-team/capacitor-plugins",
+      "releaseRef": "@capacitor/app@8.1.2",
+      "commit": "87c0bb8045db2b4560d3db4b7d8e565c23ec1736",
+      "packages": {
+        "@capacitor/app": "8.1.2"
+      }
+    }
+  ]
+}

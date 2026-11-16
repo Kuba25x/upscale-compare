@@ -76,37 +76,26 @@ try {
   }
   const metadata = async (name) =>
     JSON.parse(await readFile('node_modules/' + name + '/package.json', 'utf8'));
-  const react = await metadata('react');
-  const inputs = [
-    ['facebook/react', 'v' + react.version, ['react', 'react-dom', 'scheduler']],
-    ['lucide-icons/lucide', (await metadata('lucide-react')).version, ['lucide-react']],
-    ['colinhacks/zod', 'v' + (await metadata('zod')).version, ['zod']],
-    [
-      'ionic-team/capacitor',
-      (await metadata('@capacitor/core')).version,
-      ['@capacitor/core', '@capacitor/android'],
-    ],
-    [
-      'ionic-team/capacitor-plugins',
-      '@capacitor/app@' + (await metadata('@capacitor/app')).version,
-      ['@capacitor/app'],
-    ],
-  ];
-  for (const [repository, ref, packages] of inputs) {
-    const resolved = await (
-      await get(
-        'https://api.github.com/repos/' + repository + '/commits/' + encodeURIComponent(ref),
-      )
-    ).json();
-    if (!/^[a-f0-9]{40}$/.test(resolved.sha))
-      throw new Error('Cannot pin upstream source: ' + repository);
-    const file = repository.replace('/', '_') + '-' + resolved.sha + '.tar.gz';
-    await download('https://codeload.github.com/' + repository + '/tar.gz/' + resolved.sha, file);
-    hashes.at(-1).packages = await Promise.all(
-      packages.map(async (name) => ({ name, version: (await metadata(name)).version })),
-    );
-    hashes.at(-1).upstreamCommit = resolved.sha;
-    hashes.at(-1).releaseRef = ref;
+  const pins = JSON.parse(await readFile('android/upstream-sources.json', 'utf8'));
+  if (pins.schema !== 1 || pins.repositories.length !== 5) throw new Error('Review upstream source pins');
+  const covered = new Set(pins.repositories.flatMap((entry) => Object.keys(entry.packages)));
+  const project = JSON.parse(await readFile('package.json', 'utf8'));
+  for (const name of Object.keys(project.dependencies)) {
+    if (!covered.has(name)) throw new Error('Missing runtime source pin: ' + name);
+  }
+  for (const entry of pins.repositories) {
+    if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(entry.repository) ||
+        !/^[a-f0-9]{40}$/.test(entry.commit)) throw new Error('Invalid upstream source pin');
+    const packages = [];
+    for (const [name, version] of Object.entries(entry.packages)) {
+      if ((await metadata(name)).version !== version) throw new Error('Update upstream source pin for ' + name);
+      packages.push({ name, version });
+    }
+    const file = entry.repository.replace('/', '_') + '-' + entry.commit + '.tar.gz';
+    await download('https://codeload.github.com/' + entry.repository + '/tar.gz/' + entry.commit, file);
+    hashes.at(-1).packages = packages;
+    hashes.at(-1).upstreamCommit = entry.commit;
+    hashes.at(-1).releaseRef = entry.releaseRef;
   }
   await writeFile(
     join(temporary, 'DEPENDENCY-SOURCES.json'),
@@ -136,7 +125,7 @@ try {
     'Collected source for ' +
       native.length +
       ' native runtime artifacts and ' +
-      inputs.length +
+      pins.repositories.length +
       ' upstream repositories',
   );
 } finally {

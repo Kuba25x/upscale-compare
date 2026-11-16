@@ -132,8 +132,9 @@ retention). It includes:
 | DEPENDENCIES.json                          | Resolved native runtime coordinates, licenses, source/POM locations          |
 
 The source collector fails if an expected upstream archive is unavailable.
-It resolves upstream release refs to immutable commits and records download
-SHA-256 values in DEPENDENCY-SOURCES.json inside the source archive. Native
+It uses reviewed immutable upstream commits pinned in
+android/upstream-sources.json, checks the installed package versions and records
+download SHA-256 values in DEPENDENCY-SOURCES.json inside the source archive. Native
 source JARs are exact Maven versions. Review the inventory when updating any
 dependency; an automated mapping is not a substitute for reviewing new licenses
 or upstream NOTICE obligations.

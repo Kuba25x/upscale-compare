@@ -32,3 +32,8 @@ user files.
 
 The original committed captures are associated with the preparation PR and its
 Actions run. They retain the application's existing visual style.
+
+Captured from the actual demo built at source commit
+035cc751858e509400cfe56658e8131bc675a6ed in
+[Actions run 43847091584](https://github.com/Kuba25x/upscale-compare/actions/runs/43847091584).
+This is the PR merge commit for preparation head 69d99473ee21a1e3d6a3c1b1eba85a2efdb8339c.

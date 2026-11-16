@@ -72,7 +72,7 @@ jobs:
       - name: Capture authentic README screenshots
         run: |
           npx playwright install --with-deps chromium
-          node scripts/capture-readme.mjs --emit-base64
+          node scripts/capture-readme.mjs
       - name: Publish preparation artifact (not an installable signed release)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -88,14 +88,18 @@ jobs:
             release-artifacts/screenshots/
           retention-days: 14
 
-      - name: Report formatting corrections for the preparation PR
-        if: always()
+      - name: Check release preparation formatting and whitespace
+        run: |
+          npx prettier --check scripts/android-*.mjs scripts/capture-readme.mjs tests/release/*.mjs README.md docs/ANDROID*.md docs/DEVELOPMENT.md docs/SCREENSHOTS.md .github/workflows/android-release.yml package.json PROGRESS.md
+          git diff --check
+
+      - name: Diagnose formatting differences
+        if: failure()
         run: |
           node --input-type=module <<'NODE'
           import prettier from 'prettier';
           import { readFileSync } from 'node:fs';
-          const paths = ["scripts/android-release.mjs","scripts/android-notices.mjs","scripts/android-source-bundle.mjs","tests/release/android-release.test.mjs","scripts/android-release-smoke.mjs",".github/workflows/android-release.yml","package.json","scripts/capture-readme.mjs","docs/ANDROID_RELEASE.md","README.md","docs/DEVELOPMENT.md","docs/SCREENSHOTS.md","docs/ANDROID.md","docs/ANDROID_RELEASE_VALIDATION.md"];
-          for (const path of paths) {
+          for (const path of ["scripts/android-release.mjs","scripts/android-notices.mjs","scripts/android-source-bundle.mjs","tests/release/android-release.test.mjs","scripts/android-release-smoke.mjs",".github/workflows/android-release.yml","package.json","scripts/capture-readme.mjs","docs/ANDROID_RELEASE.md","README.md","docs/DEVELOPMENT.md","docs/SCREENSHOTS.md","docs/ANDROID.md","docs/ANDROID_RELEASE_VALIDATION.md","PROGRESS.md","android/upstream-sources.json"]) {
             const input = readFileSync(path, 'utf8');
             const formatted = await prettier.format(input, { ...await prettier.resolveConfig(path), filepath: path });
             if (formatted !== input) {
