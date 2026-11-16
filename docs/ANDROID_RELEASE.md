@@ -252,3 +252,39 @@ uninstalling the official package, or change its application ID. Do not disclose
 the production private key. If distributing the software as part of a User
 Product or changing installation restrictions, review the license's Installation
 Information requirements before that distribution.
+
+## Rebuild and self-sign from the source archive
+
+Extract corresponding-source-<commit>.tar.gz outside any existing Git checkout.
+Its project/ directory contains the source, lockfiles, Gradle wrapper and these
+instructions. Install the pinned toolchain and accept SDK licenses as described
+in ANDROID.md. Initial npm/Gradle dependency downloads require networking.
+
+~~~sh
+cd /path/to/extracted/project
+export SOURCE_COMMIT=THE_FULL_COMMIT_FROM_DEPENDENCY_SOURCES_JSON
+npm ci
+npm run android:release:unsigned
+~~~
+
+The archive has no .git metadata; SOURCE_COMMIT supplies the original attribution
+for an unmodified rebuild. For modified source, create your own Git history and
+use its actual commit instead. The build does not access a production key.
+
+To install your own rebuild, finish building before making your own trusted
+test keystore accessible. Use the interactive keytool procedure above with a
+different keystore/alias. Then sign locally with that key:
+
+~~~sh
+"$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+  --ks /path/to/your-own-test.p12 --ks-key-alias your-test-alias \
+  --out /path/to/your-own-rebuild.apk \
+  android/app/build/outputs/apk/release/app-release-unsigned.apk
+"$ANDROID_HOME/build-tools/35.0.0/apksigner" verify \
+  --verbose --print-certs /path/to/your-own-rebuild.apk
+~~~
+
+This independent rebuild is not an official signed release. A different signer
+requires uninstalling the official package first (deleting its private session),
+or building under a different application ID. No producer signing key is needed
+to inspect, modify, build or self-sign the source.

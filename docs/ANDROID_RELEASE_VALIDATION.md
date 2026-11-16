@@ -66,3 +66,13 @@ The final license review also identified transitive tslib (0BSD). Its copyright,
 license and pinned source are now included, bringing upstream source repositories
 to six. The collector checks every non-development npm lockfile entry so an
 unlisted transitive runtime dependency fails preparation.
+
+## Main update during preparation
+
+Main advanced to 5dc582e8e6e219855904e5e3395cc761abd4ea9c (merged PR #25) during
+this task. Its isolated PWA build tooling, lockfile, documentation and CI job are
+preserved. PWA registration/offline/update flows remain disabled; Android still
+omits the integration. Final validation also runs the new PWA build and Android
+isolation checks. The new build-only dependency tree has low/moderate audit
+findings documented in PWA_BUILDS.md; the current threshold is no high/critical
+findings, rather than the earlier zero-finding snapshot.

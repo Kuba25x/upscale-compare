@@ -119,6 +119,7 @@ npm test
 npm run test:e2e
 npm run test:demo
 npm run test:android:web
+npm run test:pwa:build
 ```
 
 See [development and controls](docs/DEVELOPMENT.md),
@@ -129,7 +130,9 @@ See [development and controls](docs/DEVELOPMENT.md),
 
 Public sharing remains unavailable. Backend code and local test tools are retained
 for development; production Cloudflare workflows remain locked. No preview release
-enables hosting, public uploads or billing. PWA installation is not a shipped feature.
+enables hosting, public uploads or billing. PWA installation is not a shipped feature. Web builds prepare
+[manifest/icons and isolated worker artifacts](docs/PWA_BUILDS.md); worker registration
+and offline/update flows remain disabled.
 
 | Topic                                     | Documentation                                                                                                                                  |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |

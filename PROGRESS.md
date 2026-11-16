@@ -26,6 +26,9 @@ mobile web minimalist mode are already merged. PR #26 prepares version
 0.1.0-android-preview.1 (versionCode 2), a separate unsigned release workflow,
 source/license distribution, SHA-256/provenance checks and owner-only offline
 signing. It refreshes the user-facing README while preserving technical guides.
+The branch also incorporates main 5dc582e8e6e219855904e5e3395cc761abd4ea9c:
+PWA manifest/build assets are prepared, while registration/offline/update flows
+remain disabled. Its new build tooling and isolation tests are retained.
 
 No production key is generated, and CI receives no production signing secret.
 No public tag or Release is created, no PR is merged and no backend/deployment
