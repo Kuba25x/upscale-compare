@@ -13,25 +13,32 @@ export function toolCommand(name, args, env = process.env, platform = process.pl
   const binary = (tool) => paths.join(jdk, 'bin', tool + suffix);
   if (name === 'keytool') return { file: binary(name), args };
   const javaOptions = ['-Dfile.encoding=UTF-8', '-Duser.language=en', '-Duser.country=US'];
-  if (name === 'archive') {
+  const source = fileURLToPath(new URL('./AndroidReleaseArchive.java', import.meta.url));
+  const java = (mode, values) => {
+    if (platform === 'win32' && /[^\x00-\x7f]/.test(source)) {
+      throw new Error(
+        'Keep the reviewed signing helper files in an ASCII-only directory on Windows.',
+      );
+    }
+    // Windows' JDK launcher can lose characters in native argv. Decode public UTF-8
+    // paths/options inside Java instead; credentials never use this transport.
     return {
       file: binary('java'),
       args: [
         ...javaOptions,
         '--source',
         '21',
-        fileURLToPath(new URL('./AndroidReleaseArchive.java', import.meta.url)),
-        ...args,
+        source,
+        mode,
+        ...values.map((value) => Buffer.from(value, 'utf8').toString('base64')),
       ],
     };
-  }
+  };
+  if (name === 'archive') return java('archive', args);
   if (!sdk || !paths.isAbsolute(sdk)) throw new Error('Set ANDROID_HOME to a trusted Android SDK');
   const tools = paths.join(sdk, 'build-tools', '35.0.0');
   if (name === 'apksigner') {
-    return {
-      file: binary('java'),
-      args: [...javaOptions, '-jar', paths.join(tools, 'lib', 'apksigner.jar'), ...args],
-    };
+    return java('apksigner', [paths.join(tools, 'lib', 'apksigner.jar'), ...args]);
   }
   if (!['aapt', 'zipalign'].includes(name)) throw new Error('Unsupported release tool');
   return { file: paths.join(tools, name + suffix), args };
@@ -48,6 +55,7 @@ export function runTool(name, args, options = {}) {
   if (!existsSync(command.file)) throw new Error('Missing trusted release tool: ' + command.file);
   return execFileSync(command.file, command.args, {
     encoding: 'utf8',
+    stdio: 'pipe',
     maxBuffer: 16 * 1024 * 1024,
     ...options,
     shell: false,

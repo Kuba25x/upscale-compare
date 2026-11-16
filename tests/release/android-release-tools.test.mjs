@@ -19,8 +19,14 @@ test('Windows tools use native executables and the SDK jar without shell quoting
   const args = ['verify', 'C:\\Files żółć\\a & b; %PATH%!.apk'];
   const signer = toolCommand('apksigner', args, env, 'win32');
   assert.equal(signer.file, 'C:\\Program Files\\JDK 21\\bin\\java.exe');
-  assert.equal(signer.args.at(-1), args[1]);
-  assert.ok(signer.args.includes(env.ANDROID_HOME + '\\build-tools\\35.0.0\\lib\\apksigner.jar'));
+  assert.equal(Buffer.from(signer.args.at(-1), 'base64').toString('utf8'), args[1]);
+  assert.ok(
+    signer.args.includes(
+      Buffer.from(env.ANDROID_HOME + '\\build-tools\\35.0.0\\lib\\apksigner.jar', 'utf8').toString(
+        'base64',
+      ),
+    ),
+  );
   for (const name of ['aapt', 'zipalign']) {
     const command = toolCommand(name, args, env, 'win32');
     assert.equal(command.file, env.ANDROID_HOME + '\\build-tools\\35.0.0\\' + name + '.exe');

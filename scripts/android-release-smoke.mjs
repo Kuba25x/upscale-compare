@@ -1,7 +1,15 @@
 // End-to-end signing test with a disposable CI-only key, never a production key.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
@@ -15,6 +23,8 @@ const password = randomBytes(32).toString('hex');
 const bundle = join(temporary, 'Unsigned bundle żółć & (test); %!');
 cpSync(originalBundle, bundle, { recursive: true });
 const key = join(temporary, 'TEST-ONLY.p12');
+const keyTemporary = mkdtempSync(join(tmpdir(), 'upscale-test-key-generation-'));
+const generatedKey = join(keyTemporary, 'TEST-ONLY.p12');
 const signingOnly = process.argv[3] === '--signing-only';
 // Android lint parses project paths as arguments; keep its rebuild root conventional.
 // Signing still exercises the separate Unicode/metacharacter paths above.
@@ -67,7 +77,7 @@ try {
     [
       '-genkeypair',
       '-keystore',
-      key,
+      generatedKey,
       '-storetype',
       'PKCS12',
       '-alias',
@@ -85,10 +95,12 @@ try {
   );
   const certificate = runTool(
     'keytool',
-    ['-J-Duser.language=en', '-J-Duser.country=US', '-list', '-v', '-keystore', key],
+    ['-J-Duser.language=en', '-J-Duser.country=US', '-list', '-v', '-keystore', generatedKey],
     { input: password + '\n' },
   ).match(/SHA256: ([A-F0-9:]+)/)?.[1];
   assert.ok(certificate);
+  // Only the disposable test key moves; production keys are never copied by the helper.
+  renameSync(generatedKey, key);
   const output = join(temporary, 'signed');
   const signed = command(['sign', bundle, commit, key, 'TEST-ONLY', certificate, output], {
     input: password + '\n',
@@ -172,5 +184,6 @@ try {
   );
 } finally {
   rmSync(temporary, { recursive: true, force: true });
+  rmSync(keyTemporary, { recursive: true, force: true });
   if (sourceTemporary) rmSync(sourceTemporary, { recursive: true, force: true });
 }

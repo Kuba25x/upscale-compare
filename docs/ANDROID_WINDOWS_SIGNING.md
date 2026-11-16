@@ -35,7 +35,14 @@ commit before connecting the key:
 The helper invokes java.exe, aapt.exe and zipalign.exe with argument arrays and
 shell=false. It launches the official SDK apksigner.jar directly with Java,
 without apksigner.bat, cmd.exe, shell interpolation or manually assembled command
-strings. Spaces, Unicode and shell metacharacters remain literal path characters.
+strings. Public paths/options cross the Java launcher as ASCII Base64 and are
+decoded to UTF-8 strings inside the trusted Java helper. This preserves Unicode
+without changing Windows regional settings. Passwords and key bytes never use
+this transport. The helper calls the official SDK signer entry point with the
+decoded arguments in the same JVM; its password console remains inherited.
+Keep the three reviewed helper files in an ASCII directory such as C:\Source\upscale-compare
+(the Java source launcher itself has a native-path limitation). APK/output and
+existing keystore paths may contain Unicode, spaces and shell metacharacters.
 The Java source-file launcher uses the local JDK compiler; it downloads nothing.
 Its bounded ZipFile reader reads only the three public metadata/license entries
 and never extracts APK paths onto disk or reads imported screenshots/private keys.
@@ -50,11 +57,13 @@ and BitLocker/device encryption for protection of the local disk at rest.
 
 The following creates a **new** directory, removes inherited permissions and
 grants access to the current user and SYSTEM. It refuses to overwrite an existing
-key directory. Choose another verified local path if LOCALAPPDATA is redirected.
+key directory. Choose another verified local ASCII path if needed; do not use a shared directory.
+The standalone keytool launcher may not preserve characters outside its Windows
+code page, so use an ASCII directory for initial key creation/certificate export.
 Do not run an elevated shell just to sign APKs.
 
 ```powershell
-$UCKeyDirectory = Join-Path $env:LOCALAPPDATA 'UpscaleCompareSigning'
+$UCKeyDirectory = 'C:\Upscale Compare Signing'
 if (Test-Path -LiteralPath $UCKeyDirectory) { throw 'Use the existing key or choose a new directory.' }
 New-Item -ItemType Directory -Path $UCKeyDirectory -ErrorAction Stop | Out-Null
 $UCOwnerSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
@@ -98,7 +107,7 @@ $UCBundle = 'C:\Release Work\Unsigned bundle'
 $UCOutput = 'C:\Release Work\New signed output'
 $UCCommit = 'FULL_40_CHARACTER_REVIEWED_MAIN_SHA'
 $UCCertificate = 'YOUR_INDEPENDENTLY_VERIFIED_PUBLIC_CERTIFICATE_SHA256'
-$UCKey = Join-Path $env:LOCALAPPDATA 'UpscaleCompareSigning\upscale-compare-release.p12'
+$UCKey = 'C:\Upscale Compare Signing\upscale-compare-release.p12'
 Set-Location -LiteralPath 'C:\Source\reviewed-upscale-compare'
 
 node scripts/android-release.mjs verify $UCBundle $UCCommit
