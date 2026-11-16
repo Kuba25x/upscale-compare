@@ -114,7 +114,7 @@ comparison, or use local builds signed by the same local debug key. Production s
 builds an unsigned, non-debuggable APK; the owner signs it offline using a stable
 private key on a trusted computer. No production key or signing secret goes to CI.
 These APKs are test builds, not Play Store releases. Distribution must include
-corresponding source under AGPL-3.0; Android/MIT notices are bundled in the assets.
+corresponding source under AGPL-3.0; MIT, ISC, 0BSD and Apache-2.0 dependency notices are bundled in the assets.
 
 ## Automated checks
 

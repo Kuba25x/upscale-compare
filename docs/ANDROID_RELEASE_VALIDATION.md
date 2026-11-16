@@ -52,3 +52,17 @@ The PR does not change src/, shared/, worker/, web limits, import/storage polici
 Share Comparison, the existing Android debug workflow or production deployment
 controls. AGPL source/notices are included in the preparation bundle. The owner
 must review and retain them alongside any future public signed APK.
+
+## Intermediate browser-test race
+
+[Run 43847091692](https://github.com/Kuba25x/upscale-compare/actions/runs/43847091692)
+reported one demo-mobile failure after rotation: the test read the old compact
+class before the scheduled React viewport update, then asserted the wrong set of
+controls. The regression now waits for the expected portrait/landscape class.
+Visibility, native-bridge isolation and retained-image assertions are preserved;
+no web application code is changed. Final PR checks include the corrected test.
+
+The final license review also identified transitive tslib (0BSD). Its copyright,
+license and pinned source are now included, bringing upstream source repositories
+to six. The collector checks every non-development npm lockfile entry so an
+unlisted transitive runtime dependency fails preparation.

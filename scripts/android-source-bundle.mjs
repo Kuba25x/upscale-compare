@@ -77,22 +77,39 @@ try {
   const metadata = async (name) =>
     JSON.parse(await readFile('node_modules/' + name + '/package.json', 'utf8'));
   const pins = JSON.parse(await readFile('android/upstream-sources.json', 'utf8'));
-  if (pins.schema !== 1 || pins.repositories.length !== 5) throw new Error('Review upstream source pins');
+  if (pins.schema !== 1 || pins.repositories.length !== 6)
+    throw new Error('Review upstream source pins');
   const covered = new Set(pins.repositories.flatMap((entry) => Object.keys(entry.packages)));
   const project = JSON.parse(await readFile('package.json', 'utf8'));
+  const lock = JSON.parse(await readFile('package-lock.json', 'utf8'));
+  const pinnedVersions = Object.assign({}, ...pins.repositories.map((entry) => entry.packages));
+  for (const [path, dependency] of Object.entries(lock.packages)) {
+    if (!path || dependency.dev || dependency.devOptional) continue;
+    const name = path.slice(path.lastIndexOf('node_modules/') + 'node_modules/'.length);
+    if (pinnedVersions[name] !== dependency.version) {
+      throw new Error('Missing exact transitive runtime source pin: ' + name);
+    }
+  }
   for (const name of Object.keys(project.dependencies)) {
     if (!covered.has(name)) throw new Error('Missing runtime source pin: ' + name);
   }
   for (const entry of pins.repositories) {
-    if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(entry.repository) ||
-        !/^[a-f0-9]{40}$/.test(entry.commit)) throw new Error('Invalid upstream source pin');
+    if (
+      !/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(entry.repository) ||
+      !/^[a-f0-9]{40}$/.test(entry.commit)
+    )
+      throw new Error('Invalid upstream source pin');
     const packages = [];
     for (const [name, version] of Object.entries(entry.packages)) {
-      if ((await metadata(name)).version !== version) throw new Error('Update upstream source pin for ' + name);
+      if ((await metadata(name)).version !== version)
+        throw new Error('Update upstream source pin for ' + name);
       packages.push({ name, version });
     }
     const file = entry.repository.replace('/', '_') + '-' + entry.commit + '.tar.gz';
-    await download('https://codeload.github.com/' + entry.repository + '/tar.gz/' + entry.commit, file);
+    await download(
+      'https://codeload.github.com/' + entry.repository + '/tar.gz/' + entry.commit,
+      file,
+    );
     hashes.at(-1).packages = packages;
     hashes.at(-1).upstreamCommit = entry.commit;
     hashes.at(-1).releaseRef = entry.releaseRef;

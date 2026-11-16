@@ -137,7 +137,8 @@ android/upstream-sources.json, checks the installed package versions and records
 download SHA-256 values in DEPENDENCY-SOURCES.json inside the source archive. Native
 source JARs are exact Maven versions. Review the inventory when updating any
 dependency; an automated mapping is not a substitute for reviewing new licenses
-or upstream NOTICE obligations.
+or upstream NOTICE obligations. The npm runtime inventory includes transitive
+tslib (0BSD); its source, copyright notice and license are retained.
 
 ## Owner verification and offline signing
 
@@ -238,7 +239,7 @@ also has section 13 network-source obligations. Merely naming a repository or
 shipping LICENSE is insufficient for binary distribution.
 
 The bundle includes the project, locked dependencies, native source JARs and
-upstream frontend/Capacitor source repositories. Their existing MIT, ISC and
+upstream frontend/Capacitor source repositories. Their existing MIT, ISC, 0BSD and
 Apache-2.0 terms and notices continue to apply. Test/build-only dependencies are
 not bundled runtime components. Android/WebView/SDK/JDK are system/build
 prerequisites, documented with versions; they are not redistributed inside this APK.

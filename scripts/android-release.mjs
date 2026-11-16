@@ -69,7 +69,7 @@ function tool(name) {
 function run(command, args) {
   return execFileSync(command, args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
 }
-function apkPolicy(apk, manifest) {
+function apkPolicy(apk, manifest, directory) {
   checkBadging(run(tool('aapt'), ['dump', 'badging', apk]), manifest);
   const build = JSON.parse(run('unzip', ['-p', apk, 'assets/public/build-info.json']));
   if (
@@ -81,7 +81,9 @@ function apkPolicy(apk, manifest) {
     throw new Error('Embedded APK build provenance mismatch');
   }
   for (const name of ['LICENSE.txt', 'third-party-licenses.txt']) {
-    if (run('unzip', ['-p', apk, 'assets/public/' + name]).length < 1000) {
+    const asset = run('unzip', ['-p', apk, 'assets/public/' + name]);
+    const sidecar = name === 'LICENSE.txt' ? name : 'THIRD_PARTY_NOTICES.txt';
+    if (asset.length < 1000 || asset !== readFileSync(join(directory, sidecar), 'utf8')) {
       throw new Error('Missing embedded license notices');
     }
   }
@@ -140,7 +142,15 @@ function verifyBundle(directory, commit, certificate) {
     directory,
     Object.keys(manifest.files).find((name) => name.endsWith('.apk')),
   );
-  apkPolicy(apk, manifest);
+  apkPolicy(apk, manifest, directory);
+  const notices = readFileSync(join(directory, 'THIRD_PARTY_NOTICES.txt'), 'utf8');
+  if (!notices.includes('tslib ') || !notices.includes('0BSD')) {
+    throw new Error('Missing tslib runtime license');
+  }
+  const dependencies = JSON.parse(readFileSync(join(directory, 'DEPENDENCIES.json'), 'utf8'));
+  if (!dependencies.length || dependencies.some((entry) => !notices.includes(entry.coordinate))) {
+    throw new Error('Incomplete native runtime notices');
+  }
   run(tool('zipalign'), ['-c', '-P', '16', '4', apk]);
   if (manifest.kind === 'signed') {
     if (fingerprint(manifest.certificateSha256) !== fingerprint(certificate)) {

@@ -37,7 +37,6 @@ Historical Android-browser pinch verification below does not certify this APK.
 
 ## Earlier implementation and research status
 
-
 Share Comparison stages 1–7 are merged through PRs #10–#16; Free-sharing feasibility and storage/codec research are merged as PRs #17–#18. The separately authorized phase A/B execution research starts from `origin/main` at `07d83b6`, with isolated experiments under `research/free-sharing/`. The owner requires zero Cloudflare charges. Production remains locked: no provider CPU/peak-memory certification or enforceable R2 zero-overage arrangement exists. The [execution comparison](docs/FREE_VALIDATION_EXECUTION_RESEARCH.md) identifies trusted browser validation as a direction worth clarifying, while retaining unresolved Browser Run RAM/CPU, large-file transport, daily allowance, Free DO limits and exhausted-quota deletion concerns. Local Chromium is not Browser Run. No production architecture has been changed. Phases C–E, stage 8, merge, deployment, remote migration, resource creation, paid activation and public uploads are not authorized or started by this research.
 
 The following viewer verification is historical; PR #9 has merged into main.

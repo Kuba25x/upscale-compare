@@ -149,6 +149,6 @@ Redistributing an APK requires its Corresponding Source and applicable notices;
 modified hosted versions also have network-source obligations.
 
 [Frontend dependency notices](public/third-party-licenses.txt) are generated with
-npm run notices. Android adds Capacitor and native runtime notices to the APK;
+npm run notices. Android adds Capacitor, tslib and native runtime notices to the APK;
 the release preparation bundle includes exact project/dependency source and a
 resolved inventory. See [distribution requirements](docs/ANDROID_RELEASE.md#license-and-dependency-distribution).
