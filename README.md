@@ -11,13 +11,12 @@ zoom and precise pixel inspection. Open two to four screenshots, choose your A/B
 pair, and inspect the originals locally.
 
 **[Open the web app](https://kuba25x.github.io/upscale-compare/) ·
-[Android APK downloads](https://github.com/Kuba25x/upscale-compare/releases) ·
+[Download Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.1/upscale-compare-debug.apk) ·
 [Report an issue](https://github.com/Kuba25x/upscale-compare/issues)**
 
-> **Android Preview is being prepared.** There is no public Android release yet.
-> The planned first pre-release is v0.1.0-android-preview.1.
-> Until it is published, temporary debug APKs are available from
-> [GitHub Actions](https://github.com/Kuba25x/upscale-compare/actions/workflows/android.yml).
+> **Android Preview is available.**
+> [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+> is an early preview distributed as a **debug APK**.
 > **Share Comparison is not publicly available** in the web app or Android APK.
 
 ## Made for close inspection
@@ -51,7 +50,7 @@ or UI mockups. [Capture instructions and provenance](docs/SCREENSHOTS.md).
 
 |                         | Web app                                            | Android Preview APK                                   |
 | ----------------------- | -------------------------------------------------- | ----------------------------------------------------- |
-| Start                   | Open the link in a modern browser                  | Install an APK from Releases when available           |
+| Start                   | Open the link in a modern browser                  | Install the APK from Releases                         |
 | Local comparison        | Yes; no image upload                               | Yes; bundled app works offline                        |
 | Image selection         | Browser file input                                 | System Photo Picker; Browse files / Files alternative |
 | Session storage         | Browser memory; refresh loses the local comparison | Original copies and session in private app storage    |
@@ -73,17 +72,19 @@ copying before they are available offline.
 
 ## Download and install Android
 
-1. Open [Releases](https://github.com/Kuba25x/upscale-compare/releases) and choose
-   the Android Preview **pre-release** once published.
-2. Download its signed APK. Compare its SHA-256 with SHA256SUMS; release notes will
-   also identify the source commit and the public signing-certificate fingerprint.
-3. On Android 7.0 / API 24 or later, allow **Install unknown apps** for the browser
-   or file manager you use, then open the APK. Older supported API levels have
-   not yet been qualified; Xiaomi 15T with Android 16 is the primary target.
+Requires **Android 7.0 or later** and an up-to-date Android System WebView.
+No computer or developer tools are needed.
 
-No Google Play listing or public APK is claimed before that first release.
-Preview builds may have device-specific limitations. Android System WebView
-must be available and reasonably current.
+1. [Download the Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.1/upscale-compare-debug.apk)
+   on your Android device.
+2. Open the downloaded file. If prompted, allow **Install unknown apps** for
+   your browser or file manager, then return to the installer.
+3. Tap **Install**, open Upscale Compare and select two to four screenshots.
+
+See the [release page](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+for notes, checksums and source files. This preview is distributed through GitHub
+Releases, not Google Play. Xiaomi 15T with Android 16 is the primary target;
+physical-device qualification is still pending, including on older Android versions.
 
 Originals are streamed into private app storage with SHA-256 verification. Your
 source files are not edited or deleted. A completed session can be restored
@@ -91,11 +92,6 @@ offline after restarting the app. Use **Clear comparison** to remove its private
 copies; uninstalling or clearing app data deletes the session and stored originals.
 Copies use real device space: up to 1 GiB per committed comparison, with a bounded
 replacement allowance and a free-space reserve. See [storage and limits](docs/ANDROID.md#storage-and-lifecycle).
-
-Updates need the same signing key and a higher versionCode. Temporary CI debug
-builds use disposable keys; moving from debug to the official release generally
-requires uninstalling, which deletes app-private data. Keep your source images
-elsewhere before uninstalling.
 
 [Android guide and device checklist](docs/ANDROID.md) ·
 [Owner release/signing runbook](docs/ANDROID_RELEASE.md)

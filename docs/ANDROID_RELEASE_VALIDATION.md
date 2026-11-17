@@ -1,7 +1,9 @@
 # Android Preview preparation validation
 
-These are automated results, not physical-device qualification. No production key,
-public tag or GitHub Release has been created.
+These are historical automated results from PR #26, not physical-device
+qualification. The public [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+is now available as a debug APK. Publication does not establish owner-key signing
+or additional device-test results.
 
 ## Confirmed evidence
 
@@ -19,7 +21,7 @@ offline/update flows remain disabled and Android omits the PWA integration.
 The final [PR #26 checks](https://github.com/Kuba25x/upscale-compare/pull/26/checks)
 are authoritative for the final head, including the lifecycle guard below.
 These immutable snapshots do not claim that an older binary contains later fixes.
-After merge, run the manual main workflow for the actual release candidate.
+For future owner-signed candidates, run the manual workflow from main.
 
 Signing tests reject a wrong certificate/commit, signed input, modified COMMIT or
 checksum sidecars and damaged APK bytes. The signed APK's actual v2 signature,
