@@ -6,6 +6,16 @@ This PR prepares the source and manual Pages workflow. **No deployment was run.*
 The existing public URL has not been used to claim acceptance of this new build.
 No physical Android device is connected to the Codex environment.
 
+The release is also **blocked by the dependency audit** as of 2026-11-17:
+[GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) affects the
+existing build-tool dependency `picomatch <=4.0.7`. The npm latest release is `4.0.7`
+and the advisory lists no patched version. Its high-severity finding propagates
+through Vite/Vitest/Workbox tooling; picomatch is not shipped in the browser or
+generated worker, and the production-dependency audit has zero findings.
+No dependency downgrade or audit exception was applied. CI and the manual Pages
+workflow retain the high-severity audit gate. Resolve the advisory with a reviewed
+upstream fix/tooling update before merging or publishing; do not force past it.
+
 | Evidence                 | Automated coverage                                                                                                                                            | Remaining manual check                                                                |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Manifest / scope / icons | Root and `/upscale-compare/` builds, identity/name, standalone declaration, sizes and maskable safe area                                                      | Name and icon as installed by Android Chrome                                          |
@@ -29,7 +39,7 @@ does not verify Android's menu or WebAPK packaging. WebKit does not certify Safa
 3. In **Actions → Deploy frontend to GitHub Pages → Run workflow**, select `main`,
    `deployment_mode: demo` and `confirmation: DEPLOY`.
 4. Approve the `github-pages` environment if GitHub requires it. The workflow first
-   verifies artifacts, offline/update behavior, a real installed Chromium window
+   audits dependencies and verifies artifacts, offline/update behavior, a real installed Chromium window
    and the demo bundle, then publishes only `dist/`.
 5. Record the workflow URL, exact commit and Help version, then run the phone
    checklist below at `https://kuba25x.github.io/upscale-compare/`.

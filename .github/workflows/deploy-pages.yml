@@ -41,6 +41,8 @@ jobs:
         if: inputs.deployment_mode == 'production'
         run: node scripts/production-readiness.mjs
       - run: npm ci
+      - name: Audit dependencies before publishing
+        run: npm audit --audit-level=high
       - run: npx playwright install --with-deps chromium
       - name: Select Playwright Chromium
         run: node scripts/set-playwright-browser.mjs
