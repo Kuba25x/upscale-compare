@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { build } from 'esbuild';
 import {
@@ -188,6 +192,55 @@ test('runtime package matching is path-aware and handles Windows paths', () => {
   ])
     assert.throws(() => assertNoRuntimePicomatch([input]));
   assertNoRuntimePicomatch(['node_modules/picomatch-extra/index.js', 'src/lib/images.ts']);
+});
+test('the CLI fails on a registry error, refuses stale metadata and retains raw reports without a stale decision', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'upscale-audit-cli-'));
+  try {
+    await mkdir(join(directory, '.wrangler/security-audit'), { recursive: true });
+    await mkdir(join(directory, '.wrangler/security-audit-npm-cache'));
+    await writeFile(join(directory, '.wrangler/security-audit/decision.json'), 'stale pass');
+    await writeFile(join(directory, '.wrangler/security-audit-npm-cache/stale'), '4.0.7');
+    const fakeNpm = join(directory, 'npm.cjs');
+    await writeFile(
+      fakeNpm,
+      `const fs = require('node:fs');
+if (process.argv.includes('audit')) {
+  process.stdout.write(JSON.stringify(process.argv.includes('--omit=dev') ? ${JSON.stringify(report())} : ${JSON.stringify(recorded)}));
+  process.exit(process.argv.includes('--omit=dev') ? 0 : 1);
+}
+const cache = process.argv[process.argv.indexOf('--cache') + 1];
+fs.writeFileSync('registry-attempt.json', JSON.stringify({ staleCache: fs.existsSync(cache) }));
+process.stderr.write('Registry unavailable');
+process.exit(1);
+`,
+    );
+    const result = spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL('../../scripts/audit-dependencies.mjs', import.meta.url))],
+      {
+        cwd: directory,
+        env: { ...process.env, npm_execpath: fakeNpm },
+        encoding: 'utf8',
+        timeout: 10000,
+      },
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /failed closed: Could not verify upstream/);
+    assert.deepEqual(JSON.parse(await readFile(join(directory, 'registry-attempt.json'))), {
+      staleCache: false,
+    });
+    assert.equal(
+      await readFile(join(directory, '.wrangler/security-audit/full.json'), 'utf8'),
+      JSON.stringify(recorded),
+    );
+    assert.equal(
+      await readFile(join(directory, '.wrangler/security-audit/production.json'), 'utf8'),
+      JSON.stringify(report()),
+    );
+    await assert.rejects(readFile(join(directory, '.wrangler/security-audit/decision.json')));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 test('the Cloudflare Worker build does not include picomatch', async () => {
   const result = await build({

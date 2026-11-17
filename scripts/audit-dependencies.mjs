@@ -7,13 +7,14 @@ import {
 } from './dependency-audit-policy.mjs';
 
 const directory = '.wrangler/security-audit';
+const npmCache = '.wrangler/security-audit-npm-cache';
 await rm(directory, { recursive: true, force: true });
 await mkdir(directory, { recursive: true });
 try {
   const npm = process.env.npm_execpath;
   if (!npm) throw new Error('Run this gate through npm run audit:dependencies');
   const run = (args) =>
-    spawnSync(process.execPath, [npm, ...args, '--cache', '.wrangler/security-audit-npm-cache'], {
+    spawnSync(process.execPath, [npm, ...args, '--cache', npmCache], {
       encoding: 'utf8',
       timeout: 60000,
       maxBuffer: 20 * 1024 * 1024,
@@ -28,6 +29,9 @@ try {
     await writeFile(`${directory}/${name}.json`, result.stdout || '');
     reports[name] = parseAuditResult(result);
   }
+  // npm can fall back to cached metadata on registry errors even with prefer-online.
+  // A fresh dedicated cache prevents stale release data from accepting this risk.
+  await rm(npmCache, { recursive: true, force: true });
   const latest = run(['view', 'picomatch', 'version', '--json', '--prefer-online']);
   if (latest.error || latest.status !== 0)
     throw new Error('Could not verify upstream picomatch release');

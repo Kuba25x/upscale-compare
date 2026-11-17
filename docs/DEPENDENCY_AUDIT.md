@@ -87,6 +87,8 @@ high/critical cause is blocked. Further conditions are:
   fingerprints match the reviewed input files. Changes require a fresh review.
 - The current registry check still returns `4.0.7`; a new latest release stops the
   exception for review, even if it is a breaking release rather than a fix.
+  The lookup uses an emptied dedicated npm cache, preventing stale metadata from
+  masking a registry error even with npm's `prefer-online` fallback behavior.
 - The clock is within the review window: **2026-11-17 00:00 UTC through, but not
   including, 2026-12-01 00:00 UTC**. Expiry blocks CI and publishing.
 - No production high/critical finding or any critical finding receives an exception.
