@@ -14,3 +14,12 @@ async function start() {
   );
 }
 void start();
+
+// Vite removes this entire branch and chunk from Android and development builds.
+if (__WEB_PWA__) {
+  void import('./pwa/register')
+    .then(({ registerOfflineApp }) => registerOfflineApp())
+    .catch((error) =>
+      console.warn('Offline app shell could not load. Online use can continue.', error),
+    );
+}

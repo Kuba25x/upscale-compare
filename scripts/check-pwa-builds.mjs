@@ -133,13 +133,14 @@ async function verifyWeb(output, base) {
     ...appAssets,
   ];
   assert.deepEqual(worker.entries.map(({ url }) => url).sort(), expected.sort());
-  for (const { url, revision } of worker.entries) {
+  for (const { url, revision, integrity } of worker.entries) {
     const content = await read(url);
     assert.equal(
       revision,
       url.startsWith('assets/') ? null : createHash('md5').update(content).digest('hex'),
       `Precache revision for ${url}`,
     );
+    assert.equal(integrity, `sha256-${createHash('sha256').update(content).digest('base64')}`);
   }
   const shippedPackages = new Set();
   for (const dependency of worker.dependencies) {
@@ -156,8 +157,13 @@ async function verifyWeb(output, base) {
     'Every distributed Workbox package must have a runtime license notice',
   );
   assert.ok(html.includes('src=') && !/registerSW|registerSW\.js/.test(html));
-  for (const file of appAssets.filter((file) => file.endsWith('.js')))
-    assert.doesNotMatch((await read(file)).toString(), /serviceWorker|workbox-window|registerSW/);
+  const javascript = (
+    await Promise.all(appAssets.filter((file) => file.endsWith('.js')).map(read))
+  ).join('\n');
+  assert.match(javascript, /serviceWorker/);
+  assert.match(javascript, /updateViaCache:"none"/);
+  assert.match(javascript, /\d+\.\d+\.\d+\+[a-z0-9]+/);
+  assert.doesNotMatch(javascript, /workbox-window|registerSW/);
 }
 
 async function verifyAndroid(output) {

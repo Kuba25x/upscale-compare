@@ -1,17 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 
-test('uploads local images with PWA assets but without worker registration', async ({
-  page,
-  baseURL,
-}) => {
+test('uploads local images when offline worker registration fails', async ({ page, baseURL }) => {
   await page.addInitScript(() => {
     const calls: string[] = [];
     Object.defineProperty(window, '__workerRegistrationCalls', { value: calls });
     if ('serviceWorker' in navigator)
       navigator.serviceWorker.register = async (url) => {
         calls.push(String(url));
-        throw new Error('Worker registration is outside this build-only stage');
+        throw new Error('Simulated registration failure');
       };
   });
   await page.goto('./');
@@ -42,6 +39,15 @@ test('uploads local images with PWA assets but without worker registration', asy
   expect(await (await page.request.get(new URL(licenses!, baseURL).href)).text()).toContain(
     'workbox-core',
   );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __workerRegistrationCalls: string[] })
+            .__workerRegistrationCalls.length,
+      ),
+    )
+    .toBe(1);
   expect(
     await page.evaluate(async () => ({
       calls: (window as typeof window & { __workerRegistrationCalls: string[] })
@@ -52,5 +58,5 @@ test('uploads local images with PWA assets but without worker registration', asy
           : 0,
       caches: 'caches' in window ? await caches.keys() : [],
     })),
-  ).toEqual({ calls: [], registrations: 0, caches: [] });
+  ).toEqual({ calls: [new URL('sw.js', baseURL).href], registrations: 0, caches: [] });
 });

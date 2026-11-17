@@ -1,6 +1,6 @@
 # Testing and verification
 
-## PWA artifact verification (roadmap stage D)
+## PWA shell verification (roadmap stages D/E)
 
 `npm run test:pwa:build` checks temporary builds for demo, production and Android at
 both root and Pages bases, plus a resolved Vite base override and web development
@@ -9,11 +9,21 @@ precache entries/revisions, navigation boundaries, worker license coverage and
 the absence of Android PWA artifacts. It never registers a service worker.
 See [PWA build boundaries and commands](PWA_BUILDS.md).
 
-The demo browser suite fetches the manifest, icons, worker and extended license
-notices under `/upscale-compare/`, imports local images and checks that no worker
-registration or Cache Storage entries appear. This runs on Chromium desktop/mobile
-and, with `RUN_FIREFOX=true` / `RUN_WEBKIT=true`, on Firefox and WebKit. Android's
-browser suite independently verifies no manifest or worker/cache state. Existing
+`npm run test:pwa` builds disposable A/B releases at root and Pages bases. Real-worker
+tests cover offline reopening/import, byte-identical originals, metadata, modes,
+zoom/gestures, fresh empty sessions, exact scope/cache contents, one/multiple-client
+waiting updates and failed/missing/corrupt B resources. They verify that A stays
+usable and that no live comparison reloads. Unrelated caches and deletion keys
+survive activation. `npm run test:pwa:sharing` exercises production verification
+doubles and original restoration with an active worker alongside the unchanged
+standard sharing suite. Unit tests cover secure contexts, unsupported APIs,
+post-load registration and contained failures.
+
+The normal demo suite fetches manifest/icons/licenses and checks local use after
+a simulated registration failure. Browser projects include Chromium desktop/mobile
+and, with `RUN_FIREFOX=true` / `RUN_WEBKIT=true`, Firefox and WebKit. Android's
+browser suite independently traps registration attempts and verifies no manifest
+or worker/cache state. Existing
 gesture, fullscreen, orientation, original-image and sharing regressions remain in
 the full CI run; Android lint, JVM tests, APK and emulator checks remain required.
 

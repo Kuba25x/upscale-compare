@@ -1,9 +1,11 @@
-# PWA build artifacts
+# Private offline app shell
 
-Roadmap stage D prepares web assets only. Demo and production builds emit a manifest,
-PNG icons and a generated Workbox service worker. The application does **not** register
-the worker, claim clients, enable offline operation or offer an update/install flow.
-Those runtime changes belong to later roadmap stages. No deployment is part of this change.
+Roadmap stages D and E prepare the web assets and enable a private offline shell in
+demo and production builds. After page load, a web-only module registers the generated
+worker in a secure context when the Service Worker API is available. Registration
+failure leaves normal online comparison available. Development and Android builds
+exclude this module entirely. Installation guidance and public release qualification
+belong to stage F; no deployment or installation prompt is part of this change.
 
 ## Build boundaries
 
@@ -22,8 +24,37 @@ The generated worker's precache contains only the built HTML, JavaScript, CSS,
 manifest, favicon, PNG icons and runtime license notices. Source maps, API responses,
 share links, uploads and local originals are excluded. There are no runtime caching
 routes; the prepared navigation fallback accepts only the base entry point and
-`index.html`. No browser uses this configuration until worker registration is
-explicitly implemented in a later stage.
+`index.html`. Hash routes continue to use the existing application router. There is
+no runtime cache or Background Sync. Local screenshot bytes, names, labels and
+metadata remain in memory; a new app session starts empty. Existing explicit
+publication/deletion credentials retain their established storage behavior and
+are never copied into Cache Storage.
+
+## Registration and updates
+
+The stable worker URL is `sw.js` under the resolved Vite base. Registration uses
+that base as its scope and `updateViaCache: 'none'`. The web registration chunk
+embeds an application-version / short-commit identifier for diagnostics (for example
+`0.1.0+1234abcd`), from `package.json` and `GITHUB_SHA` or Git. Source archives without
+Git metadata use the `+source` suffix. No release UI is added in this stage.
+
+Vite hashes JavaScript/CSS filenames and Workbox revisions the other shell files.
+All precache entries also carry SHA-256 integrity metadata, so a 200 response with
+damaged content fails installation rather than becoming an accepted cached module.
+
+`skipWaiting` and `clientsClaim` remain false. There is no update polling, automatic
+reload, update message or `controllerchange` handler. The browser installs a new
+version in the background and keeps it waiting while any tab/window uses the active
+version. Existing views keep their in-memory comparisons. After all old clients
+close, the next version can activate; the next app session starts empty.
+
+Versions share one application/scope-specific precache. Installation adds the new
+revision's files without removing old entries, so a failed or incomplete update
+leaves the old shell usable. PrecacheController removes obsolete entries from that
+cache only during activation. Workbox's broader legacy `cleanupOutdatedCaches`
+operation is disabled; unrelated caches and publication/deletion keys are untouched.
+Offline availability starts only after successful installation and remains subject
+to browser storage eviction. No additional persistence of local comparisons is added.
 
 ## Icons and licenses
 
@@ -53,6 +84,8 @@ code / AGPL-3.0 link and license access in Help are retained.
 
 ```bash
 npm run test:pwa:build
+npm run test:pwa
+npm run test:pwa:sharing
 npm run test:demo
 npm run test:android:web
 ```
@@ -62,9 +95,14 @@ of `demo`/`production`/`android` and root/Pages environment bases, a resolved-ba
 override, and both web development modes. It checks manifest fields and links, PNG
 dimensions and maskable safe area, actual worker precache entries and revisions,
 navigation boundaries, shipped Workbox license coverage and Android isolation.
-It inspects the worker without registering it. The normal browser suites also
-verify asset URLs under the Pages subpath, local image import, existing source and
-license links, and zero worker registrations or Cache Storage entries.
+It inspects the worker without registering it. Dedicated PWA browser suites register
+real workers against disposable A/B releases, exercise offline local import and
+original-byte equality, one/multiple-client updates, failed/missing/corrupt resources,
+scope boundaries, cache privacy and unrelated data retention. Chromium also stops
+the worker before offline reopening. Production-mode verification doubles exercise
+sharing, original restoration and verification failure with an active worker.
+The normal demo suite verifies that a registration failure does not block local use.
+Firefox/WebKit projects are enabled with `RUN_FIREFOX=true` and `RUN_WEBKIT=true`.
 
 At the stage-D checkpoint, `npm audit --audit-level=high` passes with no high or
 critical findings. The pinned plugin's build-tool dependency tree has six audit

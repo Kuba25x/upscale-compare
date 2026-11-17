@@ -8,7 +8,11 @@ permissions:
 jobs:
   pwa-builds:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    env:
+      RUN_FIREFOX: 'true'
+      RUN_WEBKIT: 'true'
+      WRANGLER_SEND_METRICS: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,6 +22,20 @@ jobs:
       - run: npm ci
       - name: Verify PWA build artifacts and Android isolation
         run: npm run test:pwa:build
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: node scripts/set-playwright-browser.mjs
+      - name: Verify private offline shell and browser-managed updates
+        run: npm run test:pwa
+      - name: Verify production sharing with an active worker
+        run: npm run test:pwa:sharing
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pwa-test-results
+          path: |
+            playwright-report/pwa*/
+            test-results/pwa*/
+          retention-days: 7
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
