@@ -21,11 +21,6 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
     script: new URL('sw.js', baseURL).href,
     updateViaCache: 'none',
   });
-  if (browserName === 'chromium') {
-    const session = await context.newCDPSession(page);
-    await session.send('ServiceWorker.stopAllWorkers');
-    await session.detach();
-  }
   await page.close();
   await context.setOffline(true);
   const offline = await context.newPage();

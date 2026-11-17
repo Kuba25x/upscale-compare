@@ -98,8 +98,8 @@ navigation boundaries, shipped Workbox license coverage and Android isolation.
 It inspects the worker without registering it. Dedicated PWA browser suites register
 real workers against disposable A/B releases, exercise offline local import and
 original-byte equality, one/multiple-client updates, failed/missing/corrupt resources,
-scope boundaries, cache privacy and unrelated data retention. Chromium also stops
-the worker before offline reopening. Production-mode verification doubles exercise
+scope boundaries, cache privacy and unrelated data retention. Chromium additionally
+closes and reopens a persistent browser profile offline. Production-mode verification doubles exercise
 sharing, original restoration and verification failure with an active worker.
 The normal demo suite verifies that a registration failure does not block local use.
 Firefox/WebKit projects are enabled with `RUN_FIREFOX=true` and `RUN_WEBKIT=true`.
