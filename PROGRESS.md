@@ -20,6 +20,11 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 
 ## Android Preview release preparation — 2026-11-16
 
+Published on 2026-11-17: [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+is available as a debug APK from source 93e0fdbc4ecd9f099ce3d967ea2df2207e47f4c9.
+The preparation notes below describe PR #26 before its merge and publication;
+they do not qualify the public APK on a physical device.
+
 Preparation starts from verified origin/main 57991d4ed3a4265d4961649893f65cc5a62d1757.
 The Android implementation, Photo Picker, edge-to-edge/compact landscape UI and
 mobile web minimalist mode are already merged. PR #26 prepares version

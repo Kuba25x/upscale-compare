@@ -1,8 +1,10 @@
 # Android Preview release runbook
 
-Status: preparation only. No public tag or GitHub Release is created by these tools.
-The first proposed pre-release is **v0.1.0-android-preview.1**. Device qualification
-remains limited; this is a preview, not a stability or color-accuracy certification.
+The public [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+is distributed as a **debug APK**, not an output of the owner-signing process below.
+This runbook covers future owner-signed releases; the tools do not create public
+tags or GitHub Releases. Device qualification remains limited; publication is not
+a stability or color-accuracy certification.
 
 ## Trust and signing model
 
@@ -29,7 +31,7 @@ The single version source is [android/release.properties](../android/release.pro
 
 - versionName: 0.1.0-android-preview.1
 - versionCode: 2 (initial debug builds used 1)
-- proposed release tag: v0.1.0-android-preview.1
+- published debug-preview tag: v0.1.0-android-preview.1
 - package: io.github.kuba25x.upscalecompare
 - minimum API 24; target/compile API 36
 
@@ -238,8 +240,9 @@ Before publication the owner must:
    of the final signed files. Future releases must use the same key and a larger
    versionCode. Record every distributed code in release history.
 
-The intended tag is reserved only by documentation; it has not been created.
-There is no Release publish/token permission, tag trigger or automatic merge here.
+The first debug-preview tag already exists. Choose a new version and tag for the
+next distribution. There is no Release publish/token permission, tag trigger or
+automatic merge in the preparation workflow.
 
 ## License and dependency distribution
 

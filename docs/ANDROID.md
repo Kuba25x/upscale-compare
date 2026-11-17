@@ -1,8 +1,9 @@
 # Android offline app
 
 Status: implemented offline preview with automated browser/JVM/API 36 instrumentation
-coverage. First signed public pre-release preparation is in progress; no public
-release is claimed. Xiaomi 15T / Android 16 physical-device qualification is pending.
+coverage. [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+is publicly available as a debug APK. See [installation](../README.md#download-and-install-android)
+for the user guide. Xiaomi 15T / Android 16 physical-device qualification is pending.
 The 256 MiB file ceiling is provisional, not a guarantee that WebView can decode
 or display every accepted file. Do not describe this build as device-certified.
 
@@ -105,6 +106,10 @@ repository metadata or signing keys.
 
 ## GitHub Actions and APK downloads
 
+[The public Android Preview](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+provides the debug APK, SHA256SUMS, COMMIT, corresponding source and dependency
+notices. Users can install it directly without GitHub Actions or build tools.
+
 The separate **Android debug APK** workflow runs on relevant PR/branch changes
 and workflow_dispatch. It has read-only repository permission, no backend secrets
 and no deployment steps. Open the successful run, download
@@ -187,11 +192,11 @@ No physical-device performance, memory, HDR/color precision or OEM system-UI
 certification is claimed. Automatic results must be tied to a successful run and
 exact source SHA; compilation alone is not an instrumentation pass.
 
-## Signed public preview preparation
+## Future owner-signed release preparation
 
-The planned first version is 0.1.0-android-preview.1 (versionCode 2), declared in
-android/release.properties. Debug APKs remain available for testing. A separate
-read-only release workflow produces an unsigned candidate, source/dependency
+The public debug preview uses 0.1.0-android-preview.1 (versionCode 2), declared in
+android/release.properties. Future distributed versions must increase versionCode.
+A separate read-only release workflow produces an unsigned candidate, source/dependency
 archive, notices, manifest and SHA-256 checksums. It neither tags nor publishes.
 The owner must generate/retain the permanent key on a trusted computer, sign
 offline, verify the public certificate and qualify the signed build.
@@ -199,8 +204,8 @@ offline, verify the public certificate and qualify the signed build.
 Native Windows 11 signing is documented in
 [the PowerShell guide](ANDROID_WINDOWS_SIGNING.md); WSL2 is optional.
 Follow [the owner release runbook](ANDROID_RELEASE.md) for exact commands, source
-distribution obligations, update testing and the manual publication gate. There
-is no public APK download until the owner explicitly publishes a pre-release.
+distribution obligations, update testing and the manual publication gate. This
+owner-signing process is separate from the already published debug preview.
 
 ## Android comparison-only fullscreen — 2026-11-07
 
