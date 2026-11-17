@@ -133,6 +133,14 @@ async function verifyWeb(output, base) {
     ...appAssets,
   ];
   assert.deepEqual(worker.entries.map(({ url }) => url).sort(), expected.sort());
+  const metadata = JSON.parse(
+    html.match(
+      /<script id="upscale-compare-offline-shell" type="application\/json">(.*?)<\/script>/s,
+    )?.[1] || '{}',
+  );
+  assert.deepEqual(metadata.assets, expected.map((file) => `${base}${file}`).sort());
+  assert.match(metadata.release, /\d+\.\d+\.\d+\+[a-z0-9]+/);
+  assert.equal(metadata.cachePrefix, 'upscale-compare');
   for (const { url, revision, integrity } of worker.entries) {
     const content = await read(url);
     assert.equal(
@@ -175,7 +183,10 @@ async function verifyAndroid(output) {
     [],
   );
   const html = await readFile(join(output, 'index.html'), 'utf8');
-  assert.doesNotMatch(html, /rel="manifest"|apple-touch-icon|registerSW/);
+  assert.doesNotMatch(
+    html,
+    /rel="manifest"|apple-touch-icon|registerSW|upscale-compare-offline-shell/,
+  );
   assert.ok(html.includes('href="/favicon.svg"'));
   assert.equal(
     await readFile(join(output, 'third-party-licenses.txt'), 'utf8'),

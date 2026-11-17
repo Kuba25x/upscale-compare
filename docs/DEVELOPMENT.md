@@ -154,5 +154,6 @@ load, using a stable scoped worker URL and browser-managed updates. Open compari
 are never automatically reloaded. Local screenshots and metadata remain in memory.
 Development and Android builds omit this integration. Validate artifacts with
 `npm run test:pwa:build`, offline/update behavior with `npm run test:pwa` and active-worker
-production sharing with `npm run test:pwa:sharing`. Public installation guidance and
-release qualification remain a later stage; these commands do not deploy a PWA.
+production sharing with `npm run test:pwa:sharing`. Use `xvfb-run -a npm run test:pwa:install`
+on Linux for an installed Chromium window and offline relaunch. See [PWA use](PWA.md)
+and [manual release acceptance](PWA_RELEASE_QA.md); these commands do not deploy a PWA.

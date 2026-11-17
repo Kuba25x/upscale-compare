@@ -9,6 +9,7 @@ const chromium = {
 };
 export default defineConfig({
   testDir: './tests/pwa',
+  testIgnore: /installed-window\.spec\.ts/,
   workers: 1,
   timeout: 60000,
   expect: { timeout: 10000 },

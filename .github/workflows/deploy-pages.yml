@@ -28,6 +28,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       WRANGLER_SEND_METRICS: 'false'
     steps:
@@ -43,6 +44,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Select Playwright Chromium
         run: node scripts/set-playwright-browser.mjs
+      - name: Verify PWA before publishing the demo
+        if: inputs.deployment_mode == 'demo'
+        run: npm run test:pwa:build && npm run test:pwa && xvfb-run -a npm run test:pwa:install
       - name: Build and verify frontend-only demo
         if: inputs.deployment_mode == 'demo'
         run: npm run test:demo

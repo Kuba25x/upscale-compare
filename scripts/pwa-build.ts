@@ -23,6 +23,7 @@ function navigationOptions(base: string) {
 export function webPwaPlugins(): Plugin[] {
   let base = '/';
   let output = '';
+  let release = '';
   const integrity = async (url: string) =>
     `sha256-${createHash('sha256')
       .update(await readFile(resolve(output, url)))
@@ -63,6 +64,7 @@ export function webPwaPlugins(): Plugin[] {
       configureOptions(config, options) {
         // Use Vite's resolved base, including CLI overrides, for every PWA URL.
         base = config.base;
+        release = JSON.parse(config.define!.__APP_RELEASE__ as string);
         output = resolve(config.root, config.build.outDir);
         options.scope = base;
         Object.assign(options.manifest!, { id: base, start_url: base, scope: base });
@@ -117,5 +119,37 @@ export function webPwaPlugins(): Plugin[] {
       },
     },
     ...VitePWA(options),
+    {
+      name: 'web-offline-readiness-metadata',
+      enforce: 'post',
+      generateBundle(_options, bundle) {
+        const html = bundle['index.html'];
+        if (!html || html.type !== 'asset') throw new Error('Missing web entry HTML');
+        // Expected resources stay in the already-precached HTML, without a new
+        // endpoint, cache, runtime fetch or private comparison data.
+        const assets = [
+          ...new Set([
+            'index.html',
+            'manifest.webmanifest',
+            'favicon.svg',
+            'third-party-licenses.txt',
+            ...pwaIcons.map((icon) => icon.src),
+            appleTouchIcon,
+            ...Object.keys(bundle).filter((file) => /^assets\/.*\.(js|css)$/.test(file)),
+          ]),
+        ]
+          .sort()
+          .map((file) => `${base}${file}`);
+        const metadata = JSON.stringify({
+          release,
+          cachePrefix: options.workbox!.cacheId,
+          assets,
+        }).replace(/</g, '\\u003c');
+        html.source = String(html.source).replace(
+          '</head>',
+          `<script id="upscale-compare-offline-shell" type="application/json">${metadata}</script>\n</head>`,
+        );
+      },
+    },
   ];
 }
