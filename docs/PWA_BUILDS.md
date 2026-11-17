@@ -112,6 +112,9 @@ sharing, original restoration and verification failure with an active worker.
 The normal demo suite verifies that a registration failure does not block local use.
 Firefox/WebKit projects are enabled with `RUN_FIREFOX=true` and `RUN_WEBKIT=true`.
 
-CI enforces `npm audit --audit-level=high`; record the current findings with the
-reviewed release. Dependency versions remain pinned in the lockfile. No plugin
-downgrade or major transitive override is introduced by the installation/help work.
+CI and Pages enforce `npm run audit:dependencies`, retaining both complete raw
+audits. The [temporary dependency risk acceptance](DEPENDENCY_AUDIT.md) covers one
+development-only advisory and expires automatically; all other unaccepted high
+and all critical findings still block release. Artifact source-map checks reject
+picomatch in web/service-worker bundles. Dependency versions remain pinned in the
+unchanged lockfile; no plugin downgrade or transitive override is introduced.

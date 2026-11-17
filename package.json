@@ -40,7 +40,9 @@
     "android:apk": "npm run android:sync && cd android && ./gradlew --no-daemon lintDebug testDebugUnitTest assembleDebug",
     "test:android:web": "npm run build:android && playwright test --config playwright.android.config.ts",
     "android:release:unsigned": "npm run android:sync && cd android && ./gradlew --no-daemon lintRelease assembleRelease",
-    "test:android:release": "node --test tests/release/*.test.mjs"
+    "test:android:release": "node --test tests/release/*.test.mjs",
+    "test:audit-policy": "node --test tests/security/*.test.mjs",
+    "audit:dependencies": "npm run test:audit-policy && node scripts/audit-dependencies.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.6.0",

@@ -8,6 +8,7 @@ import { runInNewContext } from 'node:vm';
 import { build, createServer } from 'vite';
 import { PNG } from 'pngjs';
 import { runtimeNotices, workboxRuntimePackages } from './generate-notices.mjs';
+import { assertNoRuntimePicomatch } from './dependency-audit-policy.mjs';
 
 const directory = await mkdtemp(join(tmpdir(), 'upscale-pwa-builds-'));
 const originalBase = process.env.VITE_BASE_PATH;
@@ -121,6 +122,10 @@ async function verifyWeb(output, base) {
     assert.ok(!allowlist.some((pattern) => pattern.test(path)), path);
 
   const files = await readdir(output, { recursive: true });
+  for (const file of files.filter((file) => file.endsWith('.map'))) {
+    const map = JSON.parse(await read(file));
+    assertNoRuntimePicomatch(map.sources);
+  }
   const appAssets = files.filter((file) => /^assets\/.*\.(js|css)$/.test(file));
   assert.ok(appAssets.some((file) => file.endsWith('.js')));
   assert.ok(appAssets.some((file) => file.endsWith('.css')));
