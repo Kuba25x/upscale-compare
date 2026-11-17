@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { VitePWA, type VitePWAOptions } from 'vite-plugin-pwa';
 import { runtimeNotices } from './generate-notices.mjs';
@@ -20,6 +22,11 @@ function navigationOptions(base: string) {
 
 export function webPwaPlugins(): Plugin[] {
   let base = '/';
+  let output = '';
+  const integrity = async (url: string) =>
+    `sha256-${createHash('sha256')
+      .update(await readFile(resolve(output, url)))
+      .digest('base64')}`;
   const options: Partial<VitePWAOptions> = {
     strategies: 'generateSW',
     filename: 'sw.js',
@@ -48,14 +55,38 @@ export function webPwaPlugins(): Plugin[] {
       runtimeCaching: [],
       skipWaiting: false,
       clientsClaim: false,
+      // PrecacheController removes obsolete entries only from this app's own cache
+      // on activation. Workbox's legacy cleanup also matches other cache prefixes.
+      cleanupOutdatedCaches: false,
     },
     integration: {
       configureOptions(config, options) {
         // Use Vite's resolved base, including CLI overrides, for every PWA URL.
         base = config.base;
+        output = resolve(config.root, config.build.outDir);
         options.scope = base;
         Object.assign(options.manifest!, { id: base, start_url: base, scope: base });
         Object.assign(options.workbox!, navigationOptions(base));
+        options.workbox!.manifestTransforms = [
+          async (entries) => ({
+            manifest: await Promise.all(
+              entries.map(async (entry) => ({
+                ...entry,
+                integrity: await integrity(entry.url),
+              })),
+            ),
+            warnings: [],
+          }),
+        ];
+      },
+      async beforeBuildServiceWorker(options) {
+        // Workbox appends the plugin's manifest entry after manifestTransforms.
+        options.workbox.additionalManifestEntries = await Promise.all(
+          (options.workbox.additionalManifestEntries || []).map(async (entry) => {
+            const item = typeof entry === 'string' ? { url: entry, revision: null } : entry;
+            return { ...item, integrity: await integrity(item.url) };
+          }),
+        );
       },
     },
   };

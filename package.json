@@ -27,6 +27,8 @@
     "notices": "node scripts/generate-notices.mjs",
     "icons:pwa": "node scripts/generate-pwa-icons.mjs",
     "test:pwa:build": "node --test scripts/check-pwa-builds.mjs",
+    "test:pwa": "node scripts/build-pwa-tests.mjs && playwright test --config playwright.pwa.config.ts",
+    "test:pwa:sharing": "npm run build:worker && node scripts/build-sharing-test.mjs && playwright test --config playwright.pwa-sharing.config.ts",
     "typecheck:frontend": "tsc --noEmit",
     "build:demo": "npm run notices && npm run typecheck:frontend && vite build --mode demo",
     "dev:demo": "vite --host 0.0.0.0 --mode demo",

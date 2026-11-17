@@ -147,10 +147,12 @@ checklist.
 
 Unpublished web images exist only in browser memory and are lost on refresh. Published screenshots are public to anyone with the link, including embedded metadata in the original files. Private publication/deletion keys are saved in browser storage before uploading; download a backup and keep it private. Open the shared comparison and choose **Share Comparison → Manage published comparison** to delete it. Keys are not included in public URLs. Deletion cannot recall copies already downloaded elsewhere. See [privacy](PRIVACY.md).
 
-## Prepared PWA build assets
+## Web offline app shell
 
-Web builds prepare [manifest, icons and isolated worker artifacts](PWA_BUILDS.md).
-Worker registration and offline/update flows are not enabled. Development and
-Android builds omit this integration. Validate its boundaries with
-npm run test:pwa:build. These assets do not mean that installable PWA support is
-available to users.
+Web production builds register a [private offline app shell](PWA_BUILDS.md) after
+load, using a stable scoped worker URL and browser-managed updates. Open comparisons
+are never automatically reloaded. Local screenshots and metadata remain in memory.
+Development and Android builds omit this integration. Validate artifacts with
+`npm run test:pwa:build`, offline/update behavior with `npm run test:pwa` and active-worker
+production sharing with `npm run test:pwa:sharing`. Public installation guidance and
+release qualification remain a later stage; these commands do not deploy a PWA.
