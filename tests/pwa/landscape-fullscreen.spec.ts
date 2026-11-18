@@ -178,6 +178,19 @@ for (const outcome of ['reject', 'throw', 'missing', 'request-only', 'disabled']
     await expect(page.getByRole('button', { name: 'Fullscreen options' })).toBeFocused();
   });
 
+test('Escape closes fullscreen options before the image panel behind it', async ({ page }) => {
+  await mockApi(page);
+  await launchLandscape(page);
+  const images = page.getByRole('button', { name: 'Image controls', exact: true });
+  await images.click();
+  await options(page);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(images).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('button', { name: 'Fullscreen options' })).toBeFocused();
+  expect(await page.evaluate(() => (window as any).fullscreenCalls)).toEqual([]);
+});
+
 test('portrait cancels a delayed request and closes fullscreen if it arrives late', async ({
   page,
 }) => {

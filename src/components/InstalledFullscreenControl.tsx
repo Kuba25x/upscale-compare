@@ -8,6 +8,7 @@ import {
   type ReactElement,
 } from 'react';
 import { Shrink } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { Modal } from './Modal';
 
 /** Web-only options on the existing control; no extra toolbar button or launch prompt. */
@@ -54,6 +55,8 @@ export function InstalledFullscreenControl({
     typeof document.documentElement.requestFullscreen === 'function' &&
     typeof document.exitFullscreen === 'function' &&
     document.fullscreenEnabled !== false;
+  // Avoid toolbar button styles while retaining the app's safe-area scope.
+  const host = button.current?.closest('.web-app');
   return (
     <>
       {cloneElement(trigger, {
@@ -65,47 +68,51 @@ export function InstalledFullscreenControl({
         onClick: () => setOpen(true),
         children: active ? <Shrink size={16} /> : trigger.props.children,
       })}
-      {open && (
-        <Modal title="Fullscreen" onClose={close}>
-          <div className="web-fullscreen-options">
-            {active ? (
+      {open &&
+        host &&
+        createPortal(
+          <Modal title="Fullscreen" onClose={close}>
+            <div className="web-fullscreen-options">
+              {active ? (
+                <button
+                  onClick={() => {
+                    void onLeave();
+                    close();
+                  }}
+                >
+                  {pending ? 'Cancel fullscreen request' : 'Exit fullscreen'}
+                </button>
+              ) : (
+                <button
+                  disabled={!supported}
+                  onClick={() => {
+                    // Start directly in this click, preserving transient user activation.
+                    void onEnter().then((entered) => {
+                      if (entered) close();
+                    });
+                  }}
+                >
+                  Fullscreen with controls
+                </button>
+              )}
               <button
                 onClick={() => {
-                  void onLeave();
+                  onMinimalist();
                   close();
                 }}
               >
-                {pending ? 'Cancel fullscreen request' : 'Exit fullscreen'}
+                Minimalist mode
               </button>
-            ) : (
-              <button
-                disabled={!supported}
-                onClick={() => {
-                  // Start directly in this click, preserving transient user activation.
-                  void onEnter().then((entered) => {
-                    if (entered) close();
-                  });
-                }}
-              >
-                Fullscreen with controls
-              </button>
+            </div>
+            {(!supported || error) && (
+              <p className="muted small" role="status">
+                {error ||
+                  'This browser cannot expand the app window. Minimalist mode is available.'}
+              </p>
             )}
-            <button
-              onClick={() => {
-                onMinimalist();
-                close();
-              }}
-            >
-              Minimalist mode
-            </button>
-          </div>
-          {(!supported || error) && (
-            <p className="muted small" role="status">
-              {error || 'This browser cannot expand the app window. Minimalist mode is available.'}
-            </p>
-          )}
-        </Modal>
-      )}
+          </Modal>,
+          host,
+        )}
     </>
   );
 }

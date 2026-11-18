@@ -434,7 +434,13 @@ export default function App({
     <div
       className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ' web-app'} ${presentationClasses(presentation)}`}
       onKeyDown={(event) => {
-        if (compactWeb && imagePanelOpen && !modal && event.key === 'Escape') {
+        if (
+          compactWeb &&
+          imagePanelOpen &&
+          !modal &&
+          event.key === 'Escape' &&
+          !document.querySelector('dialog[open]')
+        ) {
           event.preventDefault();
           setImagePanelOpen(false);
           imagePanelToggle.current?.focus({ preventScroll: true });
