@@ -58,10 +58,11 @@ async function verifyWeb(output, base) {
   assert.equal(manifest.name, 'Upscale Compare');
   assert.equal(manifest.short_name, 'Upscale Compare');
   assert.equal(manifest.lang, 'en');
-  assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.display, 'fullscreen');
   assert.equal(manifest.theme_color, '#101114');
   assert.equal(manifest.background_color, '#101114');
-  for (const key of ['id', 'start_url', 'scope']) assert.equal(manifest[key], base);
+  for (const key of ['id', 'scope']) assert.equal(manifest[key], base);
+  assert.equal(manifest.start_url, `${base}?pwa=fullscreen`);
   assert.equal(manifest.prefer_related_applications, false);
   assert.equal(manifest.orientation, undefined);
   assert.deepEqual(manifest.icons, [

@@ -38,9 +38,9 @@ test('a full browser/profile restart starts offline with an empty local session'
     expect(url).toBe(new URL('manifest.webmanifest', baseURL).href);
     const manifest = JSON.parse(data!);
     expect(manifest.name).toBe('Upscale Compare');
-    expect(manifest.display).toBe('standalone');
-    for (const key of ['id', 'scope', 'start_url'])
-      expect(manifest[key]).toBe(new URL(baseURL!).pathname);
+    expect(manifest.display).toBe('fullscreen');
+    for (const key of ['id', 'scope']) expect(manifest[key]).toBe(new URL(baseURL!).pathname);
+    expect(manifest.start_url).toBe(`${new URL(baseURL!).pathname}?pwa=fullscreen`);
     expect(manifest.icons.map((icon: { sizes: string }) => icon.sizes)).toEqual([
       '192x192',
       '512x512',

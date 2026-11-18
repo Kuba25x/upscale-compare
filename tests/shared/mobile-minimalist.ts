@@ -9,8 +9,8 @@ const files = [
   imageFile('B.png', 1, 512, 384),
   imageFile('C.png', 0, 320, 256),
 ];
-export async function open(page: Page, mode = 'Split Screen') {
-  await page.goto('./');
+export async function open(page: Page, mode = 'Split Screen', url = './') {
+  await page.goto(url);
   await page.getByTestId('file-input').setInputFiles(files);
   await page.getByLabel('Select image A', { exact: true }).selectOption('2');
   await page.getByLabel('Select image B', { exact: true }).selectOption('0');

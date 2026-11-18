@@ -128,7 +128,7 @@ test('unknown advisory URLs or changed vulnerable ranges require a review', () =
   }
 });
 test('expiry is enforced at the exact boundary', () => {
-  assert.equal(evaluate({ now: new Date('2026-11-30T23:59:59Z') }).ok, true);
+  assert.equal(evaluate({ now: new Date(new Date(exception.expires).getTime() - 1000) }).ok, true);
   assert.equal(evaluate({ now: new Date(exception.expires) }).ok, false);
   assert.equal(evaluate({ now: new Date('2026-11-16') }).ok, false);
 });

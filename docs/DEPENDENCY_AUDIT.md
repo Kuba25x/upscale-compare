@@ -1,5 +1,15 @@
 # Dependency audit: temporary build-only risk acceptance
 
+**Status update — 2026-11-18:** GitHub withdrew GHSA-fc5q-39xc-vjpf at
+15:38:56 UTC. The registry now reports zero high/critical findings (four moderate
+tooling rows) and a clean production audit. No dependency version changed. The
+old exception was retired by shortening its enforced expiry to that withdrawal
+time, so a reintroduced high finding cannot reuse it. All high/critical findings
+now block at the current clock; raw reporting and failure handling remain intact.
+The sections below record the original review; their December deadline has been
+superseded by this earlier expiry. Historical policy fixtures exercise the old
+review window, and no CLI option can supply their test clock.
+
 ## Advisory and release check — 2026-11-17
 
 [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
@@ -109,6 +119,15 @@ They also check that picomatch does not enter the API Worker bundle. The existin
 PWA artifact matrix checks browser/service-worker source maps before publication.
 
 ## Removal and review conditions
+
+The 2026-11-18 fullscreen experiment re-reviewed the PWA build input change:
+manifest `display` and a fixed launch-query URL now use a pure string helper.
+The dependency lock, glob patterns, Rollup filters, build discovery, workflows and
+runtime reachability are unchanged. No user-supplied value becomes a glob. The
+specific PWA-config fingerprint was updated after this review and its imported
+helper was added to the watched inputs. Advisory scope/version were not broadened;
+the withdrawal shortened expiry as recorded above. This is not an extension or
+broader acceptance.
 
 1. When upstream publishes a fix, review its advisory/range and compatibility,
    update the smallest necessary dependency set and lockfile, and run the complete

@@ -27,10 +27,19 @@ with unrelated caches and publication/deletion keys retained.
 
 `xvfb-run -a npm run test:pwa:install` uses a normal persistent Linux Chromium
 profile, CDP installation and the user app-window preference. It checks a real
-standalone window with the existing UI, closes the browser and relaunches the
+app window with the existing UI, records its actual fullscreen/standalone fallback,
+checks the marked manifest launch URL, closes the browser and relaunches the
 installed window offline. Screenshots are retained as artifacts. This is separate
 from mobile viewport emulation and does not certify Android installation menus.
 Physical-device and hosted-site checks remain [explicitly pending](PWA_RELEASE_QA.md).
+
+`tests/pwa/default-fullscreen.spec.ts` adds installed-launch models for portrait,
+both landscape cutout sides, safe essential controls, minimalist/system-exit
+transitions, keyboard/dialogs and marked offline navigation. Negative cases keep
+regular tabs unchanged during API fullscreen and F11, including marked URLs opened
+as tabs. These models are not Android window/cutout emulation. The
+[display experiment and reinstall checklist](INSTALLED_LANDSCAPE.md) explains the
+remaining context ambiguity and physical-device requirements.
 
 The normal demo suite fetches manifest/icons/licenses and checks local use after
 a simulated registration failure. Browser projects include Chromium desktop/mobile

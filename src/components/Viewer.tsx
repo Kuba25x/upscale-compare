@@ -38,6 +38,7 @@ interface Props {
   fullscreenOverride?: boolean;
   onToggleFullscreen?: () => void | Promise<void>;
   renderFullscreenControl?: FullscreenControl;
+  minimalistExitLabel?: string;
   presentation?: ComparisonPresentation;
 }
 export function Viewer({
@@ -50,6 +51,7 @@ export function Viewer({
   fullscreenOverride,
   onToggleFullscreen,
   renderFullscreenControl,
+  minimalistExitLabel = 'Exit fullscreen',
   presentation = WEB_PRESENTATION,
 }: Props) {
   const comparisonFullscreen = presentation.minimalist;
@@ -984,8 +986,8 @@ export function Viewer({
         {comparisonFullscreen && (
           <button
             className="minimalist-exit"
-            aria-label="Exit fullscreen"
-            title="Exit fullscreen"
+            aria-label={minimalistExitLabel}
+            title={minimalistExitLabel}
             onClick={() => void toggleFullscreen()}
             onDoubleClick={(event) => event.stopPropagation()}
           >
