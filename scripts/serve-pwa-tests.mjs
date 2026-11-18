@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 
 let state = { release: 'a', fault: 'none' };
+const held = new Set();
 const types = {
   '.html': 'text/html',
   '.js': 'text/javascript',
@@ -19,6 +20,7 @@ const server = createServer(async (request, response) => {
     let body = '';
     for await (const chunk of request) body += chunk;
     state = { release: 'a', fault: 'none', ...JSON.parse(body) };
+    if (state.fault !== 'hold') for (const release of held) release();
     response.writeHead(200).end('ok');
     return;
   }
@@ -43,6 +45,16 @@ const server = createServer(async (request, response) => {
   }
   try {
     const data = await readFile(file);
+    if (state.fault === 'hold' && relative === 'icons/icon-maskable-512.png') {
+      await new Promise((resume) => {
+        const release = () => {
+          held.delete(release);
+          resume();
+        };
+        held.add(release);
+        response.once('close', release);
+      });
+    }
     // Fail only a new, release-specific B module, leaving A and shared assets usable.
     if (
       state.release === 'b' &&

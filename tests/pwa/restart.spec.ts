@@ -31,6 +31,22 @@ test('a full browser/profile restart starts offline with an empty local session'
     const first = browser.pages()[0];
     await first.goto(baseURL!);
     await control(first);
+    const session = await browser.newCDPSession(first);
+    expect((await session.send('Page.getInstallabilityErrors')).installabilityErrors).toEqual([]);
+    const { data, url, errors } = await session.send('Page.getAppManifest');
+    expect(errors).toEqual([]);
+    expect(url).toBe(new URL('manifest.webmanifest', baseURL).href);
+    const manifest = JSON.parse(data!);
+    expect(manifest.name).toBe('Upscale Compare');
+    expect(manifest.display).toBe('standalone');
+    for (const key of ['id', 'scope', 'start_url'])
+      expect(manifest[key]).toBe(new URL(baseURL!).pathname);
+    expect(manifest.icons.map((icon: { sizes: string }) => icon.sizes)).toEqual([
+      '192x192',
+      '512x512',
+      '512x512',
+    ]);
+    await session.detach();
     const file = imageFile('Do not restore this name.png');
     await first.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1)]);
     await first.getByLabel('Label for image A').fill('Do not restore this label');

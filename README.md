@@ -18,6 +18,7 @@ pair, and inspect the originals locally.
 > [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
 > is an early preview distributed as a **debug APK**.
 > **Share Comparison is not publicly available** in the web app or Android APK.
+> PWA support is prepared for the next approved web deployment; physical Android acceptance is pending.
 
 ## Made for close inspection
 
@@ -48,27 +49,45 @@ or UI mockups. [Capture instructions and provenance](docs/SCREENSHOTS.md).
 
 ## Web or Android?
 
-|                         | Web app                                            | Android Preview APK                                   |
-| ----------------------- | -------------------------------------------------- | ----------------------------------------------------- |
-| Start                   | Open the link in a modern browser                  | Install the APK from Releases                         |
-| Local comparison        | Yes; no image upload                               | Yes; bundled app works offline                        |
-| Image selection         | Browser file input                                 | System Photo Picker; Browse files / Files alternative |
-| Session storage         | Browser memory; refresh loses the local comparison | Original copies and session in private app storage    |
-| File ceiling            | 20 MiB per file                                    | Provisional 256 MiB per file                          |
-| Image bounds            | 36 million pixels; 16,384 pixels per side          | Same pixel/dimension bounds                           |
-| Public Share Comparison | Unavailable                                        | Unavailable                                           |
+|                         | Web / PWA                                              | Android Preview APK                                   |
+| ----------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| Start                   | Open the link in a modern browser                      | Install the APK from Releases                         |
+| Local comparison        | Yes; no image upload                                   | Yes; bundled app works offline                        |
+| Offline start           | After app resources are cached; browser may evict them | App resources are bundled                             |
+| Image selection         | Browser file input                                     | System Photo Picker; Browse files / Files alternative |
+| Session storage         | Browser memory; refresh loses the local comparison     | Original copies and session in private app storage    |
+| File ceiling            | 20 MiB per file                                        | Provisional 256 MiB per file                          |
+| Image bounds            | 36 million pixels; 16,384 pixels per side              | Same pixel/dimension bounds                           |
+| Public Share Comparison | Unavailable                                            | Unavailable                                           |
 
 Both versions accept two to four images and share the comparison geometry.
 A file passing the Android size ceiling is not guaranteed to decode successfully.
 4K/8K memory use depends on the device and WebView; Xiaomi 15T / Android 16
 qualification is still pending.
 
-The web app needs its assets loaded from the website; it does not offer an
-installed PWA or a guaranteed offline cache. Once loaded, local comparisons do
-not send your images to a server. The APK contains the frontend and needs no
-GitHub Pages, Cloudflare or network connection to compare successfully imported
-local images. Cloud-backed Photo Picker items need to finish downloading and
-copying before they are available offline.
+The PWA uses the same comparison interface as the browser page. Its cache contains
+app resources, never your screenshots or metadata. Installation does not guarantee
+offline readiness. The APK instead bundles its resources and restores private
+originals and session state. Cloud-backed files must finish downloading before
+either version can import them offline.
+
+## Use the web app or install the PWA
+
+1. [Open Upscale Compare](https://kuba25x.github.io/upscale-compare/) online and choose
+   two to four local PNG, JPEG or static WebP screenshots. Compare in Split Screen
+   or Side-by-Side; your originals are never recompressed or uploaded.
+2. For offline use, open **Keyboard shortcuts (?) → Installation and offline**
+   and wait for **App resources are ready offline**.
+3. In Android Chrome's menu, choose **Install app** or **Add to Home screen** and
+   confirm installation. Open the app from its icon. Menu wording varies by browser.
+
+Offline works in a regular tab too. Refreshing or reopening starts an empty
+comparison: select local files again. Browser storage can be evicted; reconnect
+if the app cannot open offline. Updates wait until all existing tabs and app
+windows close and never automatically reload an active comparison.
+
+[Installation, supported browsers and limits](docs/PWA.md) ·
+[Manual release and phone checklist](docs/PWA_RELEASE_QA.md)
 
 ## Download and install Android
 
@@ -128,8 +147,9 @@ Public sharing remains unavailable. Backend code and local test tools are retain
 for development; production Cloudflare workflows remain locked. No preview release
 enables hosting, public uploads or billing. Web production builds now register a
 [private offline app shell](docs/PWA_BUILDS.md) after load. Development and Android
-exclude this integration. Public PWA installation guidance and release qualification
-remain a later stage; this change does not publish a PWA.
+exclude this integration. [Release qualification](docs/PWA_RELEASE_QA.md) separates
+automated checks from physical-device and hosted-site acceptance; no deployment
+is implied by the source or documentation.
 
 | Topic                                     | Documentation                                                                                                                                  |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |

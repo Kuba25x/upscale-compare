@@ -6,7 +6,7 @@ Production is deliberately not deployed by default. Do not create resources, ena
 
 This option publishes the local comparison application without any Cloudflare integration. It does not need Workers, R2, D1, an API URL, a Turnstile site key, or cloud secrets. Public sharing is visibly disabled; API helpers also reject calls in demo mode, including direct shared-link navigation. All local upload, metadata, inspection, labeling, and image-selection features remain available.
 
-The owner has already selected **GitHub Actions** under **Settings → Pages → Build and deployment → Source**. After reviewing and merging the demo PR into `main`:
+The owner has already selected **GitHub Actions** under **Settings → Pages → Build and deployment → Source**. After reviewing and merging PR F into `main`, and separately approving deployment:
 
 1. Open the repository's **Actions** tab.
 2. Select **Deploy frontend to GitHub Pages**.
@@ -16,7 +16,7 @@ The owner has already selected **GitHub Actions** under **Settings → Pages →
 6. If the `github-pages` environment requires approval, approve that deployment in GitHub.
 7. Wait for the deployment job to finish. The expected URL is [https://kuba25x.github.io/upscale-compare/](https://kuba25x.github.io/upscale-compare/).
 
-The workflow only publishes after that explicit manual dispatch. A push, merge, or PR does not deploy the site. An incorrect confirmation skips publishing. The demo branch of the workflow runs `npm run test:demo`, which creates a production Vite bundle and exercises it in Chromium before uploading `dist/`. It does not start a Worker or initialize D1/R2. The existing full-stack CI continues to verify backend regressions separately.
+The workflow only publishes after that explicit manual dispatch. A push, merge, or PR does not deploy the site. An incorrect confirmation skips publishing. `npm run audit:dependencies` blocks all critical and unaccepted high findings; its only temporary build-only exception, raw reports and automatic expiry are documented in the [dependency risk review](DEPENDENCY_AUDIT.md). Before publishing demo, it also runs the PWA artifact matrix, offline/update tests and a real installed Chromium standalone-window test, then `npm run test:demo` builds and tests the exact `dist/` to upload. These checks use local static servers and do not start a Cloudflare Worker or initialize D1/R2. Full-stack CI verifies backend regressions separately. Review the [acceptance boundary](PWA_RELEASE_QA.md#current-acceptance-boundary) and complete the physical Android and hosted smoke checklist after an approved dispatch; local tests do not establish those results.
 
 `.env.demo` is committed public build configuration:
 
@@ -39,6 +39,56 @@ npm run test:demo
 ```
 
 The preview is served at `http://localhost:4173/upscale-compare/`. Tests use a separate preview server on port 4174, desktop and mobile viewports, and reject unexpected API/external requests. No Cloudflare account or local API server is necessary.
+
+## Compatible PWA rollback
+
+Rebuild a reviewed, known-good frontend with compatible PWA configuration, the same
+manifest identity/base and the same `/upscale-compare/sw.js` address. Run the demo
+and PWA gates and publish it through the same owner-approved manual workflow.
+The rollback worker follows the existing lifecycle: current windows retain their
+comparison, and the rollback waits until all old clients close. New sessions are empty.
+
+Do not delete `sw.js`, remove registration code or expect an ordinary page refresh
+to uninstall an existing worker. Do not force `skipWaiting`, claim clients, reload
+active comparisons or broaden cache cleanup as a rollback shortcut. A compatible
+B→A release is covered by automated lifecycle tests.
+
+## Repair only this PWA's cache
+
+Use this only for a stuck/cleared offline cache, with disposable or finished local
+comparisons. Close other app windows/tabs; leave one Pages tab open for DevTools.
+This procedure unregisters only the expected app worker and removes only its scoped
+precache. It preserves other apps' caches and all publication/deletion keys and journals.
+
+<!-- pwa-scoped-repair -->
+
+```js
+(async () => {
+  const base = new URL('/upscale-compare/', location.origin);
+  if (!location.pathname.startsWith(base.pathname))
+    throw new Error('Open the Upscale Compare Pages app before repair.');
+  const registration = await navigator.serviceWorker.getRegistration(base.href);
+  const script = new URL('sw.js', base).href;
+  if (
+    registration &&
+    (registration.scope !== base.href ||
+      [registration.active, registration.waiting, registration.installing].some(
+        (worker) => worker && worker.scriptURL !== script,
+      ))
+  )
+    throw new Error('Unexpected service worker; stop and inspect its scope.');
+  await registration?.unregister();
+  for (const name of await caches.keys())
+    if (name.startsWith('upscale-compare-precache-') && name.endsWith(base.href))
+      await caches.delete(name);
+})();
+```
+
+Close that last tab, reconnect and reopen the exact Pages URL online. Let resources
+finish caching and check Help again before testing offline. Do not use origin-wide
+**Clear site data**, `localStorage.clear()`, blanket cache deletion or journal/database
+deletion as an app-cache repair. Ordinary reopening is expected to lose the local
+in-memory comparison; original files on the device are never removed by this procedure.
 
 ## Production sharing: blocked under the Free-only policy
 

@@ -4,13 +4,18 @@ import { cacheSnapshot, control, originalBytes, serve, update } from './helpers'
 
 test.beforeEach(async ({ request }) => serve(request));
 
-for (const count of [1, 2]) {
-  test(`release B waits for ${count === 1 ? 'one open view' : 'two open views'} without reloading or losing state`, async ({
+for (const { count, from, to } of [
+  { count: 1, from: 'a', to: 'b' },
+  { count: 2, from: 'a', to: 'b' },
+  { count: 2, from: 'b', to: 'a' },
+]) {
+  test(`release ${from.toUpperCase()} → ${to.toUpperCase()} waits for ${count === 1 ? 'one open view' : 'two open views'} without reloading or losing state`, async ({
     page,
     context,
     request,
     baseURL,
   }) => {
+    await serve(request, from);
     await page.goto(baseURL!);
     await control(page);
     const scriptA = await page.locator('script[type="module"][src]').getAttribute('src');
@@ -36,7 +41,7 @@ for (const count of [1, 2]) {
       localStorage.setItem('upscale-compare:delete:sentinel', 'keep deletion key');
       return name;
     });
-    await serve(request, 'b');
+    await serve(request, to);
     expect(await update(page)).toBe('installed');
     const waiting = await page.evaluate(async () =>
       Boolean((await navigator.serviceWorker.getRegistration())?.waiting),
@@ -57,6 +62,14 @@ for (const count of [1, 2]) {
         ),
       ).toBe(true);
       expect(await originalBytes(view)).toEqual(Array.from(file.buffer));
+      await view.getByRole('button', { name: 'Keyboard shortcuts', exact: true }).click();
+      await expect(view.getByTestId('offline-readiness')).toHaveText(
+        'App resources are ready offline.',
+      );
+      await expect(view.getByRole('dialog')).toContainText(
+        `Version 0.1.0+${from === 'a' ? 'aaaaaaa1' : 'bbbbbbb2'}`,
+      );
+      await view.getByRole('button', { name: 'Close dialog', exact: true }).click();
     }
     if (count === 2) {
       await pages[1].close();

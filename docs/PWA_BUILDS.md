@@ -4,8 +4,9 @@ Roadmap stages D and E prepare the web assets and enable a private offline shell
 demo and production builds. After page load, a web-only module registers the generated
 worker in a secure context when the Service Worker API is available. Registration
 failure leaves normal online comparison available. Development and Android builds
-exclude this module entirely. Installation guidance and public release qualification
-belong to stage F; no deployment or installation prompt is part of this change.
+exclude this module entirely. [Installation guidance](PWA.md) and the
+[release acceptance boundary](PWA_RELEASE_QA.md) accompany stage F. The app adds no
+automatic installation prompt; source changes do not deploy the public site.
 
 ## Build boundaries
 
@@ -36,7 +37,13 @@ The stable worker URL is `sw.js` under the resolved Vite base. Registration uses
 that base as its scope and `updateViaCache: 'none'`. The web registration chunk
 embeds an application-version / short-commit identifier for diagnostics (for example
 `0.1.0+1234abcd`), from `package.json` and `GITHUB_SHA` or Git. Source archives without
-Git metadata use the `+source` suffix. No release UI is added in this stage.
+Git metadata use the `+source` suffix. Help displays this release identifier.
+
+The built HTML embeds the complete expected static-resource list for that release.
+Help reads the matching app/scope precache, verifies all listed entries and its cached
+release HTML, and reports readiness only with an activated matching worker. It checks
+on opening Help, focus and initial worker activation. Missing/blocked storage stays
+unavailable. This observer neither changes worker activation nor writes comparison data.
 
 Vite hashes JavaScript/CSS filenames and Workbox revisions the other shell files.
 All precache entries also carry SHA-256 integrity metadata, so a 200 response with
@@ -86,6 +93,7 @@ code / AGPL-3.0 link and license access in Help are retained.
 npm run test:pwa:build
 npm run test:pwa
 npm run test:pwa:sharing
+xvfb-run -a npm run test:pwa:install
 npm run test:demo
 npm run test:android:web
 ```
@@ -104,9 +112,9 @@ sharing, original restoration and verification failure with an active worker.
 The normal demo suite verifies that a registration failure does not block local use.
 Firefox/WebKit projects are enabled with `RUN_FIREFOX=true` and `RUN_WEBKIT=true`.
 
-At the stage-D checkpoint, `npm audit --audit-level=high` passes with no high or
-critical findings. The pinned plugin's build-tool dependency tree has six audit
-entries (four moderate, two low), originating in `glob`/`minimatch` and `deepmerge`
-and propagated to their parents. They concern build-time pattern traversal and
-object merging; these packages are not distributed in the browser bundle or worker.
-No major transitive overrides or plugin downgrade are applied to bypass the report.
+CI and Pages enforce `npm run audit:dependencies`, retaining both complete raw
+audits. The [temporary dependency risk acceptance](DEPENDENCY_AUDIT.md) covers one
+development-only advisory and expires automatically; all other unaccepted high
+and all critical findings still block release. Artifact source-map checks reject
+picomatch in web/service-worker bundles. Dependency versions remain pinned in the
+unchanged lockfile; no plugin downgrade or transitive override is introduced.

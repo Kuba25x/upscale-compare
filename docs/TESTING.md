@@ -1,6 +1,6 @@
 # Testing and verification
 
-## PWA shell verification (roadmap stages D/E)
+## PWA release verification (roadmap stages D–F)
 
 `npm run test:pwa:build` checks temporary builds for demo, production and Android at
 both root and Pages bases, plus a resolved Vite base override and web development
@@ -18,6 +18,19 @@ survive activation. `npm run test:pwa:sharing` exercises production verification
 doubles and original restoration with an active worker alongside the unchanged
 standard sharing suite. Unit tests cover secure contexts, unsupported APIs,
 post-load registration and contained failures.
+
+Help's readiness test holds an installation resource, verifies no premature ready
+claim, releases it and checks readiness online/offline, then deletes an expected
+resource to verify loss is detected. Build checks compare Help's expected resource
+graph with the actual precache. Rollback and the documented scoped repair are tested
+with unrelated caches and publication/deletion keys retained.
+
+`xvfb-run -a npm run test:pwa:install` uses a normal persistent Linux Chromium
+profile, CDP installation and the user app-window preference. It checks a real
+standalone window with the existing UI, closes the browser and relaunches the
+installed window offline. Screenshots are retained as artifacts. This is separate
+from mobile viewport emulation and does not certify Android installation menus.
+Physical-device and hosted-site checks remain [explicitly pending](PWA_RELEASE_QA.md).
 
 The normal demo suite fetches manifest/icons/licenses and checks local use after
 a simulated registration failure. Browser projects include Chromium desktop/mobile
@@ -37,8 +50,15 @@ npm run test:sharing:local
 npm run test:demo
 npm run test:diagnostics
 npm run format:check
-npm audit --audit-level=high
+npm run audit:dependencies
 ```
+
+The dependency gate runs policy tests and both raw npm audits. It rejects unrelated
+or mixed high/critical causes, production exposure, changed lock/configuration,
+expiry and registry failures; the only temporary build-tool acceptance is described
+in the [dependency risk review](DEPENDENCY_AUDIT.md). Raw `npm audit --audit-level=high`
+still reports the advisory and exits nonzero. Worker input-graph and PWA source-map
+checks reject runtime inclusion of picomatch. No existing regression suite is skipped.
 
 Node.js 24 and system Chromium are used in the managed development environment. Playwright can also use its downloaded Chromium through `CHROMIUM_PATH`. The browser suite starts local Vite and Wrangler with a separate persisted state directory per run. Miniflare API tests use isolated in-memory D1 and R2. No Cloudflare account, production resources, or public upload endpoint is involved.
 

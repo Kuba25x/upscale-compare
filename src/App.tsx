@@ -19,6 +19,7 @@ import { ANDROID_MODE, DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/conf
 import { formatBytes, loadImage } from './lib/images';
 import { Viewer } from './components/Viewer';
 import { GestureDiagnostics } from './components/GestureDiagnostics';
+import { InstallationHelp } from './components/InstallationHelp';
 import { Modal } from './components/Modal';
 import { MetadataEditor } from './components/MetadataEditor';
 import { readDeletionKey, ShareDialog, type Published } from './components/ShareDialog';
@@ -873,6 +874,7 @@ export default function App({
             and the same top-left origin; they are never stretched to match. Browser color
             management may affect displayed colors; HDR inspection is not supported.
           </p>
+          {__WEB_PWA__ && <InstallationHelp />}
           <p className="muted small">
             <a
               href={`${import.meta.env.BASE_URL}third-party-licenses.txt`}

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
+import { readFile } from 'node:fs/promises';
 import { cacheSnapshot, control, originalBytes, serve } from './helpers';
 
 test.beforeEach(async ({ request }) => serve(request));
@@ -9,6 +10,7 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   context,
   baseURL,
   browserName,
+  isMobile,
 }) => {
   await page.goto(baseURL!);
   await control(page);
@@ -28,9 +30,26 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   await expect(offline.getByTestId('stage')).toHaveCount(0);
   const before = await cacheSnapshot(offline);
   const file = imageFile('Private Original.png');
-  await offline.getByTestId('file-input').setInputFiles([file, imageFile('Private B.png', 1)]);
+  const jpeg = {
+    name: 'Private JPEG.jpg',
+    mimeType: 'image/jpeg',
+    buffer: await readFile('tests/fixtures/pattern.jpg'),
+  };
+  const webp = {
+    name: 'Private WebP.webp',
+    mimeType: 'image/webp',
+    buffer: await readFile('tests/fixtures/pattern.webp'),
+  };
+  await offline.getByTestId('file-input').setInputFiles([file, jpeg, webp]);
   await expect(offline.getByTestId('stage')).toBeVisible();
   expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
+  await offline.getByLabel('Select image A', { exact: true }).selectOption('2');
+  expect(await originalBytes(offline)).toEqual(Array.from(webp.buffer));
+  await offline.getByLabel('Select image B', { exact: true }).selectOption('0');
+  await offline.getByLabel('Select image A', { exact: true }).selectOption('1');
+  expect(await originalBytes(offline)).toEqual(Array.from(jpeg.buffer));
+  await offline.getByLabel('Select image B', { exact: true }).selectOption('2');
+  await offline.getByLabel('Select image A', { exact: true }).selectOption('0');
   await offline.getByLabel('Label for image A').fill('Private label');
   await offline.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await offline.getByLabel('Game title').fill('Private game');
@@ -66,6 +85,15 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   await expect(
     offline.getByRole('button', { name: 'Share Comparison', exact: true }),
   ).toBeDisabled();
+  if (isMobile) {
+    await offline.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
+    await expect(offline.locator('.app')).toHaveClass(/comparison-minimalist/);
+    await offline.setViewportSize({ width: 900, height: 412 });
+    await expect(offline.locator('.app')).toHaveClass(/comparison-minimalist/);
+    await offline.setViewportSize({ width: 412, height: 900 });
+    await offline.getByRole('button', { name: 'Exit fullscreen', exact: true }).click();
+    await expect(offline.locator('.app')).not.toHaveClass(/comparison-minimalist/);
+  }
   expect(await cacheSnapshot(offline)).toEqual(before);
   expect(
     await offline.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } })),

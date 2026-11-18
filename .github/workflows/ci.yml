@@ -26,6 +26,8 @@ jobs:
       - run: node scripts/set-playwright-browser.mjs
       - name: Verify private offline shell and browser-managed updates
         run: npm run test:pwa
+      - name: Verify installed Chromium standalone window and offline restart
+        run: xvfb-run -a npm run test:pwa:install
       - name: Verify production sharing with an active worker
         run: npm run test:pwa:sharing
       - uses: actions/upload-artifact@v4
@@ -62,14 +64,17 @@ jobs:
         run: npm run test:demo
       - name: Test opt-in local diagnostics
         run: npm run test:diagnostics
-      - run: npm audit --audit-level=high
+      - name: Audit dependencies with the reviewed advisory policy
+        run: npm run audit:dependencies
       - name: Verify GitHub Pages repository subpath
         run: VITE_BASE_PATH=/upscale-compare/ npm run build
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: browser-test-results
+          include-hidden-files: true
           path: |
             playwright-report/
             test-results/
+            .wrangler/security-audit/
           retention-days: 7
