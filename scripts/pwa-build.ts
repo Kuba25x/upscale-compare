@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { VitePWA, type VitePWAOptions } from 'vite-plugin-pwa';
 import { runtimeNotices } from './generate-notices.mjs';
+import { pwaStartUrl } from '../src/lib/web-app-context';
 
 export const pwaIcons = [
   { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
@@ -39,7 +40,7 @@ export function webPwaPlugins(): Plugin[] {
       name: 'Upscale Compare',
       short_name: 'Upscale Compare',
       lang: 'en',
-      display: 'standalone',
+      display: 'fullscreen',
       theme_color: '#101114',
       background_color: '#101114',
       prefer_related_applications: false,
@@ -67,7 +68,7 @@ export function webPwaPlugins(): Plugin[] {
         release = JSON.parse(config.define!.__APP_RELEASE__ as string);
         output = resolve(config.root, config.build.outDir);
         options.scope = base;
-        Object.assign(options.manifest!, { id: base, start_url: base, scope: base });
+        Object.assign(options.manifest!, { id: base, start_url: pwaStartUrl(base), scope: base });
         Object.assign(options.workbox!, navigationOptions(base));
         options.workbox!.manifestTransforms = [
           async (entries) => ({

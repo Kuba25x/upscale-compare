@@ -5,8 +5,7 @@ to compare two to four PNG, JPEG or static WebP screenshots locally. An installe
 PWA opens this same interface in an app window. Public **Share Comparison** remains
 disabled; no account, Cloudflare service, synchronization or saved comparison is needed.
 
-PWA support in this source is prepared for the next owner-approved deployment.
-The public site may still run the previous release. See the
+Availability depends on the deployed version; source changes do not publish the site. See the
 [release acceptance record and checklist](PWA_RELEASE_QA.md).
 
 ## Android Chrome installation
@@ -44,15 +43,18 @@ custom banner or separate PWA interface is added by the app.
 - Offline does not enable public sharing or cache API responses, publications,
   verification requests or third-party content.
 
-## Landscape display
+## Installed fullscreen display
 
-In an installed landscape window, use the existing expand button's **Fullscreen
-options → Fullscreen with controls** to request more screen space while retaining
-the interface. **Minimalist mode** remains available. Portrait rotation leaves the
-full-controls session; returning to landscape does not re-enter automatically.
-The browser controls status bars and cutout access, so the app cannot guarantee
-immersive landscape at launch. Portrait and normal browser tabs keep their current
-behavior. See [display limits and device checks](INSTALLED_LANDSCAPE.md).
+New installations request fullscreen launch in portrait and landscape, retaining
+the complete interface. The toolbar's **Minimalist mode** hides controls; **Show
+controls** returns to the full interface. Browser support and cutout information
+vary, and desktop installs can also honor this preference or fall back to a window.
+Older/fallback standalone installs keep **Fullscreen options → Fullscreen with
+controls**. Ordinary tabs and the native APK keep their existing behavior.
+
+An existing installation may need reinstalling before its display mode changes.
+A service-worker update alone does not establish that installed metadata changed.
+Use the [fresh-install instructions and physical-device checklist](INSTALLED_LANDSCAPE.md#fresh-install-test).
 
 ## Updates
 

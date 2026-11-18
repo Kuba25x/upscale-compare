@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState } from 'react';
 import { WEB_PRESENTATION, type ComparisonPresentation } from './comparison-presentation';
+import { isManifestFullscreenLaunch } from './web-app-context';
 
 export function isLandscapeScreen(
   type: string | undefined,
@@ -34,6 +35,7 @@ export function useWebViewport() {
     presentation: WEB_PRESENTATION,
     mobile: false,
     installedLandscape: false,
+    installedFullscreen: false,
   });
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -44,6 +46,17 @@ export function useWebViewport() {
     document.body.append(probe);
     const input = matchMedia('(pointer: coarse) and (hover: none)');
     const standalone = matchMedia('(display-mode: standalone)');
+    const fullscreen = matchMedia('(display-mode: fullscreen)');
+    const browser = matchMedia('(display-mode: browser)');
+    // Only classify a manifest-fullscreen launch at document startup. A tab may
+    // later enter API fullscreen or F11, which must never promote its context.
+    const manifestLaunch = isManifestFullscreenLaunch({
+      enabled: __WEB_PWA__,
+      search: location.search,
+      fullscreen: fullscreen.matches,
+      browser: browser.matches,
+      apiFullscreen: Boolean(document.fullscreenElement),
+    });
     let installed = standalone.matches;
     const orientation = screen.orientation;
     const viewport = window.visualViewport;
@@ -60,7 +73,8 @@ export function useWebViewport() {
       const landscape = isLandscapeScreen(orientation?.type, window.orientation, screen);
       // Fullscreen temporarily replaces the display-mode media query. Remember the
       // app-window context, without treating fullscreen browser tabs as installed.
-      if (!document.fullscreenElement) installed = standalone.matches;
+      const installedFullscreen = manifestLaunch && fullscreen.matches && !browser.matches;
+      if (!document.fullscreenElement) installed = standalone.matches || installedFullscreen;
       const compact = compactWebLayout(input.matches, landscape, width, height);
       const style = getComputedStyle(probe);
       const insets = {
@@ -80,6 +94,7 @@ export function useWebViewport() {
           orientation?.type ?? landscape,
           dpr,
           document.fullscreenElement === root,
+          installedFullscreen,
           ...Object.values(insets),
         ].join(':'),
         insets,
@@ -102,6 +117,7 @@ export function useWebViewport() {
         presentation: next,
         mobile: mobileWebControls(input.matches, width),
         installedLandscape: installed && input.matches && landscape,
+        installedFullscreen,
       };
       setViewportState((previous) =>
         JSON.stringify(previous) === JSON.stringify(nextState) ? previous : nextState,
@@ -120,6 +136,8 @@ export function useWebViewport() {
     orientation?.addEventListener('change', schedule);
     input.addEventListener('change', schedule);
     standalone.addEventListener('change', schedule);
+    fullscreen.addEventListener('change', schedule);
+    browser.addEventListener('change', schedule);
     document.addEventListener('fullscreenchange', schedule);
     viewport?.addEventListener('resize', schedule);
     viewport?.addEventListener('scroll', schedule);
@@ -132,6 +150,8 @@ export function useWebViewport() {
       orientation?.removeEventListener('change', schedule);
       input.removeEventListener('change', schedule);
       standalone.removeEventListener('change', schedule);
+      fullscreen.removeEventListener('change', schedule);
+      browser.removeEventListener('change', schedule);
       document.removeEventListener('fullscreenchange', schedule);
       resolution?.removeEventListener('change', schedule);
       viewport?.removeEventListener('resize', schedule);

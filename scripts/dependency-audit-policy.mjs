@@ -8,17 +8,20 @@ export const PICOMATCH_EXCEPTION = Object.freeze({
   range: '<=4.0.7',
   node: 'node_modules/picomatch',
   reviewed: '2026-11-17T00:00:00Z',
-  expires: '2026-12-01T00:00:00Z',
+  // Retired when GitHub withdrew the advisory. Never reactivate it on new reports.
+  expires: '2026-11-18T15:38:56Z',
   lockSha256: '00ba25037039ee09bea8c85c5ddf8d71b967ca1eeb1d8ca4462feb9b0a70f73e',
   // A configuration/trust-boundary change requires a new risk review.
   inputs: {
     'package.json': '232e97c9246467dcf2c8c8e20b2048275dbb0a44939f549ecd796d78906a8053',
     'vite.config.ts': 'd6c0002c678b7260212c4f41393eda8b1c5401768d5cb9b4d5a1736af9f954a3',
     'vitest.config.ts': '406e353583d397d265910e80daec07fb7318a2549e9847fb901e05046083db54',
-    'scripts/pwa-build.ts': '860862f4fa198f392b78c938e25b79e4b1c3a5ccdeb5255ce330833cc30f06cb',
+    'scripts/pwa-build.ts': 'b14b25fbb44a332745f1551892aee7763788c846b64e494ee16e197e79ee6272',
     '.github/workflows/ci.yml': 'fae1d83172efcc9b99befb3eed5890a1cc391ad214d5734af978fe01a6900e06',
     '.github/workflows/deploy-pages.yml':
       '3c3a54d55403f1c7b2cef80f6d7b676b1a2a39561d3aaced5a0a5be2e04128e5',
+    'src/lib/web-app-context.ts':
+      '3b8b82e8c0b1d7eb20df6531b797aa82f3870d3b04af5de6abac1fe6b5e4214b',
   },
 });
 

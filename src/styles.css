@@ -1774,3 +1774,101 @@ input[type='checkbox'] {
 .web-app .web-fullscreen-options button {
   min-height: 44px;
 }
+
+/* Manifest-fullscreen app windows only. Tabs and the APK keep their existing CSS. */
+.web-app.installed-fullscreen {
+  --installed-side-safe: max(var(--comparison-safe-left), var(--comparison-safe-right));
+}
+.web-app.installed-fullscreen .app-header {
+  padding-inline: max(var(--web-header-gutter), var(--installed-side-safe));
+}
+.web-app.installed-fullscreen.comparison-compact .app-header {
+  padding-inline: calc(8px + var(--installed-side-safe));
+}
+.web-app.installed-fullscreen .upload-center {
+  max-width: calc(100% - 2 * var(--installed-side-safe) - 24px);
+}
+.web-app.installed-fullscreen .upload-hero {
+  min-width: min(292px, 100%);
+  max-width: 100%;
+}
+.web-app.installed-fullscreen .landing-footer {
+  left: max(var(--web-footer-gutter), var(--installed-side-safe));
+  right: max(var(--web-footer-gutter), var(--installed-side-safe));
+}
+.web-app.installed-fullscreen:not(.comparison-compact) .landing-footer {
+  /* The parent already ends above the root's bottom safe-area padding. */
+  bottom: var(--web-footer-bottom);
+}
+.web-app.installed-fullscreen:not(.comparison-compact) .image-selection-bar {
+  margin-inline: var(--installed-side-safe);
+}
+.web-app.installed-fullscreen.comparison-compact .image-selection-bar.image-panel-open {
+  left: calc(8px + var(--installed-side-safe));
+  right: calc(8px + var(--installed-side-safe));
+}
+.web-app.installed-fullscreen:not(.comparison-compact) .inspection-toolbar {
+  left: 50%;
+  max-width: calc(100% - 2 * var(--installed-side-safe) - 16px);
+  overflow-x: auto;
+}
+.web-app.installed-fullscreen.comparison-compact .inspection-toolbar {
+  right: calc(8px + var(--installed-side-safe));
+  max-width: calc(100% - 2 * var(--installed-side-safe) - 16px);
+}
+.web-app.installed-fullscreen .badge-a {
+  left: max(8px, var(--installed-side-safe));
+}
+.web-app.installed-fullscreen .badge-b {
+  right: max(8px, var(--installed-side-safe));
+}
+.web-app.installed-fullscreen .modal {
+  max-width: min(
+    calc(100vw - 2 * var(--installed-side-safe) - 28px),
+    calc(var(--web-visual-width, 100vw) - 2 * var(--installed-side-safe) - 28px)
+  );
+  translate: calc(var(--web-visual-left, 0px) + (var(--web-visual-width, 100vw) - 100vw) / 2)
+    calc(
+      var(--web-visual-top, 0px) +
+        (
+          var(--web-visual-height, 100dvh) - 100dvh + var(--comparison-safe-top) -
+            var(--comparison-safe-bottom)
+        ) /
+        2
+    );
+}
+.web-app.installed-fullscreen .alignment-warning {
+  max-width: calc(100% - 2 * var(--installed-side-safe) - 16px);
+}
+.web-app.installed-fullscreen .stage {
+  container-type: size;
+}
+.web-app.installed-fullscreen .divider {
+  width: 44px;
+}
+.web-app.installed-fullscreen .divider-handle {
+  width: 44px;
+  height: 44px;
+  left: clamp(
+    calc(var(--comparison-safe-left) + 24px - var(--comparison-divider-position) + 22px),
+    22px,
+    calc(100cqw - var(--comparison-safe-right) - 24px - var(--comparison-divider-position) + 22px)
+  );
+}
+.web-app.installed-fullscreen.comparison-minimalist .divider-handle {
+  top: clamp(
+    calc(var(--comparison-safe-top) + 24px),
+    50%,
+    calc(100cqh - var(--comparison-safe-bottom) - 24px)
+  );
+}
+.web-app.installed-fullscreen .toast {
+  left: 50%;
+  max-width: min(660px, calc(100vw - 2 * var(--installed-side-safe) - 28px));
+  bottom: max(96px, calc(var(--comparison-safe-bottom) + 12px));
+}
+@media (max-width: 620px) {
+  .web-app.installed-fullscreen .upload-hero {
+    min-width: min(252px, 100%);
+  }
+}

@@ -6,20 +6,22 @@ This PR prepares the source and manual Pages workflow. **No deployment was run.*
 The existing public URL has not been used to claim acceptance of this new build.
 No physical Android device is connected to the Codex environment.
 
-The 2026-11-17 [dependency risk review](DEPENDENCY_AUDIT.md) accepts only
+The 2026-11-17 [dependency risk review](DEPENDENCY_AUDIT.md) accepted only
 GHSA-fc5q-39xc-vjpf and its derived high rows in the pinned development toolchain,
 temporarily until **2026-12-01 00:00 UTC**. No patched picomatch release is available.
-The raw audit still reports 11 high and 2 moderate rows; the production audit is
-clean. CI and manual Pages publication use the same tested, fail-closed policy:
+GitHub withdrew that advisory on 2026-11-18; its enforced exception expiry was
+shortened to the withdrawal time. The current audit has no high/critical findings
+and four moderate tooling rows; the production audit is clean. CI and manual
+Pages publication use the same tested, fail-closed policy:
 all critical, production high/critical and other unaccepted high causes still
 block release. A new upstream release, changed lock/configuration or expiry
 requires review. This is a bounded risk acceptance, not a vulnerability fix.
 
 | Evidence                 | Automated coverage                                                                                                                                            | Remaining manual check                                                                |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Manifest / scope / icons | Root and `/upscale-compare/` builds, identity/name, standalone declaration, sizes and maskable safe area                                                      | Name and icon as installed by Android Chrome                                          |
+| Manifest / scope / icons | Root and `/upscale-compare/` builds, identity/name, requested fullscreen/fallback declaration, sizes and maskable safe area                                   | Name and icon as installed by Android Chrome                                          |
 | Installability           | Chromium diagnostics in normal persistent profiles, including mobile viewport                                                                                 | Chrome Android menu, installation confirmation and launcher icon                      |
-| Installed window         | Real Linux Chromium CDP installation and app-window preference; standalone media and existing UI, then full profile restart offline                           | Android launch from icon, system bars, app switcher and OS lifecycle                  |
+| Installed window         | Real Linux Chromium CDP installation and app-window preference; actual display mode, launch URL and existing UI, then full profile restart offline            | Android launch from icon, system bars, app switcher and OS lifecycle                  |
 | Offline / privacy        | Complete-cache readiness, incomplete/missing-resource status, cold reopen, PNG/JPEG/WebP bytes, empty new session, cache contents and retained unrelated data | Airplane mode and locally available file providers on the phone                       |
 | Viewer                   | Existing shared pixel/gesture/fullscreen suites; offline mobile minimalist mode and both orientations                                                         | Real pinch/pan, cutouts, keyboard and both rotations                                  |
 | Updates / rollback       | A→B and compatible B→A, one/multiple clients, failed/missing/corrupt resources, no reload or comparison loss                                                  | Open installed window plus Chrome tab, sleep/resume and next-release activation       |
@@ -49,8 +51,10 @@ sharing disabled. No backend credentials or resource activation are needed.
 
 ## Android Chrome checklist
 
+For the default-fullscreen experiment, first follow the [fresh-install procedure](INSTALLED_LANDSCAPE.md#fresh-install-test); installed metadata may need reinstalling independently of the Service Worker.
+
 For installed landscape/full-controls behavior, also run the
-[Chrome and Firefox physical-device checklist](INSTALLED_LANDSCAPE.md#automated-and-physical-verification).
+[Chrome and Firefox fresh-install/device checklist](INSTALLED_LANDSCAPE.md#fresh-install-test).
 Automated engine/inset tests do not establish Android status-bar or cutout coverage.
 
 Record date, phone model, Android version, Chrome version, deployed commit and Help
@@ -65,8 +69,8 @@ version. Use non-private test patterns; include one PNG, JPEG and static WebP.
       offer with completed caching.
 - [ ] Install from Chrome's menu. Record its exact wording and confirm the installed
       name **Upscale Compare**, correct icon and scope `/upscale-compare/`.
-- [ ] Close the tab and launch from the icon. Confirm the existing UI, standalone
-      window, no ordinary browser address bar and no custom install popup/banner.
+- [ ] Close the tab and launch from the icon. Confirm the existing UI, requested fullscreen
+      window or recorded browser fallback, no ordinary browser address bar and no custom install popup/banner.
 - [ ] Check portrait and landscape, safe areas, image controls, metadata keyboard,
       fullscreen/minimalist entry/exit and the Android system Back action.
 - [ ] Close all app windows/tabs, enable airplane mode, reopen from the icon and

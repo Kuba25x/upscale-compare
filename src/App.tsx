@@ -47,6 +47,8 @@ interface AppProps {
   presentation?: ComparisonPresentation;
   onSetMinimalist?: (minimalist: boolean) => Promise<void>;
   renderFullscreenControl?: FullscreenControl;
+  className?: string;
+  minimalistExitLabel?: string;
   displayError?: { message: string };
 }
 export default function App({
@@ -54,6 +56,8 @@ export default function App({
   presentation = WEB_PRESENTATION,
   onSetMinimalist,
   renderFullscreenControl,
+  className = '',
+  minimalistExitLabel,
   displayError,
 }: AppProps = {}) {
   const [images, setImages] = useState<LocalImage[]>([]);
@@ -432,7 +436,7 @@ export default function App({
   );
   return (
     <div
-      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ' web-app'} ${presentationClasses(presentation)}`}
+      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ' web-app'} ${presentationClasses(presentation)}${className ? ` ${className}` : ''}`}
       onKeyDown={(event) => {
         if (
           compactWeb &&
@@ -549,6 +553,7 @@ export default function App({
             fullscreenOverride={onSetMinimalist ? minimalist : undefined}
             onToggleFullscreen={onSetMinimalist ? () => onSetMinimalist(!minimalist) : undefined}
             renderFullscreenControl={renderFullscreenControl}
+            minimalistExitLabel={minimalistExitLabel}
             onImageError={
               ANDROID_MODE
                 ? () =>

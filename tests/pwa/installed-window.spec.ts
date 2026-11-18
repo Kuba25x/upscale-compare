@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { imageFile } from '../e2e/fixtures';
 import { control, originalBytes, serve } from './helpers';
 
-test('installed Linux Chromium window uses the existing UI and reopens standalone offline', async ({
+test('installed Linux Chromium window uses the manifest launch URL and reopens offline', async ({
   request,
   baseURL,
 }, testInfo) => {
@@ -30,8 +30,22 @@ test('installed Linux Chromium window uses the existing UI and reopens standalon
     const app = await window;
     await app.waitForLoadState();
     await expect
-      .poll(() => app.evaluate(() => matchMedia('(display-mode: standalone)').matches))
+      .poll(() =>
+        app.evaluate(
+          () =>
+            matchMedia('(display-mode: fullscreen)').matches ||
+            matchMedia('(display-mode: standalone)').matches,
+        ),
+      )
       .toBe(true);
+    expect(new URL(app.url()).searchParams.get('pwa')).toBe('fullscreen');
+    expect(await app.evaluate(() => document.fullscreenElement)).toBeNull();
+    const mode = await app.evaluate(() =>
+      matchMedia('(display-mode: fullscreen)').matches ? 'fullscreen' : 'standalone',
+    );
+    testInfo.annotations.push({ type: 'installed-display-mode', description: mode });
+    if (mode === 'fullscreen')
+      await expect(app.locator('.app')).toHaveClass(/installed-fullscreen/);
     await session.detach();
     return app;
   }
@@ -43,8 +57,9 @@ test('installed Linux Chromium window uses the existing UI and reopens standalon
     const session = await browser.newCDPSession(tab);
     expect((await session.send('Page.getInstallabilityErrors')).installabilityErrors).toEqual([]);
     await session.send('PWA.install', { manifestId: baseURL!, installUrlOrBundleUrl: baseURL! });
-    // CDP installation defaults to browser launch; choose the normal user option
-    // to open the installed app in its own window, without overriding page media.
+    // Desktop CDP exposes browser/standalone window preferences, not a native
+    // fullscreen preference. Select an app window and record the browser's actual
+    // manifest mode/fallback; never emulate fullscreen media or request it via JS.
     await session.send('PWA.changeAppUserSettings', {
       manifestId: baseURL!,
       displayMode: 'standalone',

@@ -15,11 +15,13 @@ asset emitter are included only when Vite's command is `build` and its mode is
 `demo` or `production`. Development servers and Android builds omit the entire
 integration. Android receives no manifest, worker, PWA icons or registration script.
 
-Manifest `id`, `start_url` and `scope`, the Apple icon link and the generated
+Manifest `id`, `scope`, the Apple icon link and the generated
 navigation fallback all use Vite's **resolved** `base`, including CLI overrides.
 The supported deployment bases are `/` and `/upscale-compare/`. Manifest icons
-resolve relative to the manifest URL. The manifest declares `standalone`, English,
-the existing dark theme, no orientation lock and no native-app preference.
+resolve relative to the manifest URL. The manifest requests `fullscreen`, English,
+the existing dark theme, no orientation lock and no native-app preference. Its
+`start_url` is the same base plus the fixed `?pwa=fullscreen` launch hint; identity
+and scope are unchanged. See [context isolation, fallback and reinstall checks](INSTALLED_LANDSCAPE.md).
 
 The generated worker's precache contains only the built HTML, JavaScript, CSS,
 manifest, favicon, PNG icons and runtime license notices. Source maps, API responses,
@@ -113,8 +115,8 @@ The normal demo suite verifies that a registration failure does not block local 
 Firefox/WebKit projects are enabled with `RUN_FIREFOX=true` and `RUN_WEBKIT=true`.
 
 CI and Pages enforce `npm run audit:dependencies`, retaining both complete raw
-audits. The [temporary dependency risk acceptance](DEPENDENCY_AUDIT.md) covers one
-development-only advisory and expires automatically; all other unaccepted high
-and all critical findings still block release. Artifact source-map checks reject
+audits. The [dependency risk review](DEPENDENCY_AUDIT.md) records the retired
+development-only exception; all high/critical findings now block release at the
+current clock. Artifact source-map checks reject
 picomatch in web/service-worker bundles. Dependency versions remain pinned in the
 unchanged lockfile; no plugin downgrade or transitive override is introduced.
