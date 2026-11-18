@@ -232,8 +232,16 @@ test('keyboard and dialogs stay within the reported visual and safe viewport', a
   await expect
     .poll(async () => (await page.getByRole('dialog').boundingBox())!.y)
     .toBeGreaterThanOrEqual(56);
+  // visualViewport changes are batched through requestAnimationFrame. The old
+  // dialog already satisfies the top bound; wait for the bottom bound as well.
+  await expect
+    .poll(async () => {
+      const box = (await page.getByRole('dialog').boundingBox())!;
+      return box.y + box.height;
+    })
+    .toBeLessThanOrEqual(300 - 28);
   const box = (await page.getByRole('dialog').boundingBox())!;
-  expect(box.y + box.height).toBeLessThanOrEqual(300 - 28);
+  expect(box.y).toBeGreaterThanOrEqual(56);
   await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
   await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
 });
