@@ -33,6 +33,7 @@ export function useWebViewport() {
   const [viewportState, setViewportState] = useState({
     presentation: WEB_PRESENTATION,
     mobile: false,
+    installedLandscape: false,
   });
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -42,6 +43,8 @@ export function useWebViewport() {
     probe.setAttribute('aria-hidden', 'true');
     document.body.append(probe);
     const input = matchMedia('(pointer: coarse) and (hover: none)');
+    const standalone = matchMedia('(display-mode: standalone)');
+    let installed = standalone.matches;
     const orientation = screen.orientation;
     const viewport = window.visualViewport;
     let resolution: MediaQueryList;
@@ -55,6 +58,9 @@ export function useWebViewport() {
       const height = window.innerHeight;
       const dpr = window.devicePixelRatio || 1;
       const landscape = isLandscapeScreen(orientation?.type, window.orientation, screen);
+      // Fullscreen temporarily replaces the display-mode media query. Remember the
+      // app-window context, without treating fullscreen browser tabs as installed.
+      if (!document.fullscreenElement) installed = standalone.matches;
       const compact = compactWebLayout(input.matches, landscape, width, height);
       const style = getComputedStyle(probe);
       const insets = {
@@ -70,7 +76,12 @@ export function useWebViewport() {
         ready: true,
         compact,
         minimalist: false,
-        viewportKey: [orientation?.type ?? landscape, dpr, ...Object.values(insets)].join(':'),
+        viewportKey: [
+          orientation?.type ?? landscape,
+          dpr,
+          document.fullscreenElement === root,
+          ...Object.values(insets),
+        ].join(':'),
         insets,
       };
       const visual = {
@@ -87,7 +98,11 @@ export function useWebViewport() {
         '--web-visual-bottom': Math.max(0, height - visual.height - visual.top),
       }))
         root.style.setProperty(name, `${value}px`);
-      const nextState = { presentation: next, mobile: mobileWebControls(input.matches, width) };
+      const nextState = {
+        presentation: next,
+        mobile: mobileWebControls(input.matches, width),
+        installedLandscape: installed && input.matches && landscape,
+      };
       setViewportState((previous) =>
         JSON.stringify(previous) === JSON.stringify(nextState) ? previous : nextState,
       );
@@ -104,6 +119,8 @@ export function useWebViewport() {
     window.addEventListener('orientationchange', schedule);
     orientation?.addEventListener('change', schedule);
     input.addEventListener('change', schedule);
+    standalone.addEventListener('change', schedule);
+    document.addEventListener('fullscreenchange', schedule);
     viewport?.addEventListener('resize', schedule);
     viewport?.addEventListener('scroll', schedule);
     measure();
@@ -114,6 +131,8 @@ export function useWebViewport() {
       window.removeEventListener('orientationchange', schedule);
       orientation?.removeEventListener('change', schedule);
       input.removeEventListener('change', schedule);
+      standalone.removeEventListener('change', schedule);
+      document.removeEventListener('fullscreenchange', schedule);
       resolution?.removeEventListener('change', schedule);
       viewport?.removeEventListener('resize', schedule);
       viewport?.removeEventListener('scroll', schedule);

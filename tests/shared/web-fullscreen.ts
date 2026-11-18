@@ -23,10 +23,11 @@ export async function installFullscreen(page: Page, outcome: FullscreenOutcome) 
       value:
         outcome === 'missing'
           ? undefined
-          : function () {
+          : function (options?: FullscreenOptions) {
               win.fullscreenCalls.push({
                 method: 'request',
                 active: navigator.userActivation?.isActive ?? null,
+                ...(options ? { options } : {}),
               });
               if (outcome === 'throw') throw new Error('Fullscreen unavailable');
               if (outcome === 'reject') return Promise.reject(new Error('Fullscreen denied'));

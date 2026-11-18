@@ -44,6 +44,16 @@ custom banner or separate PWA interface is added by the app.
 - Offline does not enable public sharing or cache API responses, publications,
   verification requests or third-party content.
 
+## Landscape display
+
+In an installed landscape window, use the existing expand button's **Fullscreen
+options → Fullscreen with controls** to request more screen space while retaining
+the interface. **Minimalist mode** remains available. Portrait rotation leaves the
+full-controls session; returning to landscape does not re-enter automatically.
+The browser controls status bars and cutout access, so the app cannot guarantee
+immersive landscape at launch. Portrait and normal browser tabs keep their current
+behavior. See [display limits and device checks](INSTALLED_LANDSCAPE.md).
+
 ## Updates
 
 The browser checks for the next release during normal app use. A new worker installs
