@@ -9,7 +9,7 @@ const files = [
   imageFile('B.png', 1, 512, 384),
   imageFile('C.png', 0, 320, 256),
 ];
-async function open(page: Page, mode = 'Split Screen') {
+export async function open(page: Page, mode = 'Split Screen') {
   await page.goto('./');
   await page.getByTestId('file-input').setInputFiles(files);
   await page.getByLabel('Select image A', { exact: true }).selectOption('2');
@@ -45,7 +45,7 @@ async function open(page: Page, mode = 'Split Screen') {
     );
   });
 }
-async function snapshot(page: Page) {
+export async function snapshot(page: Page) {
   return page.getByTestId('stage').evaluate((stage) => {
     const rect = stage.getBoundingClientRect();
     const image = stage.querySelector('img')!.getBoundingClientRect();
@@ -69,7 +69,7 @@ async function snapshot(page: Page) {
     };
   });
 }
-async function unchanged(page: Page, before: Awaited<ReturnType<typeof snapshot>>) {
+export async function unchanged(page: Page, before: Awaited<ReturnType<typeof snapshot>>) {
   await expect
     .poll(async () => {
       const after = await snapshot(page);

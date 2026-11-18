@@ -49,6 +49,10 @@ sharing disabled. No backend credentials or resource activation are needed.
 
 ## Android Chrome checklist
 
+For installed landscape/full-controls behavior, also run the
+[Chrome and Firefox physical-device checklist](INSTALLED_LANDSCAPE.md#automated-and-physical-verification).
+Automated engine/inset tests do not establish Android status-bar or cutout coverage.
+
 Record date, phone model, Android version, Chrome version, deployed commit and Help
 version. Use non-private test patterns; include one PNG, JPEG and static WebP.
 

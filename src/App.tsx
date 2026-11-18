@@ -17,7 +17,7 @@ import { emptyMetadata, type Config, type LocalImage, type Metadata } from '../s
 import { API_URL, fetchComparison, publicImageUrl } from './lib/api';
 import { ANDROID_MODE, DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/config';
 import { formatBytes, loadImage } from './lib/images';
-import { Viewer } from './components/Viewer';
+import { Viewer, type FullscreenControl } from './components/Viewer';
 import { GestureDiagnostics } from './components/GestureDiagnostics';
 import { InstallationHelp } from './components/InstallationHelp';
 import { Modal } from './components/Modal';
@@ -46,12 +46,14 @@ interface AppProps {
   android?: AndroidServices;
   presentation?: ComparisonPresentation;
   onSetMinimalist?: (minimalist: boolean) => Promise<void>;
+  renderFullscreenControl?: FullscreenControl;
   displayError?: { message: string };
 }
 export default function App({
   android,
   presentation = WEB_PRESENTATION,
   onSetMinimalist,
+  renderFullscreenControl,
   displayError,
 }: AppProps = {}) {
   const [images, setImages] = useState<LocalImage[]>([]);
@@ -432,7 +434,13 @@ export default function App({
     <div
       className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ' web-app'} ${presentationClasses(presentation)}`}
       onKeyDown={(event) => {
-        if (compactWeb && imagePanelOpen && !modal && event.key === 'Escape') {
+        if (
+          compactWeb &&
+          imagePanelOpen &&
+          !modal &&
+          event.key === 'Escape' &&
+          !document.querySelector('dialog[open]')
+        ) {
           event.preventDefault();
           setImagePanelOpen(false);
           imagePanelToggle.current?.focus({ preventScroll: true });
@@ -540,6 +548,7 @@ export default function App({
             presentation={presentation}
             fullscreenOverride={onSetMinimalist ? minimalist : undefined}
             onToggleFullscreen={onSetMinimalist ? () => onSetMinimalist(!minimalist) : undefined}
+            renderFullscreenControl={renderFullscreenControl}
             onImageError={
               ANDROID_MODE
                 ? () =>

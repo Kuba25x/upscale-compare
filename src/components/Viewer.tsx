@@ -5,6 +5,9 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ComponentPropsWithRef,
+  type ReactElement,
+  type ReactNode,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
 import { snapshotContacts, sameContacts, samePositions } from '../lib/contact-snapshot';
@@ -20,6 +23,11 @@ import {
 import { WEB_PRESENTATION, type ComparisonPresentation } from '../lib/comparison-presentation';
 import { clamp, originFor, panBy, pinchAt, scaleFor, zoomAt } from '../lib/geometry';
 
+/** The platform may decorate this control without changing viewer geometry. */
+export type FullscreenControl = (
+  button: ReactElement<ComponentPropsWithRef<'button'>>,
+) => ReactNode;
+
 interface Props {
   images: LocalImage[];
   config: Config;
@@ -29,6 +37,7 @@ interface Props {
   onImageError?: () => void;
   fullscreenOverride?: boolean;
   onToggleFullscreen?: () => void | Promise<void>;
+  renderFullscreenControl?: FullscreenControl;
   presentation?: ComparisonPresentation;
 }
 export function Viewer({
@@ -40,6 +49,7 @@ export function Viewer({
   onImageError,
   fullscreenOverride,
   onToggleFullscreen,
+  renderFullscreenControl,
   presentation = WEB_PRESENTATION,
 }: Props) {
   const comparisonFullscreen = presentation.minimalist;
@@ -635,7 +645,7 @@ export function Viewer({
       />
     );
   };
-  const fullscreenButton = (
+  const defaultFullscreenButton = (
     <button
       ref={fullscreenTrigger}
       className={presentation.edgeToEdge ? 'icon-button fullscreen-button' : 'icon-button'}
@@ -646,6 +656,9 @@ export function Viewer({
       {(fullscreenOverride ?? fullscreen) ? <Shrink size={16} /> : <Expand size={16} />}
     </button>
   );
+  const fullscreenButton = renderFullscreenControl
+    ? renderFullscreenControl(defaultFullscreenButton)
+    : defaultFullscreenButton;
   return (
     <div className="viewer-content">
       <div
