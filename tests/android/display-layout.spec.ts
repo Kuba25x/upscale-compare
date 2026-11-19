@@ -247,12 +247,14 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
     for (const zoom of [1, 2, 4]) {
       await page.getByLabel('Zoom preset', { exact: true }).selectOption(String(zoom));
       await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', String(zoom));
+      await expect.poll(async () => (await config(page)).view.zoom).toBe(zoom);
+      const centerBeforePan = (await config(page)).view.center;
       const stage = await box(page, '.stage');
       await page.mouse.move(stage.x + 150, stage.y + 100);
       await page.mouse.down();
       await page.mouse.move(stage.x + 170, stage.y + 120);
       await page.mouse.up();
-      await expect.poll(async () => (await config(page)).view.zoom).toBe(zoom);
+      await expect.poll(async () => (await config(page)).view.center).not.toEqual(centerBeforePan);
       const before = await config(page);
       await page.getByRole('button', { name: 'Enter fullscreen' }).click();
       await page.setViewportSize({ width: 412, height: 900 });
@@ -267,6 +269,7 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
       await expect.poll(() => config(page)).toEqual(before);
     }
     await page.getByRole('button', { name: 'Fit', exact: true }).click();
+    await expect.poll(async () => (await config(page)).view.zoom).toBeNull();
     const before = await config(page);
     await page.getByRole('button', { name: 'Enter fullscreen' }).click();
     await expect
