@@ -18,7 +18,7 @@ pair, and inspect the originals locally.
 > [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
 > is an early preview distributed as a **debug APK**.
 > **Share Comparison is not publicly available** in the web app or Android APK.
-> PWA support is prepared for the next approved web deployment; physical Android acceptance is pending.
+
 
 ## Made for close inspection
 
