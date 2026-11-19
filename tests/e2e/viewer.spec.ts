@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { imageFile, openComparison } from './fixtures';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 test('landing follows the centered wireframe and keeps screenshots local', async ({ page }) => {
   const publications: string[] = [];
   page.on('request', (request) => {
@@ -15,9 +16,10 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   expect(publications).toEqual([]);
   const title = await page.getByRole('heading', { level: 1 }).boundingBox();
   expect(Math.abs(title!.x + title!.width / 2 - 720)).toBeLessThan(1);
-  const share = await page.getByRole('button', { name: 'Share Comparison' }).boundingBox();
-  const upload = await page.getByRole('button', { name: 'Upload Images' }).boundingBox();
-  expect(upload!.x - (share!.x + share!.width)).toBeLessThan(12);
+  await expectLocalComparisonUI(page);
+  const actions = page.locator('.header-actions');
+  await expect(actions.getByRole('button')).toHaveCount(1);
+  await expect(actions.getByRole('button', { name: 'Upload Images' })).toBeEnabled();
   await page.screenshot({ path: 'test-results/viewer-desktop.png' });
 });
 test('requires two valid images and handles decode errors', async ({ page }) => {
@@ -185,68 +187,73 @@ test('keyboard shortcuts and fullscreen work', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
   await page.getByRole('button', { name: 'Exit fullscreen' }).click();
 });
-test('publishes only after confirmation and restores the public URL on refresh', async ({
-  page,
-}) => {
-  await openComparison(page);
-  await page.getByLabel('Label for image A').fill('Custom DLSS');
-  await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
-  await page.getByRole('button', { name: '200%', exact: true }).click();
-  await page.getByRole('button', { name: 'Share Comparison' }).click();
-  const publish = page.getByRole('button', { name: 'Publish comparison', exact: true });
-  await expect(publish).toBeDisabled();
-  await page.getByRole('checkbox').check();
-  await publish.click();
-  await expect(page.getByLabel('Public comparison link')).toBeVisible();
-  const url = await page.getByLabel('Public comparison link').inputValue();
-  expect(url).toMatch(/\/s\/[a-f0-9]{16}$/);
-  await page.goto(url);
-  await expect(page.getByTestId('stage')).toBeVisible();
-  await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', '2');
-  await expect(page.getByRole('button', { name: 'Side-by-Side', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await expect(page.locator('.badge-a')).toContainText('Custom DLSS');
-  await expect(page.getByLabel('Label for image A')).toHaveCount(0);
-  await page.reload();
-  await expect(page.getByTestId('stage')).toBeVisible();
-});
-test('handles unavailable sharing service and invalid public links', async ({ page }) => {
-  await openComparison(page);
-  await page.route('**/api/health', (route) =>
-    route.fulfill({
-      status: 503,
-      contentType: 'application/json',
-      body: JSON.stringify({ error: 'Sharing is offline.' }),
-    }),
-  );
-  await page.getByRole('button', { name: 'Share Comparison' }).click();
-  await expect(page.getByRole('dialog')).toContainText('Sharing is offline.');
-  await expect(
-    page.getByRole('button', { name: 'Publish comparison', exact: true }),
-  ).toBeDisabled();
-  await page.goto('/#c/aaaaaaaaaaaaaaaa');
-  await expect(page.getByRole('alert')).toContainText('Comparison not found');
-});
+test.describe('local publication fixture', () => {
+  test.use({ baseURL: 'http://localhost:5173' });
+  test('publishes only after confirmation and restores the public URL on refresh', async ({
+    page,
+  }) => {
+    await openComparison(page);
+    await page.getByLabel('Label for image A').fill('Custom DLSS');
+    await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
+    await page.getByRole('button', { name: '200%', exact: true }).click();
+    await page.getByRole('button', { name: 'Share Comparison' }).click();
+    const publish = page.getByRole('button', { name: 'Publish comparison', exact: true });
+    await expect(publish).toBeDisabled();
+    await page.getByRole('checkbox').check();
+    await publish.click();
+    await expect(page.getByLabel('Public comparison link')).toBeVisible();
+    const url = await page.getByLabel('Public comparison link').inputValue();
+    expect(url).toMatch(/\/s\/[a-f0-9]{16}$/);
+    await page.goto(url);
+    await expect(page.getByTestId('stage')).toBeVisible();
+    await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', '2');
+    await expect(page.getByRole('button', { name: 'Side-by-Side', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.locator('.badge-a')).toContainText('Custom DLSS');
+    await expect(page.getByLabel('Label for image A')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('stage')).toBeVisible();
+  });
+  test('handles unavailable sharing service and invalid public links', async ({ page }) => {
+    await openComparison(page);
+    await page.route('**/api/health', (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Sharing is offline.' }),
+      }),
+    );
+    await page.getByRole('button', { name: 'Share Comparison' }).click();
+    await expect(page.getByRole('dialog')).toContainText('Sharing is offline.');
+    await expect(
+      page.getByRole('button', { name: 'Publish comparison', exact: true }),
+    ).toBeDisabled();
+    await page.goto('/#c/aaaaaaaaaaaaaaaa');
+    await expect(page.getByRole('alert')).toContainText('Comparison not found');
+  });
 
-test('owner can recover their deletion key and remove a published comparison', async ({ page }) => {
-  await openComparison(page);
-  await page.getByRole('button', { name: 'Share Comparison' }).click();
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: 'Publish comparison', exact: true }).click();
-  const link = page.getByLabel('Public comparison link');
-  await expect(link).toBeVisible();
-  const url = await link.inputValue();
-  await page.goto(url);
-  await expect(page.getByTestId('stage')).toBeVisible();
-  await page.getByRole('button', { name: 'Share Comparison' }).click();
-  await page.getByText('Manage published comparison', { exact: true }).click();
-  await expect(page.getByLabel('Private deletion key')).not.toHaveValue('');
-  await page.getByRole('button', { name: 'Delete comparison', exact: true }).click();
-  await page.getByRole('button', { name: 'Permanently delete', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Comparison deleted' })).toBeVisible();
-  await page.goto('/');
-  await page.goto(url);
-  await expect(page.getByRole('alert')).toContainText('Comparison not found');
+  test('owner can recover their deletion key and remove a published comparison', async ({
+    page,
+  }) => {
+    await openComparison(page);
+    await page.getByRole('button', { name: 'Share Comparison' }).click();
+    await page.getByRole('checkbox').check();
+    await page.getByRole('button', { name: 'Publish comparison', exact: true }).click();
+    const link = page.getByLabel('Public comparison link');
+    await expect(link).toBeVisible();
+    const url = await link.inputValue();
+    await page.goto(url);
+    await expect(page.getByTestId('stage')).toBeVisible();
+    await page.getByRole('button', { name: 'Share Comparison' }).click();
+    await page.getByText('Manage published comparison', { exact: true }).click();
+    await expect(page.getByLabel('Private deletion key')).not.toHaveValue('');
+    await page.getByRole('button', { name: 'Delete comparison', exact: true }).click();
+    await page.getByRole('button', { name: 'Permanently delete', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Comparison deleted' })).toBeVisible();
+    await page.goto('/');
+    await page.goto(url);
+    await expect(page.getByRole('alert')).toContainText('Comparison not found');
+  });
 });

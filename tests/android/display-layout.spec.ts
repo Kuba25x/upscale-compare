@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 
 const files = [imageFile('A.png', 0), imageFile('B.png', 1), imageFile('C.png', 0)];
 async function open(page: Page) {
@@ -192,6 +193,7 @@ test('compact image controls allow selection, swapping and labels, with modal an
   const trigger = page.getByRole('button', { name: 'Image controls' });
   await trigger.click();
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expectLocalComparisonUI(page);
   await page.getByLabel('Select image A', { exact: true }).selectOption('2');
   await expect.poll(async () => (await config(page)).selected).toEqual([2, 1]);
   await page.getByLabel('Label for image A').fill('Alternative A');

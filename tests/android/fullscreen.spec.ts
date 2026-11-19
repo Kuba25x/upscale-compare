@@ -86,7 +86,6 @@ async function assertFullscreen(page: Page, mode: string) {
     '.image-badge',
     '.alignment-warning',
     '.inspection-toolbar',
-    '.demo-notice',
     '.landing-footer',
   ])
     await expect(page.locator(`${selector}:visible`)).toHaveCount(0);

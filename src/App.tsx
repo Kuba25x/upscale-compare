@@ -35,6 +35,13 @@ import {
 } from './lib/comparison-presentation';
 
 const SOURCE = 'https://github.com/Kuba25x/upscale-compare';
+// Keep browser coverage of the existing publication flow on disposable loopback fixtures.
+const loopbackHosts = ['localhost', '127.0.0.1'];
+const localSharingTest =
+  !DEMO_MODE &&
+  import.meta.env.VITE_LOCAL_SHARING_TEST_UI === 'true' &&
+  loopbackHosts.includes(location.hostname) &&
+  loopbackHosts.includes(new URL(API_URL, location.href).hostname);
 const initialConfig: Config = {
   mode: 'split',
   selected: [0, 1],
@@ -92,10 +99,10 @@ export default function App({
   const [publishedSnapshot, setPublishedSnapshot] = useState('');
   const [readOnly, setReadOnly] = useState(false);
   const [pendingCount, setPendingCount] = useState(() =>
-    DEMO_MODE ? 0 : pendingPublications().length,
+    localSharingTest ? pendingPublications().length : 0,
   );
   useEffect(() => {
-    if (DEMO_MODE) return;
+    if (!localSharingTest) return;
     const update = () => setPendingCount(pendingPublications().length);
     window.addEventListener(JOURNAL_CHANGED, update);
     window.addEventListener('storage', update);
@@ -400,30 +407,19 @@ export default function App({
     metadata,
     config,
   };
-  const shareControl = (
+  const shareControl = localSharingTest && (
     <button
-      className="share-button"
       onClick={() => setModal('share')}
-      disabled={DEMO_MODE || loading || images.some((image) => !image.label.trim())}
-      aria-describedby={DEMO_MODE ? 'demo-sharing-note' : undefined}
+      disabled={loading || images.some((image) => !image.label.trim())}
       title={
-        DEMO_MODE
-          ? SHARING_UNAVAILABLE_MESSAGE
-          : images.some((image) => !image.label.trim())
-            ? 'Give each image a label before sharing.'
-            : 'Create or copy a public comparison link'
+        images.some((image) => !image.label.trim())
+          ? 'Give each image a label before sharing.'
+          : 'Create or copy a public comparison link'
       }
     >
       <Share2 size={16} />
       <span>Share Comparison</span>
     </button>
-  );
-  const demoNotice = DEMO_MODE && (
-    <p id="demo-sharing-note" className="demo-notice">
-      {ANDROID_MODE
-        ? 'Offline · Public sharing is unavailable. Images stay on this device.'
-        : 'Demo · Public sharing is not available yet. Images stay in this browser.'}
-    </p>
   );
   const publishedNotice = readOnly && (
     <div className="published-notice">
@@ -638,16 +634,14 @@ export default function App({
             >
               <ArrowLeftRight size={16} />
             </button>
-            {compactWeb && (
-              <div className="image-panel-sharing">
+            {compactWeb && (localSharingTest || publishedNotice) && (
+              <div className="image-panel-publication">
                 {shareControl}
-                {demoNotice}
                 {publishedNotice}
               </div>
             )}
           </div>
           {!compactWeb && publishedNotice}
-          {!compactWeb && demoNotice}
         </main>
       ) : (
         <main className="landing">
@@ -679,23 +673,14 @@ export default function App({
             </p>
             <span className="landing-hint">
               PNG recommended · Original quality ·{' '}
-              {DEMO_MODE ? 'Images stay on this device' : 'Private until shared'}
+              {ANDROID_MODE ? 'Images stay on this device' : 'Images stay in this browser'}
             </span>
-            {DEMO_MODE && (
-              <p id="demo-sharing-note" className="demo-notice">
-                {ANDROID_MODE
-                  ? 'Offline · Public sharing is unavailable.'
-                  : 'Demo · Public sharing is not available yet.'}
-              </p>
-            )}
           </div>
           <footer className="landing-footer">
             <button className="text-button" onClick={() => setModal('privacy')}>
               {ANDROID_MODE
                 ? 'Your images stay on this device.'
-                : DEMO_MODE
-                  ? 'Your images stay in this browser.'
-                  : 'Local first. Yours to share.'}
+                : 'Your images stay in this browser.'}
             </button>
             <a href={SOURCE} target="_blank" rel="noreferrer">
               <Github size={14} />
@@ -704,12 +689,12 @@ export default function App({
           </footer>
         </main>
       )}
-      {!DEMO_MODE && pendingCount > 0 && (
+      {localSharingTest && pendingCount > 0 && (
         <aside className="recovery-notice">
           <button onClick={() => setModal('recovery')}>Recover publication ({pendingCount})</button>
         </aside>
       )}
-      {modal === 'recovery' && !DEMO_MODE && (
+      {modal === 'recovery' && localSharingTest && (
         <PublicationRecoveryDialog onClose={() => setModal(null)} />
       )}
       {loading && (
@@ -838,7 +823,7 @@ export default function App({
           }}
         />
       )}
-      {modal === 'share' && !DEMO_MODE && (
+      {modal === 'share' && localSharingTest && (
         <ShareDialog
           images={images}
           manifest={manifest}
@@ -917,23 +902,11 @@ export default function App({
             <p>
               {ANDROID_MODE
                 ? 'Original images are copied without recompression into private device storage. The current comparison is restored after restarting. Clear comparison removes its stored originals. App data is excluded from Android backup.'
-                : 'Local images are decoded in your browser. They are not sent to a server until you explicitly publish. Closing or refreshing the page clears an unpublished comparison.'}
+                : 'Original images, labels, and comparison details stay in your browser and are never uploaded automatically. Closing or refreshing the page clears your local comparison.'}
             </p>
             {ANDROID_MODE ? (
-              <p>
-                Sharing is disabled. No sharing service or verification widget is contacted. Files
-                available only in cloud storage cannot be imported offline.
-              </p>
-            ) : DEMO_MODE ? (
-              <>
-                <h3>Frontend-only demo</h3>
-                <p>
-                  Public sharing is not available in this demo. Images, labels, and metadata stay in
-                  this browser and are cleared on refresh. No sharing service or verification widget
-                  is contacted.
-                </p>
-              </>
-            ) : (
+              <p>Files available only in cloud storage cannot be imported offline.</p>
+            ) : localSharingTest ? (
               <>
                 <h3>Share publicly</h3>
                 <p>
@@ -959,7 +932,7 @@ export default function App({
                   comparison URL. This open-source project does not operate a hosted upload service.
                 </p>
               </>
-            )}
+            ) : null}
           </div>
           <div className="modal-actions">
             <a

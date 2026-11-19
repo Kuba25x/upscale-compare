@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { open as openComparison, snapshot, unchanged } from '../shared/mobile-minimalist';
 import { installWebDisplay } from '../shared/web-display';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscreen';
 import { cacheSnapshot, control, serve } from './helpers';
 
@@ -105,6 +106,7 @@ for (const sample of [
     await page.goto('./?pwa=fullscreen');
     await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
     await insets(page, sample.top, sample.right, sample.bottom, sample.left);
+    await expectLocalComparisonUI(page);
     await safe(page, page.getByRole('heading', { name: 'Upscale Compare', exact: true }), sample);
     await safe(page, page.locator('.brand-mark'), sample);
     await safe(page, page.getByRole('button', { name: 'Upload Images', exact: true }), sample);
@@ -137,6 +139,7 @@ for (const sample of [
       expect((await page.getByTestId('stage').boundingBox())!.width).toBe(sample.width);
       await page.getByRole('button', { name: 'Image controls', exact: true }).click();
     }
+    await expectLocalComparisonUI(page);
     for (const name of [
       'Select image A',
       'Select image B',

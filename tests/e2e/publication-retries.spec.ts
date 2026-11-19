@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openComparison } from './fixtures';
 
+test.use({ baseURL: 'http://localhost:5173' });
+
 async function confirm(page: Page) {
   await page.getByRole('button', { name: 'Share Comparison', exact: true }).click();
   await page.getByRole('checkbox').check();

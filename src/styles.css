@@ -269,9 +269,6 @@ input[type='checkbox'] {
   min-height: 36px;
   padding: 8px 12px;
 }
-.share-button {
-  background: #1b1d22;
-}
 .landing {
   flex: 1;
   position: relative;
@@ -1322,20 +1319,6 @@ input[type='checkbox'] {
   }
 }
 
-.demo-notice {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 4px 8px;
-  color: #a6adba;
-  font-size: 10px;
-  line-height: 1.5;
-  text-align: center;
-}
-.upload-center > .demo-notice {
-  margin: 10px 0 0;
-  font-size: 10px;
-}
-
 .diagnostics-toggle {
   position: fixed;
   right: 10px;
@@ -1596,12 +1579,6 @@ input[type='checkbox'] {
   }
 }
 
-/* Keep the native offline sharing notice policy separate from presentation. */
-.android-app.comparison-compact .header-actions .share-button,
-.android-app.comparison-compact .demo-notice {
-  display: none;
-}
-
 /* Browser safe areas protect controls; source-image geometry stays in the viewer. */
 .web-app {
   --web-header-gutter: 20px;
@@ -1706,7 +1683,7 @@ input[type='checkbox'] {
     calc(100cqw - var(--comparison-safe-right) - 24px - var(--comparison-divider-position) + 22px)
   );
 }
-.web-app.comparison-compact .image-panel-sharing {
+.web-app.comparison-compact .image-panel-publication {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -1715,12 +1692,11 @@ input[type='checkbox'] {
   padding: 8px;
   border-top: 1px solid var(--border);
 }
-.web-app.comparison-compact .image-panel-sharing .share-button {
+.web-app.comparison-compact .image-panel-publication > button {
   min-width: 44px;
   min-height: 44px;
 }
-.web-app.comparison-compact .image-panel-sharing .demo-notice,
-.web-app.comparison-compact .image-panel-sharing .published-notice {
+.web-app.comparison-compact .image-panel-publication .published-notice {
   margin: 0;
   height: auto;
   text-align: left;
