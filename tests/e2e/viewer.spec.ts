@@ -19,7 +19,7 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   await expectLocalComparisonUI(page);
   const actions = page.locator('.header-actions');
   await expect(actions.getByRole('button')).toHaveCount(1);
-  await expect(actions.getByRole('button', { name: 'Upload Images' })).toBeEnabled();
+  await expect(actions.getByRole('button', { name: 'Manage Images' })).toBeEnabled();
   await page.screenshot({ path: 'test-results/viewer-desktop.png' });
 });
 test('requires two valid images and handles decode errors', async ({ page }) => {
@@ -162,10 +162,11 @@ test('replaces an image and warns about different dimensions without stretching'
   page,
 }) => {
   await openComparison(page);
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Replace', exact: true }).first().click();
   await (await chooser).setFiles(imageFile('Small.png', 1, 320, 240));
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   await expect(page.locator('.alignment-warning')).toContainText('Different dimensions');
   const a = await page.getByTestId('image-A').boundingBox(),
     b = await page.getByTestId('image-B').boundingBox();

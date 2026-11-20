@@ -50,7 +50,7 @@ test('uploads screenshots locally with a clean landing screen and header', async
     .setInputFiles([imageFile(), imageFile('FSR Quality.png', 1)]);
   await expect(page.getByTestId('stage')).toBeVisible();
   await expectLocalComparisonUI(page);
-  await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Manage Images', exact: true })).toBeEnabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     page.viewportSize()!.width,
   );
@@ -65,18 +65,20 @@ test('keeps labels, metadata, four-image selection, addition, and replacement', 
   await page.getByLabel('Game title').fill('Demo game');
   await page.getByLabel('GPU / hardware').fill('Test GPU');
   await page.getByRole('button', { name: 'Save details', exact: true }).click();
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   const add = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Add images', exact: true }).click();
   await (await add).setFiles([imageFile('Native.png'), imageFile('XeSS.png', 1)]);
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   await expect(page.getByLabel('Select image A').locator('option')).toHaveCount(4);
   await page.getByLabel('Select image A').selectOption('2');
   await page.getByLabel('Label for image A').fill('Native Ultra');
   await expect(page.locator('.badge-a')).toContainText('Native Ultra');
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   const replacement = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Replace', exact: true }).nth(2).click();
   await (await replacement).setFiles(imageFile('Small.png', 0, 320, 240));
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   await expect(page.locator('.alignment-warning')).toContainText('Different dimensions');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await expect(page.getByLabel('Game title')).toHaveValue('Demo game');

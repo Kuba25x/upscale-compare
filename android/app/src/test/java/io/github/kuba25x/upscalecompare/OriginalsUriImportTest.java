@@ -196,6 +196,74 @@ public class OriginalsUriImportTest {
     for (File retained : root.listFiles())
       assertArrayEquals(bytes, Files.readAllBytes(retained.toPath()));
   }
+
+  private JSONObject restore() throws Exception {
+    var call = new OriginalsPickerLifecycleTest.Call("restore", new JSObject());
+    plugin.restore(call);
+    assertTrue(call.done.await(5, java.util.concurrent.TimeUnit.SECONDS));
+    assertNull(call.error);
+    return call.result.getJSONObject("session");
+  }
+
+  private OriginalsPickerLifecycleTest.Call save(JSONArray images, String draftId) throws Exception {
+    var session =
+        new JSObject()
+            .put("images", images)
+            .put("config", new JSONObject().put("selected", new JSONArray("[0,1]")));
+    var call =
+        new OriginalsPickerLifecycleTest.Call(
+            "save", new JSObject().put("session", session).put("draftId", draftId));
+    plugin.save(call);
+    assertTrue(call.done.await(5, java.util.concurrent.TimeUnit.SECONDS));
+    return call;
+  }
+
+  private void recreatePlugin() {
+    plugin.handleOnDestroy();
+    plugin = new Plugin();
+    plugin.load();
+  }
+
+  @Test
+  public void draftRetainsOnlyTheSurvivingOriginalAndCanRestoreAsACompletePair() throws Exception {
+    JSONArray originals = restore().getJSONArray("images");
+    JSONObject survivor = originals.getJSONObject(1);
+    String survivorId = survivor.getString("id");
+    assertNotNull(save(new JSONArray().put(survivor), null).error);
+    assertEquals(2, root.listFiles().length);
+
+    assertNull(save(new JSONArray(), survivorId).error);
+    assertEquals(0, restore().getJSONArray("images").length());
+    assertEquals(Set.of(survivorId), Set.of(root.list()));
+    assertArrayEquals(bytes, Files.readAllBytes(new File(root, survivorId).toPath()));
+
+    var picked = pick("third", "fourth");
+    assertNull(picked.error);
+    JSONArray added = picked.result.getJSONArray("images");
+    assertNull(save(added.put(survivor), null).error);
+    recreatePlugin();
+    assertEquals(3, restore().getJSONArray("images").length());
+    assertEquals(3, root.listFiles().length);
+
+    assertNull(save(new JSONArray(), null).error);
+    recreatePlugin();
+    assertEquals(0, restore().getJSONArray("images").length());
+    assertEquals(0, root.listFiles().length);
+    assertArrayEquals(bytes, Files.readAllBytes(provider.png.toPath()));
+  }
+
+  @Test
+  public void recreatingActivitySweepsAnUncommittedDraftWithoutDeletingTheSource() throws Exception {
+    JSONArray originals = restore().getJSONArray("images");
+    String survivor = originals.getJSONObject(0).getString("id");
+    assertNull(save(new JSONArray(), survivor).error);
+    assertEquals(Set.of(survivor), Set.of(root.list()));
+    recreatePlugin();
+    assertEquals(0, restore().getJSONArray("images").length());
+    assertEquals(0, root.listFiles().length);
+    assertArrayEquals(bytes, Files.readAllBytes(provider.png.toPath()));
+  }
+
   @Test
   public void storageCallsAfterDestroyRejectWithoutChangingCommittedOriginals() throws Exception {
     File journal = new File(plugin.getContext().getNoBackupFilesDir(), "comparison.json");

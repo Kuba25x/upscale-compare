@@ -44,28 +44,25 @@ test('Photo Picker defaults, min/max validation, single replacement and remainin
   await expect(page.getByTestId('stage')).toBeVisible();
   await expect.poll(async () => (await config(page))?.images.length).toBe(2);
   const previous = await config(page);
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   await choose(page, [0]);
   await page.getByRole('button', { name: 'Replace all images' }).click();
   await expect(page.getByRole('alert')).toContainText('2–4 images');
   await expect.poll(() => config(page)).toEqual(previous);
   await choose(page, [2]);
   await page.getByRole('button', { name: 'Replace', exact: true }).first().click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toBeVisible();
   expect(await lastRequest(page)).toEqual({ source: 'photos', minimum: 1, limit: 1 });
   await expect.poll(async () => (await config(page)).images[0].name).toBe('Original 2.png');
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
   await choose(page, [0]);
   await page.getByRole('button', { name: 'Add images' }).click();
   expect(await lastRequest(page)).toEqual({ source: 'photos', minimum: 1, limit: 2 });
   await expect.poll(async () => (await config(page)).images.length).toBe(3);
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
   await choose(page, [3]);
   await page.getByRole('button', { name: 'Add images' }).click();
   expect(await lastRequest(page)).toEqual({ source: 'photos', minimum: 1, limit: 1 });
   await expect.poll(async () => (await config(page)).images.length).toBe(4);
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Add images' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add images' })).toBeDisabled();
 });
 test('Files is available before import and for replacements; cancel/failure preserve the session', async ({
   page,
@@ -77,7 +74,7 @@ test('Files is available before import and for replacements; cancel/failure pres
   expect(await lastRequest(page)).toEqual({ source: 'files', minimum: 2, limit: 4 });
   await expect.poll(async () => (await config(page))?.images.length).toBe(2);
   const previous = await config(page);
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   await expect(page.getByLabel('Image source')).toHaveValue('files');
   await page.evaluate(() => {
     (window as any).cancelPick = true;
@@ -114,4 +111,51 @@ test('restored picker results retain the saved comparison and ask for a fresh se
   await expect(page.getByRole('alert')).toContainText('Import was interrupted');
   await expect.poll(() => config(page)).toEqual(previous);
   await expect(page.getByTestId('stage')).toBeVisible();
+});
+
+test('empty and one-image drafts persist no incomplete session and can be filled from the picker', async ({
+  page,
+}) => {
+  await open(page);
+  await choose(page, [0, 1]);
+  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Your images' });
+  const saved = await config(page);
+  await dialog.getByRole('button', { name: 'Remove image Original 1.png' }).click();
+  await expect(dialog.getByRole('button', { name: 'Remove image Original 0.png' })).toBeVisible();
+  await expect(page.getByTestId('stage')).toHaveCount(0);
+  expect((await config(page)).images).toEqual([]);
+  expect(await page.evaluate(() => (window as any).draftId)).toBe(saved.images[0].id);
+
+  await choose(page, [2]);
+  await dialog.getByRole('button', { name: 'Replace', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Remove image Original 2.png' })).toBeVisible();
+  expect((await config(page)).images).toEqual([]);
+  await choose(page, [3]);
+  await dialog.getByRole('button', { name: 'Add images' }).click();
+  await expect(dialog.getByRole('button', { name: 'Remove image Original 3.png' })).toBeVisible();
+  expect(await lastRequest(page)).toEqual({ source: 'photos', minimum: 1, limit: 3 });
+  const filled = await config(page);
+  expect(filled.images.map((image: { name: string }) => image.name)).toEqual([
+    'Original 2.png',
+    'Original 3.png',
+  ]);
+  await page.reload();
+  await expect(page.getByTestId('stage')).toBeVisible();
+  await expect(page.getByLabel('Label for image A')).toHaveValue('Original 2');
+  await expect(page.getByLabel('Label for image B')).toHaveValue('Original 3');
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Clear comparison' }).click();
+  await expect(dialog).toContainText('No images in this comparison.');
+  expect((await config(page)).images).toEqual([]);
+  await choose(page, [0]);
+  await dialog.getByRole('button', { name: 'Add images' }).click();
+  await expect(dialog.getByRole('button', { name: 'Remove image Original 0.png' })).toBeVisible();
+  expect(await lastRequest(page)).toEqual({ source: 'photos', minimum: 1, limit: 4 });
+  await dialog.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).draftId)).toBeUndefined();
+  await page.reload();
+  await expect(page.getByTestId('stage')).toHaveCount(0);
 });

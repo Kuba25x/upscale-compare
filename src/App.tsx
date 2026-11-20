@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowLeftRight,
   Check,
@@ -13,7 +13,13 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { emptyMetadata, type Config, type LocalImage, type Metadata } from '../shared/model';
+import {
+  MAX_IMAGES,
+  emptyMetadata,
+  type Config,
+  type LocalImage,
+  type Metadata,
+} from '../shared/model';
 import { API_URL, fetchComparison, publicImageUrl } from './lib/api';
 import { ANDROID_MODE, DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/config';
 import { formatBytes, loadImage } from './lib/images';
@@ -48,7 +54,20 @@ const initialConfig: Config = {
   divider: 0.5,
   view: { zoom: null, center: { x: 0, y: 0 } },
 };
-type UploadAction = { kind: 'all' | 'add' | 'one'; index?: number };
+type UploadAction = { kind: 'all' | 'add' } | { kind: 'one'; index: number };
+
+function withSelection(config: Config, images: LocalImage[], selected: Config['selected']): Config {
+  if (config.view.zoom !== null || images.length < 2) return { ...config, selected };
+  const [a, b] = selected.map((i) => images[i]);
+  return {
+    ...config,
+    selected,
+    view: {
+      zoom: null,
+      center: { x: Math.max(a.width, b.width) / 2, y: Math.max(a.height, b.height) / 2 },
+    },
+  };
+}
 interface AppProps {
   android?: AndroidServices;
   presentation?: ComparisonPresentation;
@@ -76,6 +95,26 @@ export default function App({
   const [error, setError] = useState('');
   const [androidImageSource, setAndroidImageSource] = useState<AndroidImageSource>('photos');
   const [loading, setLoading] = useState(ANDROID_MODE);
+  const currentImages = useRef(images);
+  currentImages.current = images;
+  const savingImages = useRef(false);
+  const manageTrigger = useRef<HTMLButtonElement>(null);
+  const uploadList = useRef<HTMLDivElement>(null);
+  const addImagesButton = useRef<HTMLButtonElement>(null);
+  const focusAfterClose = useRef(false);
+  const focusAfterRemoval = useRef<number | null>(null);
+  useEffect(() => {
+    if (modal === null && focusAfterClose.current) {
+      focusAfterClose.current = false;
+      manageTrigger.current?.focus({ preventScroll: true });
+    }
+    if (modal === 'upload' && !loading && focusAfterRemoval.current !== null) {
+      const buttons = uploadList.current?.querySelectorAll<HTMLButtonElement>('.icon-button');
+      const next = buttons?.[Math.min(focusAfterRemoval.current, buttons.length - 1)];
+      focusAfterRemoval.current = null;
+      (next ?? addImagesButton.current)?.focus();
+    }
+  }, [modal, images, loading]);
   const minimalist = presentation.minimalist;
   const compactLayout = presentation.compact;
   const [imagePanelOpen, setImagePanelOpen] = useState(false);
@@ -154,14 +193,17 @@ export default function App({
     };
   }, [android]);
   useEffect(() => {
-    if (!android || !restored || loading) return;
-    const save = () =>
-      android
+    if (!android || !restored || loading || images.length === 1) return;
+    const save = () => {
+      // A picker/background event can arrive before React removes the previous listener.
+      if (savingImages.current || currentImages.current !== images) return;
+      return android
         .saveAndroidSession({ images, metadata, config })
         .then((result) => {
           if (result.warning) setError(result.warning);
         })
         .catch((reason) => setError(`Could not save the local session: ${reason.message}`));
+    };
     const timer = window.setTimeout(() => void save(), 250);
     const listener = android.app.addListener('appStateChange', ({ isActive }) => {
       if (!isActive) void save();
@@ -174,26 +216,8 @@ export default function App({
   useEffect(() => {
     if (restored && !loading && minimalist && images.length < 2) void onSetMinimalist?.(false);
   }, [images.length, restored, loading, minimalist, onSetMinimalist]);
-  useEffect(() => {
-    if (!android) return;
-    // Intercept modal/fullscreen navigation; leave root predictive back to Android.
-    void android.app.toggleBackButtonHandler({
-      enabled: Boolean(modal) || loading || minimalist || (compactLayout && imagePanelOpen),
-    });
-    const listener = android.app.addListener('backButton', () => {
-      if (loading) return;
-      if (modal) setModal(null);
-      else if (minimalist) void onSetMinimalist?.(false);
-      else if (compactLayout && imagePanelOpen) setImagePanelOpen(false);
-    });
-    return () => {
-      void listener.then((handle) => handle.remove());
-    };
-  }, [android, modal, loading, minimalist, onSetMinimalist, compactLayout, imagePanelOpen]);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadAction = useRef<UploadAction>({ kind: 'all' });
-  const currentImages = useRef(images);
-  currentImages.current = images;
   const dragDepth = useRef(0);
   const updateConfig = useCallback((update: (previous: Config) => Config) => setConfig(update), []);
   const help = useCallback(() => setModal('help'), []);
@@ -257,18 +281,105 @@ export default function App({
       active = false;
     };
   }, [route]);
+  const commitImages = async (
+    nextImages: LocalImage[],
+    nextConfig: Config,
+    nextMetadata = metadata,
+  ) => {
+    if (android) {
+      savingImages.current = true;
+      try {
+        const draft = nextImages.length === 1 ? nextImages[0] : undefined;
+        const result = await android.saveAndroidSession(
+          draft
+            ? { images: [], config: initialConfig, metadata: emptyMetadata() }
+            : { images: nextImages, config: nextConfig, metadata: nextMetadata },
+          draft,
+        );
+        if (result.warning) setError(result.warning);
+        setRestored(true);
+      } finally {
+        savingImages.current = false;
+      }
+    }
+    const keptUrls = new Set(nextImages.map((image) => image.url));
+    for (const image of images) {
+      if (image.file && !keptUrls.has(image.url)) URL.revokeObjectURL(image.url);
+    }
+    currentImages.current = nextImages;
+    setImages(nextImages);
+    setConfig(nextConfig);
+    setMetadata(nextMetadata);
+    setPublished(undefined);
+  };
+  const removeImages = async (index?: number, restoreFocus = true) => {
+    if (loading) return false;
+    const nextImages = index === undefined ? [] : images.filter((_, i) => i !== index);
+    let nextConfig = initialConfig;
+    if (nextImages.length === 1) {
+      // Keep the other comparison settings while the user fills the draft.
+      nextConfig = { ...config, selected: initialConfig.selected };
+    } else if (nextImages.length >= 2) {
+      const [a, b] = config.selected.map((i) => nextImages.indexOf(images[i]));
+      // Keep any surviving selection in its slot; fill a vacant slot with the first free image.
+      nextConfig = withSelection(config, nextImages, [
+        a < 0 ? (b === 0 ? 1 : 0) : a,
+        b < 0 ? (a === 0 ? 1 : 0) : b,
+      ]);
+    }
+    setLoading(true);
+    setError('');
+    if (restoreFocus) focusAfterRemoval.current = index ?? 0;
+    try {
+      await commitImages(nextImages, nextConfig, nextImages.length ? metadata : emptyMetadata());
+      return true;
+    } catch (reason) {
+      focusAfterRemoval.current = null;
+      setError(`Could not update the local comparison: ${(reason as Error).message}`);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+  const closeManageImages = async () => {
+    if (loading || (images.length === 1 && !(await removeImages(undefined, false)))) return;
+    focusAfterClose.current = true;
+    setModal(null);
+  };
+  const closeAndroidModal = useEffectEvent(() => {
+    if (modal === 'upload') void closeManageImages();
+    else setModal(null);
+  });
+  useEffect(() => {
+    if (!android) return;
+    // Intercept modal/fullscreen navigation; leave root predictive back to Android.
+    void android.app.toggleBackButtonHandler({
+      enabled: Boolean(modal) || loading || minimalist || (compactLayout && imagePanelOpen),
+    });
+    const listener = android.app.addListener('backButton', () => {
+      if (loading) return;
+      if (modal) closeAndroidModal();
+      else if (minimalist) void onSetMinimalist?.(false);
+      else if (compactLayout && imagePanelOpen) setImagePanelOpen(false);
+    });
+    return () => {
+      void listener.then((handle) => handle.remove());
+    };
+  }, [android, modal, loading, minimalist, onSetMinimalist, compactLayout, imagePanelOpen]);
+
   const requestFiles = (action: UploadAction, source: AndroidImageSource = androidImageSource) => {
     if (android) {
+      const replacingAll = action.kind === 'all' || readOnly;
       setAndroidImageSource(source);
       setLoading(true);
       setError('');
       void android
         .pickOriginals(
-          action.kind === 'one' ? 1 : action.kind === 'add' ? 4 - images.length : 4,
-          action.kind === 'all' || readOnly ? 2 : 1,
+          replacingAll ? MAX_IMAGES : action.kind === 'one' ? 1 : MAX_IMAGES - images.length,
+          replacingAll ? 2 : 1,
           source,
         )
-        .then((selected) => upload(selected, action, true))
+        .then((selected) => upload(selected, action))
         .catch((reason) => setError(reason.message || 'Could not import the selected originals.'))
         .finally(() => setLoading(false));
       return;
@@ -278,101 +389,63 @@ export default function App({
     fileInput.current!.value = '';
     fileInput.current!.click();
   };
-  const upload = async (files: File[] | LocalImage[], action: UploadAction, native = false) => {
+  const upload = async (files: File[] | LocalImage[], action: UploadAction) => {
     if (!files.length) return;
     setError('');
     const replacingAll = action.kind === 'all' || readOnly;
-    const total = replacingAll
-      ? files.length
+    const maximum = replacingAll
+      ? MAX_IMAGES
       : action.kind === 'one'
-        ? images.length
-        : images.length + files.length;
-    if (total < 2 || total > 4 || (action.kind === 'one' && files.length !== 1)) {
-      if (native) await android!.discardOriginals(files as LocalImage[]);
+        ? 1
+        : MAX_IMAGES - images.length;
+    const minimum = replacingAll ? 2 : 1;
+    if (files.length < minimum || files.length > maximum) {
+      if (android) await android.discardOriginals(files as LocalImage[]);
       setError(
-        'Select two to four images for a comparison. You can replace one image at a time in Upload Images.',
+        replacingAll
+          ? 'Select two to four images for a comparison.'
+          : action.kind === 'one'
+            ? 'Choose one replacement image.'
+            : 'A comparison can contain up to four images.',
       );
       return;
     }
+
     setLoading(true);
-    const results = native
-      ? (files as LocalImage[]).map((value) => ({ status: 'fulfilled' as const, value }))
-      : await Promise.allSettled((files as File[]).map(loadImage));
-    const loaded = results
-      .filter(
-        (result): result is PromiseFulfilledResult<LocalImage> => result.status === 'fulfilled',
-      )
-      .map((result) => result.value);
-    const failed = results.find((result) => result.status === 'rejected');
-    if (failed?.status === 'rejected') {
-      loaded.forEach((image) => URL.revokeObjectURL(image.url));
-      setError(failed.reason.message);
-      setLoading(false);
-      return;
-    }
-    if (native) {
+    const loaded: LocalImage[] = [];
+    try {
+      if (android) loaded.push(...(files as LocalImage[]));
+      else {
+        const results = await Promise.allSettled((files as File[]).map(loadImage));
+        for (const result of results) if (result.status === 'fulfilled') loaded.push(result.value);
+        const failure = results.find((result) => result.status === 'rejected');
+        if (failure) throw failure.reason;
+      }
       const nextImages = replacingAll
         ? loaded
         : action.kind === 'one'
           ? images.map((image, i) => (i === action.index ? loaded[0] : image))
           : [...images, ...loaded];
       const nextConfig = replacingAll
-        ? {
-            ...initialConfig,
-            view: {
-              zoom: null,
-              center: {
-                x: Math.max(...loaded.slice(0, 2).map((image) => image.width)) / 2,
-                y: Math.max(...loaded.slice(0, 2).map((image) => image.height)) / 2,
-              },
-            },
-          }
-        : config;
-      try {
-        const result = await android!.saveAndroidSession({
-          images: nextImages,
-          config: nextConfig,
-          metadata: replacingAll ? emptyMetadata() : metadata,
-        });
-        if (result.warning) setError(result.warning);
-      } catch (reason) {
-        await android!.discardOriginals(loaded);
-        throw reason;
+        ? withSelection(initialConfig, nextImages, initialConfig.selected)
+        : images.length < 2
+          ? withSelection(config, nextImages, initialConfig.selected)
+          : config;
+      await commitImages(nextImages, nextConfig, replacingAll ? emptyMetadata() : metadata);
+      if (replacingAll) {
+        setReadOnly(false);
+        history.replaceState(null, '', `${location.pathname}${location.search}`);
+        setRoute('');
+        document.title = 'Upscale Compare — Image quality, side by side';
       }
+      if (readOnly) setModal(null);
+    } catch (reason) {
+      if (android) await android.discardOriginals(loaded);
+      else loaded.forEach((image) => URL.revokeObjectURL(image.url));
+      setError((reason as Error).message);
+    } finally {
+      if (!android) setLoading(false);
     }
-    if (replacingAll) {
-      images.forEach((image) => {
-        if (image.file) URL.revokeObjectURL(image.url);
-      });
-      setImages(loaded);
-      setMetadata(emptyMetadata());
-      setConfig({
-        ...initialConfig,
-        view: {
-          zoom: null,
-          center: {
-            x: Math.max(...loaded.slice(0, 2).map((image) => image.width)) / 2,
-            y: Math.max(...loaded.slice(0, 2).map((image) => image.height)) / 2,
-          },
-        },
-      });
-      setReadOnly(false);
-      setPublished(undefined);
-      history.replaceState(null, '', `${location.pathname}${location.search}`);
-      setRoute('');
-      document.title = 'Upscale Compare — Image quality, side by side';
-    } else if (action.kind === 'one') {
-      const old = images[action.index!];
-      if (old.file) URL.revokeObjectURL(old.url);
-      setImages((previous) => previous.map((image, i) => (i === action.index ? loaded[0] : image)));
-      setPublished(undefined);
-    } else {
-      setImages((previous) => [...previous, ...loaded]);
-      setPublished(undefined);
-    }
-    if (native) setRestored(true);
-    setModal(null);
-    setLoading(false);
   };
   const editLabel = (index: number, label: string) => {
     setImages((previous) =>
@@ -385,21 +458,7 @@ export default function App({
       const selected: [number, number] = [...previous.selected];
       if (selected[1 - slot] === index) selected[1 - slot] = selected[slot];
       selected[slot] = index;
-      const chosen = selected.map((i) => images[i]);
-      return {
-        ...previous,
-        selected,
-        view:
-          previous.view.zoom === null
-            ? {
-                zoom: null,
-                center: {
-                  x: Math.max(...chosen.map((image) => image.width)) / 2,
-                  y: Math.max(...chosen.map((image) => image.height)) / 2,
-                },
-              }
-            : previous.view,
-      };
+      return withSelection(previous, images, selected);
     });
   const ready = images.length >= 2;
   const manifest = {
@@ -466,13 +525,16 @@ export default function App({
         dragDepth.current = 0;
         setDragging(false);
         if (!loading)
-          void upload([...event.dataTransfer.files], { kind: ready && !readOnly ? 'add' : 'all' });
+          void upload([...event.dataTransfer.files], {
+            kind: (ready || modal === 'upload') && !readOnly ? 'add' : 'all',
+          });
       }}
     >
       <input
         className="sr-only"
         type="file"
         disabled={ANDROID_MODE}
+        tabIndex={-1}
         accept="image/png,image/jpeg,image/webp"
         multiple
         ref={fileInput}
@@ -531,13 +593,14 @@ export default function App({
             )}
             {!compactWeb && shareControl}
             <button
+              ref={manageTrigger}
               className="primary"
-              aria-label="Upload Images"
+              aria-label="Manage Images"
               onClick={() => setModal('upload')}
               disabled={loading}
             >
               <ImagePlus size={17} />
-              <span>Upload Images</span>
+              <span>Manage Images</span>
             </button>
           </div>
         )}
@@ -643,10 +706,11 @@ export default function App({
           </div>
           {!compactWeb && publishedNotice}
         </main>
-      ) : (
+      ) : modal !== 'upload' ? (
         <main className="landing">
           <div className="upload-center">
             <button
+              ref={manageTrigger}
               className="primary upload-hero"
               onClick={() => requestFiles({ kind: 'all' }, 'photos')}
               disabled={loading}
@@ -688,7 +752,7 @@ export default function App({
             </a>
           </footer>
         </main>
-      )}
+      ) : null}
       {localSharingTest && pendingCount > 0 && (
         <aside className="recovery-notice">
           <button onClick={() => setModal('recovery')}>Recover publication ({pendingCount})</button>
@@ -697,7 +761,7 @@ export default function App({
       {modal === 'recovery' && localSharingTest && (
         <PublicationRecoveryDialog onClose={() => setModal(null)} />
       )}
-      {loading && (
+      {loading && modal !== 'upload' && (
         <div className="loading-indicator" role="status">
           <LoaderCircle size={17} className="spinner" />
           {route ? 'Opening comparison…' : 'Loading original images…'}
@@ -716,7 +780,7 @@ export default function App({
           <Upload size={35} />
           <h2>Drop your screenshots</h2>
           <p>
-            {ready && !readOnly
+            {(ready || modal === 'upload') && !readOnly
               ? 'Add images to this comparison · Up to 4 total'
               : '2–4 images · PNG, JPEG, or WebP'}
           </p>
@@ -725,15 +789,15 @@ export default function App({
       {modal === 'upload' && (
         <Modal
           title={readOnly ? 'Start your own comparison' : 'Your images'}
-          onClose={() => setModal(null)}
+          onClose={() => void closeManageImages()}
           busy={loading}
         >
           <p className="muted">
             {readOnly
               ? 'Choose two to four screenshots to start a new local comparison.'
               : ANDROID_MODE
-                ? 'Add or replace screenshots. Originals are stored privately on this device.'
-                : 'Add or replace screenshots. Files stay in your browser until you publish.'}
+                ? 'Originals are stored privately on this device.'
+                : 'Files stay in your browser.'}
           </p>
           {ANDROID_MODE && (
             <label>
@@ -752,9 +816,10 @@ export default function App({
             </label>
           )}
           {!readOnly && (
-            <div className="upload-list">
+            <div className="upload-list" ref={uploadList}>
+              {images.length === 0 && <p className="muted">No images in this comparison.</p>}
               {images.map((image, index) => (
-                <div className="upload-list-item" key={index}>
+                <div className="upload-list-item" key={image.url}>
                   {!ANDROID_MODE && <img src={image.url} alt="" />}
                   <div>
                     <b>{image.label}</b>
@@ -765,6 +830,14 @@ export default function App({
                   <button disabled={loading} onClick={() => requestFiles({ kind: 'one', index })}>
                     Replace
                   </button>
+                  <button
+                    className="icon-button"
+                    aria-label={`Remove image ${image.name}`}
+                    disabled={loading}
+                    onClick={() => void removeImages(index)}
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -772,40 +845,42 @@ export default function App({
           <p className="muted small">
             {ANDROID_MODE
               ? 'PNG, JPEG, WebP · Provisional 256 MiB per image · 36 MP · 1 GiB per session'
-              : 'PNG, JPEG, WebP · 20 MB per image · 40 MB total when sharing · 36 MP per image'}
+              : 'PNG, JPEG, WebP · 20 MB per image · 36 MP per image'}
           </p>
+          {loading && (
+            <p className="muted" role="status">
+              Updating images…
+            </p>
+          )}
           {error && (
             <p className="error" role="alert">
               {error}
             </p>
           )}
           <div className="modal-actions">
-            {ANDROID_MODE && (
-              <button
-                disabled={loading}
-                onClick={() => {
-                  setImages([]);
-                  setMetadata(emptyMetadata());
-                  setConfig(initialConfig);
-                  setModal(null);
-                }}
-              >
+            {!readOnly && (
+              <button disabled={loading || images.length === 0} onClick={() => void removeImages()}>
                 Clear comparison
               </button>
             )}
-            {!readOnly && images.length < 4 && (
-              <button disabled={loading} onClick={() => requestFiles({ kind: 'add' })}>
-                <ImagePlus size={16} />
-                Add images
-              </button>
-            )}
             <button
-              className="primary"
+              className={readOnly ? 'primary' : undefined}
               disabled={loading}
               onClick={() => requestFiles({ kind: 'all' })}
             >
               {readOnly ? 'Upload Images' : 'Replace all images'}
             </button>
+            {!readOnly && (
+              <button
+                ref={addImagesButton}
+                className="primary"
+                disabled={loading || images.length === MAX_IMAGES}
+                onClick={() => requestFiles({ kind: 'add' })}
+              >
+                <ImagePlus size={16} />
+                Add images
+              </button>
+            )}
           </div>
         </Modal>
       )}

@@ -18,7 +18,7 @@ builds, publication limits and backend deployment controls retain their behavior
 The shared Viewer and geometry retain the existing two modes, contact snapshots,
 synchronized panning, source coordinates and physical-pixel zoom. The Android
 adapter replaces browser File ownership with private native original identifiers.
-Only the selected pair is rendered; the upload dialog does not decode full-size
+Only the selected pair is rendered; Manage Images does not decode full-size
 thumbnails of every stored original. No new comparison renderer is introduced.
 The existing favicon design is reused for the launcher and splash screen.
 
@@ -57,9 +57,14 @@ thumbnail. Provider metadata and declared file size are not trusted as quotas.
   Abrupt process termination can lose the most recent gesture or pending import;
   the last committed session survives. Interrupted restored picker results are
   discarded explicitly and the user is asked to choose the files again.
-- **Clear comparison** in the existing upload dialog commits an empty session and
-  removes the unreferenced private originals. Cleanup failures are reported; any
-  leftovers still count against the storage quota and are retried on startup/save.
+- Removing an image commits the updated comparison and releases its private copy.
+  If one image remains, Android commits an empty session and retains the surviving
+  original in memory as a draft reference while **Manage Images** is open. Add an
+  image to commit a new pair, or close the dialog to release the draft and return
+  to the landing screen. Restarting the app clears an unfinished draft.
+- **Clear comparison** commits an empty session and removes the unreferenced
+  private originals. The dialog stays open for new imports. Cleanup failures are
+  reported and retried on startup or save.
 - Calls arriving from a destroyed Activity are rejected before scheduling storage
   work, including a delayed save or picker result. They cannot write/clean originals
   through a stopped executor; the recreated Activity restores the committed journal.
@@ -247,7 +252,7 @@ only one image for a new comparison is rejected after confirmation, before nativ
 streams are opened or large originals are copied. Empty/cancelled results do nothing.
 
 **Browse files instead** on the landing screen and the **Image source** selector
-in the existing upload dialog preserve access to PNG/JPEG/WebP documents outside
+in **Manage Images** preserve access to PNG/JPEG/WebP documents outside
 the indexed media library. AndroidX automatically falls back to SAF when no Photo
 Picker implementation is available; a missing picker activity also falls back to
 SAF. The fallback has no enforceable system selection maximum, so native validation

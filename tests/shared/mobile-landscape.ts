@@ -71,7 +71,7 @@ export function mobileLandscapeTests() {
           'Split Screen',
           'Side-by-Side',
           'Image controls',
-          'Upload Images',
+          'Manage Images',
           'Fit',
           'Zoom out',
           'Zoom in',
