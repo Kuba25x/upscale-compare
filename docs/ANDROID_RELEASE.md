@@ -29,11 +29,12 @@ disposable **test-only** key to exercise the signing script; that key and the AP
 
 ## Version policy
 
-The single version source is [android/release.properties](../android/release.properties):
+The next candidate takes its version from [android/release.properties](../android/release.properties).
 
-- versionName: 0.1.0-android-preview.1
-- versionCode: 2 (initial debug builds used 1)
-- published debug-preview tag: v0.1.0-android-preview.1
+- versionName: 0.1.0-android-preview.2
+- versionCode: 3
+- planned debug-preview tag: v0.1.0-android-preview.2
+- published debug-preview tag: v0.1.0-android-preview.1 (versionCode 2)
 - package: io.github.kuba25x.upscalecompare
 - minimum API 24; target/compile API 36
 
@@ -204,7 +205,7 @@ Independent final checks:
 
 ```sh
 "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify \
-  --verbose --print-certs /path/to/new-signed-output/upscale-compare-0.1.0-android-preview.1.apk
+  --verbose --print-certs /path/to/new-signed-output/upscale-compare-0.1.0-android-preview.2.apk
 cd /path/to/new-signed-output
 sha256sum -c SHA256SUMS
 ```
