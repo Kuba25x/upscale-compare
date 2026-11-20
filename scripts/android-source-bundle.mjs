@@ -8,6 +8,8 @@ import { join, resolve } from 'node:path';
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 if (!/^[a-f0-9]{40}$/.test(commit)) throw new Error('Expected exact source commit');
 const output = resolve(process.argv[2] || 'release-artifacts/source');
+const variant = process.argv[3] || 'release';
+if (!['debug', 'release'].includes(variant)) throw new Error('Invalid Android runtime variant');
 await mkdir(output, { recursive: true });
 const temporary = await mkdtemp(join(tmpdir(), 'upscale-source-'));
 async function get(url) {
@@ -30,7 +32,7 @@ try {
   execFileSync('tar', ['-xf', archive, '-C', join(temporary, 'project')]);
   await rm(archive);
   const native = JSON.parse(
-    await readFile('android/app/build/reports/release-dependencies.json', 'utf8'),
+    await readFile(`android/app/build/reports/${variant}-dependencies.json`, 'utf8'),
   );
   async function auditPom(url, depth = 0) {
     if (depth > 5) throw new Error('Maven license inheritance exceeded: ' + url);
