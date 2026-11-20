@@ -219,7 +219,10 @@ test('compact image controls allow selection, swapping and labels, with modal an
   expect(bounds.x).toBeGreaterThanOrEqual(46);
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(500 - 12);
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(240 - 18);
-  await manage.getByRole('button', { name: /^Remove image / }).first().tap();
+  await manage
+    .getByRole('button', { name: /^Remove image / })
+    .first()
+    .tap();
   await expect(manage.getByRole('button', { name: /^Remove image / })).toHaveCount(2);
   await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
   await expect(manage).toHaveCount(0);

@@ -28,7 +28,13 @@ for (const count of [2, 3, 4]) {
     await expect(dialog).not.toContainText(/publish|sharing/i);
 
     const removeA = dialog.getByRole('button', { name: 'Remove image A.png' });
-    await removeA.focus();
+    await expect(dialog.getByRole('button', { name: 'Close dialog' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(
+      dialog.getByRole('button', { name: 'Replace', exact: true }).first(),
+    ).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(removeA).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('button', { name: /^Remove image / })).toHaveCount(count - 1);

@@ -859,10 +859,7 @@ export default function App({
           )}
           <div className="modal-actions">
             {!readOnly && (
-              <button
-                disabled={loading || images.length === 0}
-                onClick={() => void removeImages()}
-              >
+              <button disabled={loading || images.length === 0} onClick={() => void removeImages()}>
                 Clear comparison
               </button>
             )}
