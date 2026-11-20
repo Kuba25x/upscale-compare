@@ -814,6 +814,19 @@ input[type='checkbox'] {
   min-height: 30px;
   padding: 5px 9px;
 }
+.upload-list-item button.icon-button {
+  width: 32px;
+}
+@media (pointer: coarse) {
+  .upload-list-item {
+    gap: 8px;
+  }
+  .upload-list-item button,
+  .upload-list-item button.icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
 .shortcuts {
   display: grid;
   grid-template-columns: 80px 1fr;

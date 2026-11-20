@@ -78,6 +78,30 @@ it('strips transient URLs from the persisted session and preserves cleanup warni
   expect(saved.size).toBe(original.size);
 });
 
+it('keeps a draft identifier outside the journal and rejects an incomplete journal', async () => {
+  const { saveAndroidSession } = await import('../../src/lib/android');
+  const session = {
+    images: [],
+    metadata: emptyMetadata(),
+    config: {
+      mode: 'split' as const,
+      selected: [0, 1] as [number, number],
+      divider: 0.5,
+      view: { zoom: null, center: { x: 0, y: 0 } },
+    },
+  };
+  const draft = {
+    ...original,
+    label: 'Draft',
+    url: 'file:///private/transient',
+    metadata: { technology: '', preset: '', renderingResolution: '' },
+  };
+  await saveAndroidSession(session, draft);
+  expect(native.save).toHaveBeenCalledExactlyOnceWith({ session, draftId: original.id });
+  await expect(saveAndroidSession({ ...session, images: [draft] })).rejects.toThrow();
+  expect(native.save).toHaveBeenCalledOnce();
+});
+
 it('delegates Android insets and light system icons to the native DisplayLayout integration', async () => {
   const { default: config } = await import('../../capacitor.config');
   expect(config.plugins?.SystemBars).toMatchObject({

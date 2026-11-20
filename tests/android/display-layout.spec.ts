@@ -207,12 +207,23 @@ test('compact image controls allow selection, swapping and labels, with modal an
   expect(dialog.x + dialog.width).toBeLessThanOrEqual(900 - 12);
   await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   await page.evaluate(() => {
     (window as any).cancelPick = true;
   });
   await page.getByRole('button', { name: 'Replace all images' }).click();
   await expect.poll(async () => (await config(page)).selected).toEqual([1, 2]);
+  await page.setViewportSize({ width: 500, height: 240 });
+  const manage = page.getByRole('dialog', { name: 'Your images' });
+  const bounds = (await manage.boundingBox())!;
+  expect(bounds.x).toBeGreaterThanOrEqual(46);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(500 - 12);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(240 - 18);
+  await manage.getByRole('button', { name: /^Remove image / }).first().tap();
+  await expect(manage.getByRole('button', { name: /^Remove image / })).toHaveCount(2);
+  await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
+  await expect(manage).toHaveCount(0);
+  await expect(page.getByTestId('stage')).toBeVisible();
   await assertBars(page, false, false);
 });
 

@@ -110,7 +110,7 @@ for (const [width, height] of [
     await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
     await expect(page.getByRole('button', { name: 'Enter fullscreen' })).toBeVisible();
     expect(await page.evaluate(() => (window as any).barsHidden)).toBe(false);
-    await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+    await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
     await expect(page.locator('.upload-list img')).toHaveCount(0);
     await page.evaluate(() => {
       (window as any).cancelPick = true;
@@ -120,11 +120,16 @@ for (const [width, height] of [
     await expect(page.getByTestId('stage')).toBeVisible();
     await page.getByRole('button', { name: 'Clear comparison' }).click();
     await expect(page.getByTestId('stage')).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Your images' })).toContainText(
+      'No images in this comparison.',
+    );
     await expect
       .poll(() =>
         page.evaluate(() => JSON.parse(localStorage.getItem('test-session')!).images.length),
       )
       .toBe(0);
+    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeVisible();
     expect(requests).toEqual([]);
   });
 }

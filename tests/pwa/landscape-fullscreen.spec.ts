@@ -88,7 +88,7 @@ for (const mode of ['Split Screen', 'Side-by-Side'])
       await expect.poll(async () => (await page.getByTestId('stage').boundingBox())!.x).toBe(0);
       expect((await page.getByTestId('stage').boundingBox())!.width).toBe(900);
       for (const name of [
-        'Upload Images',
+        'Manage Images',
         'Image controls',
         'Split Screen',
         'Side-by-Side',
@@ -360,7 +360,7 @@ test('the real browser API keeps the full interface and handles denial explicitl
     test.info().annotations.push({ type: 'native-fullscreen', description: 'granted' });
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('.app')).not.toHaveClass(/comparison-minimalist/);
-    await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Manage Images', exact: true })).toBeVisible();
     await expect(page.getByTestId('stage')).toBeVisible();
     await options(page);
     await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click();

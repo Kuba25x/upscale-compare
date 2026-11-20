@@ -81,9 +81,20 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
     const offline = await launch(browser);
     await expect(offline.getByTestId('stage')).toHaveCount(0);
     const file = imageFile('Fresh.png');
-    await offline.getByTestId('file-input').setInputFiles([file, imageFile('Fresh B.png', 1)]);
+    const other = imageFile('Fresh B.png', 1);
+    await offline.getByTestId('file-input').setInputFiles([file, other]);
     expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
     await expectLocalComparisonUI(offline);
+    await offline.getByRole('button', { name: 'Manage Images', exact: true }).click();
+    const dialog = offline.getByRole('dialog', { name: 'Your images' });
+    await dialog.getByRole('button', { name: 'Remove image Fresh B.png' }).click();
+    await expect(offline.getByTestId('stage')).toHaveCount(0);
+    const chooser = offline.waitForEvent('filechooser');
+    await dialog.getByRole('button', { name: 'Add images' }).click();
+    await (await chooser).setFiles(other);
+    await expect(dialog.getByRole('button', { name: 'Remove image Fresh B.png' })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Close dialog' }).click();
+    expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
     await offline.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
     await expect(
       offline.getByRole('button', { name: 'Side-by-Side', exact: true }),

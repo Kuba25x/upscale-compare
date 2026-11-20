@@ -50,7 +50,7 @@ const Originals = registerPlugin<{
   }): Promise<{ images: Original[] }>;
   restore(): Promise<{ session: unknown; paths: Record<string, string> }>;
   paths(options: { ids: string[] }): Promise<{ paths: Record<string, string> }>;
-  save(options: { session: AndroidSession }): Promise<{ warning?: string }>;
+  save(options: { session: AndroidSession; draftId?: string }): Promise<{ warning?: string }>;
   discard(options: { ids: string[] }): Promise<void>;
 }>('Originals');
 
@@ -99,12 +99,18 @@ async function restoreOnce() {
   return { ...checked, images: checked.images.map((i) => materialize(i, paths)) };
 }
 export const restoreAndroidSession = () => (restorePromise ??= restoreOnce());
-export async function saveAndroidSession(session: {
-  images: LocalImage[];
-  config: AndroidSession['config'];
-  metadata: AndroidSession['metadata'];
-}) {
-  return Originals.save({ session: sessionSchema.parse(session) });
+export async function saveAndroidSession(
+  session: {
+    images: LocalImage[];
+    config: AndroidSession['config'];
+    metadata: AndroidSession['metadata'];
+  },
+  draft?: LocalImage,
+) {
+  return Originals.save({
+    session: sessionSchema.parse(session),
+    ...(draft && { draftId: imageSchema.parse(draft).id }),
+  });
 }
 export async function discardOriginals(images: LocalImage[]) {
   await Originals.discard({ ids: images.map((i) => (i as AndroidImage).id) });

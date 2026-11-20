@@ -85,6 +85,11 @@ comparison: select local files again. Browser storage can be evicted; reconnect
 if the app cannot open offline. Updates wait until all existing tabs and app
 windows close and never automatically reload an active comparison.
 
+On the web, installed PWAs, and Android, open **Manage Images** to add, replace,
+or remove screenshots. **Clear comparison** empties the list so you can add new
+screenshots in the same dialog. Closing the dialog returns to the comparison
+with two to four images, or to **Upload Images** with fewer than two.
+
 [Installation, supported browsers and limits](docs/PWA.md) ·
 [Manual release and phone checklist](docs/PWA_RELEASE_QA.md)
 

@@ -26,6 +26,8 @@ public class OriginalsPlugin extends Plugin {
   private File root;
   private AtomicFile journal;
   private JSONObject session;
+  // A one-image draft belongs to the current WebView and is never written to the journal.
+  private String draftId;
   private boolean initialized;
 
   @Override
@@ -116,6 +118,7 @@ public class OriginalsPlugin extends Plugin {
   private void sweep() throws Exception {
     Set<String> keep = retained(session);
     keep.addAll(pending);
+    if (draftId != null) keep.add(draftId);
     OriginalPolicy.sweep(root, keep);
   }
 
@@ -181,7 +184,15 @@ public class OriginalsPlugin extends Plugin {
         call,
         () -> {
           JSONObject next = call.getObject("session");
+          String nextDraft = call.getString("draftId");
           validate(next);
+          if (nextDraft != null
+              && (next.getJSONArray("images").length() != 0
+                  || !(nextDraft.equals(draftId)
+                      || pending.contains(nextDraft)
+                      || retained(session).contains(nextDraft))
+                  || !original(nextDraft).isFile()))
+            throw new IOException("A draft original is unavailable.");
           byte[] bytes = next.toString().getBytes(StandardCharsets.UTF_8);
           if (bytes.length > 128 * 1024) throw new IOException("Session metadata is too large.");
           FileOutputStream out = null;
@@ -194,6 +205,8 @@ public class OriginalsPlugin extends Plugin {
             throw e;
           }
           session = next;
+          draftId = nextDraft;
+          if (draftId != null) pending.remove(draftId);
           pending.removeAll(retained(next));
           try {
             sweep();

@@ -312,3 +312,11 @@ API 36 instrumentation uses a separate `.systemuitest` application id and synthe
 originals to protect user data. The Android workflow uploads native reports/screenshots
 and a debug APK. See [display behavior and native tests](docs/ANDROID.md#edge-to-edge-display-and-compact-landscape-interface)
 for the policy matrix, reproducible test commands and remaining Xiaomi qualification.
+
+## Local image management
+
+The website, installed PWAs, and Android APK use **Manage Images** once a
+comparison is active. The dialog supports individual removal and clearing,
+and remains open during edits and imports. Closing with fewer than two images
+returns to **Upload Images**. Android stores only complete or empty sessions
+and releases draft originals on close or restart.

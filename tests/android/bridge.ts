@@ -114,6 +114,7 @@ export async function installAndroidBridge(
           }
           if (method === 'paths') return { paths };
           if (method === 'save') {
+            win.draftId = args.draftId;
             localStorage.setItem('test-session', JSON.stringify(args.session));
             return {};
           }

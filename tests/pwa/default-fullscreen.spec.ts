@@ -125,7 +125,7 @@ for (const sample of [
     for (const name of [
       'Split Screen',
       'Side-by-Side',
-      'Upload Images',
+      'Manage Images',
       'Fit',
       'Zoom out',
       'Zoom in',
@@ -159,10 +159,19 @@ for (const sample of [
     await safe(page, page.getByRole('dialog'), sample);
     await page.getByLabel('Game title').fill('Safe installed fullscreen');
     await page.getByRole('button', { name: 'Save details', exact: true }).click();
-    // The standard upload dialog and picker cancellation retain the comparison.
-    await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
-    await safe(page, page.getByRole('dialog'), sample);
-    await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+    await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Your images' });
+    await safe(page, dialog, sample);
+    await safe(page, dialog.getByRole('button', { name: 'Remove image B.png' }), sample);
+    await dialog.getByRole('button', { name: 'Clear comparison' }).click();
+    await expect(dialog).toContainText('No images in this comparison.');
+    await expect(page.getByTestId('stage')).toHaveCount(0);
+    const chooser = page.waitForEvent('filechooser');
+    await safe(page, dialog.getByRole('button', { name: 'Add images' }), sample);
+    await dialog.getByRole('button', { name: 'Add images' }).click();
+    await (await chooser).setFiles([imageFile('C.png'), imageFile('D.png', 1)]);
+    await expect(dialog.getByRole('button', { name: 'Remove image D.png' })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
     await expect(page.getByTestId('stage')).toBeVisible();
     await page.screenshot({ path: test.info().outputPath(`${sample.name}.png`) });
   });
@@ -305,7 +314,7 @@ test('a desktop installed window that honors manifest fullscreen keeps full cont
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('B.png', 1)]);
   await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
   await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
-  await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Manage Images', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Minimalist mode', exact: true }).click();
   await expect(page.locator('.app')).toHaveClass(/comparison-minimalist/);
   await page.getByRole('button', { name: 'Show controls', exact: true }).click();
