@@ -109,6 +109,8 @@ repository metadata or signing keys.
 [The public Android Preview](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
 provides the debug APK, SHA256SUMS, COMMIT, corresponding source and dependency
 notices. Users can install it directly without GitHub Actions or build tools.
+Maintainers can follow the [Android Preview publishing guide](ANDROID_PREVIEW.md)
+to build and approve a new debug pre-release from `main`.
 
 The separate **Android debug APK** workflow runs on relevant PR/branch changes
 and workflow_dispatch. It has read-only repository permission, no backend secrets

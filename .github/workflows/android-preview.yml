@@ -1,0 +1,83 @@
+name: Publish Android Preview
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Exact preview tag from android/release.properties (e.g. v0.1.0-android-preview.2)'
+        type: string
+        required: true
+      source_commit:
+        description: 'Full SHA of the reviewed main tip'
+        type: string
+        required: true
+      publish:
+        description: 'Request publication after build and environment reviewer approval'
+        type: boolean
+        default: false
+        required: true
+
+permissions: {}
+concurrency:
+  group: android-preview-publication
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: github.repository == 'Kuba25x/upscale-compare' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+      - name: Validate reviewed main and version inputs
+        env:
+          PREVIEW_TAG: ${{ inputs.tag }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: node scripts/android-preview-publish.mjs preflight
+
+  build:
+    needs: preflight
+    permissions:
+      contents: read
+    uses: ./.github/workflows/android.yml
+    with:
+      preview_tag: ${{ inputs.tag }}
+
+  publish:
+    if: inputs.publish && github.repository == 'Kuba25x/upscale-compare' && github.ref == 'refs/heads/main' && github.ref_protected && github.run_attempt == '1'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: android-preview
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+      - name: Require an artifact from this run
+        env:
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact_id }}
+        run: '[[ "$ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: release-artifacts/preview
+          merge-multiple: true
+      - name: Verify approval and publish the verified candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_TAG: ${{ inputs.tag }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          PREVIEW_CHECKSUM_DIGEST: ${{ needs.build.outputs.checksum_digest }}
+        run: node scripts/android-preview-publish.mjs publish release-artifacts/preview

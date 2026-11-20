@@ -41,13 +41,13 @@ export function fingerprint(value) {
     throw new Error('A SHA-256 signing certificate fingerprint is required');
   return normalized;
 }
-export function checkBadging(text, version) {
+export function checkBadging(text, version, debuggable = false) {
   const line = text.split('\n').find((s) => s.startsWith('package: ')) || '';
   if (
     !line.includes("name='" + applicationId + "'") ||
     !line.includes("versionCode='" + version.versionCode + "'") ||
     !line.includes("versionName='" + version.versionName + "'") ||
-    text.includes('application-debuggable') ||
+    text.includes('application-debuggable') !== debuggable ||
     !text.includes("sdkVersion:'24'") ||
     !text.includes("targetSdkVersion:'36'")
   ) {

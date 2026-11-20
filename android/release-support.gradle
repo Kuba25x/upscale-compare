@@ -1,13 +1,14 @@
-// Release-only inventory and notices. No production signing configuration lives in Gradle.
+// Distribution inventory and notices. No production signing configuration lives in Gradle.
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 
-def releaseReport = layout.buildDirectory.file('reports/release-dependencies.json')
-tasks.register('releaseDependencyNotices') {
+def variant = providers.gradleProperty('previewDistribution').orNull == 'true' ? 'debug' : 'release'
+def distributionReport = layout.buildDirectory.file("reports/${variant}-dependencies.json")
+tasks.register("${variant}DependencyNotices") {
     outputs.upToDateWhen { false }
     doLast {
-        def artifacts = configurations.releaseRuntimeClasspath.incoming.artifactView {
+        def artifacts = configurations.getByName("${variant}RuntimeClasspath").incoming.artifactView {
             componentFilter { it instanceof ModuleComponentIdentifier }
         }.artifacts.artifacts
         def inventory = []
@@ -50,15 +51,17 @@ tasks.register('releaseDependencyNotices') {
             }
         }
         inventory = inventory.unique { it.coordinate }.sort { it.coordinate }
-        def report = releaseReport.get().asFile
+        def report = distributionReport.get().asFile
         report.parentFile.mkdirs()
         report.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(inventory)) + '\n'
         def original = rootProject.file('../dist-android/third-party-licenses.txt').getText('UTF-8')
-        def notices = original + '\nResolved Android release runtime components (Apache-2.0):\n' +
+        def notices = original + "\nResolved Android ${variant} runtime components (Apache-2.0):\n" +
             inventory.collect { it.coordinate + ' — ' + it.license + '\nSource: ' + it.source + '\n' }.join('\n') +
             upstreamNotices.join('\n')
         rootProject.file('../dist-android/third-party-licenses.txt').setText(notices, 'UTF-8')
         file('src/main/assets/public/third-party-licenses.txt').setText(notices, 'UTF-8')
     }
 }
-tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn('releaseDependencyNotices') }
+tasks.matching { it.name == "pre${variant.capitalize()}Build" }.configureEach {
+    dependsOn("${variant}DependencyNotices")
+}

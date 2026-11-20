@@ -5,6 +5,8 @@ is distributed as a **debug APK**, not an output of the owner-signing process be
 This runbook covers future owner-signed releases; the tools do not create public
 tags or GitHub Releases. Device qualification remains limited; publication is not
 a stability or color-accuracy certification.
+For publishing a debug APK with GitHub Actions, see the
+[Android Preview publishing guide](ANDROID_PREVIEW.md).
 
 ## Trust and signing model
 
