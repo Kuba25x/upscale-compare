@@ -196,8 +196,9 @@ exact source SHA; compilation alone is not an instrumentation pass.
 
 ## Future owner-signed release preparation
 
-The public debug preview uses 0.1.0-android-preview.1 (versionCode 2), declared in
-android/release.properties. Future distributed versions must increase versionCode.
+The next Android Preview candidate uses 0.1.0-android-preview.2 (versionCode 3),
+declared in [android/release.properties](../android/release.properties).
+The published debug preview uses 0.1.0-android-preview.1 (versionCode 2).
 A separate read-only release workflow produces an unsigned candidate, source/dependency
 archive, notices, manifest and SHA-256 checksums. It neither tags nor publishes.
 The owner must generate/retain the permanent key on a trusted computer, sign
