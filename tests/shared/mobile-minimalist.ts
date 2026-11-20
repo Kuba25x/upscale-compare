@@ -101,7 +101,6 @@ async function minimal(page: Page, mode = 'Split Screen') {
     '.image-badge',
     '.alignment-warning',
     '.inspection-toolbar',
-    '.demo-notice',
     '.published-notice',
   ])
     await expect(page.locator(`${selector}:visible`)).toHaveCount(0);

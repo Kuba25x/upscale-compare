@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 
 const unexpectedRequests = new WeakMap<Page, string[]>();
 test.beforeEach(async ({ page, baseURL }) => {
@@ -36,21 +37,19 @@ async function openDemo(page: Page) {
   await expect(page.getByTestId('stage')).toBeVisible();
 }
 
-test('uploads screenshots locally and clearly explains unavailable sharing', async ({ page }) => {
+test('uploads screenshots locally with a clean landing screen and header', async ({ page }) => {
   await page.goto('./');
-  await expect(page.locator('#demo-sharing-note')).toContainText(
-    'Public sharing is not available yet',
-  );
+  await expect(
+    page.getByRole('button', { name: 'Your images stay in this browser.' }),
+  ).toBeVisible();
+  await expectLocalComparisonUI(page);
   const heading = await page.getByRole('heading', { level: 1 }).boundingBox();
   expect(heading!.x + heading!.width / 2).toBeCloseTo(page.viewportSize()!.width / 2, 0);
   await page
     .getByTestId('file-input')
     .setInputFiles([imageFile(), imageFile('FSR Quality.png', 1)]);
   await expect(page.getByTestId('stage')).toBeVisible();
-  const share = page.getByRole('button', { name: 'Share Comparison', exact: true });
-  await expect(share).toBeDisabled();
-  await expect(share).toHaveAccessibleDescription(/Public sharing is not available yet/);
-  await expect(page.locator('#demo-sharing-note')).toBeVisible();
+  await expectLocalComparisonUI(page);
   await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeEnabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     page.viewportSize()!.width,
@@ -152,10 +151,10 @@ test('keeps privacy information, pixel controls, keyboard shortcuts, and fullscr
   await openDemo(page);
   await page.getByRole('button', { name: 'Keyboard shortcuts', exact: true }).click();
   await page.getByRole('button', { name: 'Privacy', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('Frontend-only demo');
   await expect(page.getByRole('dialog')).toContainText(
-    'No sharing service or verification widget is contacted',
+    'Original images, labels, and comparison details stay in your browser and are never uploaded automatically.',
   );
+  await expect(page.getByRole('dialog')).not.toContainText(/Demo|sharing is (?:not |un)available/i);
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page.locator('body').click({ position: { x: 2, y: 200 } });
   await page.keyboard.press('4');

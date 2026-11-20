@@ -86,7 +86,6 @@ async function assertFullscreen(page: Page, mode: string) {
     '.image-badge',
     '.alignment-warning',
     '.inspection-toolbar',
-    '.demo-notice',
     '.landing-footer',
   ])
     await expect(page.locator(`${selector}:visible`)).toHaveCount(0);
@@ -152,13 +151,18 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
       .evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().x));
     expect(buttonBounds.at(-1)).toBe(Math.max(...buttonBounds));
     await page.getByRole('button', { name: '200%', exact: true }).click();
+    await expect.poll(async () => (await savedConfig(page)).view.zoom).toBe(2);
+    const beforePan = await savedConfig(page);
     const normal = (await page.getByTestId('stage').boundingBox())!;
     await pan(page, normal.x + 50, normal.y + normal.height / 2, 24, 17);
     if (mode === 'Split Screen') {
       await page.getByRole('slider').focus();
       await page.keyboard.press('ArrowRight');
+      await expect.poll(async () => (await savedConfig(page)).divider).not.toBe(beforePan.divider);
     }
-    await expect.poll(async () => (await savedConfig(page)).view.zoom).toBe(2);
+    await expect
+      .poll(async () => (await savedConfig(page)).view.center)
+      .not.toEqual(beforePan.view.center);
     const before = await savedConfig(page);
     await snapshotImages(page);
     const requestCount = requests.length;

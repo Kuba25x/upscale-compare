@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { openComparison } from './fixtures';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 test('mobile keeps all main controls accessible without horizontal scrolling', async ({ page }) => {
   await page.goto('/');
   await page.screenshot({ path: 'test-results/landing-mobile.png' });
   await openComparison(page);
-  for (const name of ['Split Screen', 'Side-by-Side', 'Share Comparison', 'Upload Images'])
+  await expectLocalComparisonUI(page);
+  for (const name of ['Split Screen', 'Side-by-Side', 'Upload Images'])
     await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.getByRole('button', { name: '100%', exact: true }).tap();

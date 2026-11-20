@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 
 const files = [imageFile('A.png', 0), imageFile('B.png', 1), imageFile('C.png', 0)];
 async function open(page: Page) {
@@ -192,6 +193,7 @@ test('compact image controls allow selection, swapping and labels, with modal an
   const trigger = page.getByRole('button', { name: 'Image controls' });
   await trigger.click();
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expectLocalComparisonUI(page);
   await page.getByLabel('Select image A', { exact: true }).selectOption('2');
   await expect.poll(async () => (await config(page)).selected).toEqual([2, 1]);
   await page.getByLabel('Label for image A').fill('Alternative A');
@@ -245,12 +247,14 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
     for (const zoom of [1, 2, 4]) {
       await page.getByLabel('Zoom preset', { exact: true }).selectOption(String(zoom));
       await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', String(zoom));
+      await expect.poll(async () => (await config(page)).view.zoom).toBe(zoom);
+      const centerBeforePan = (await config(page)).view.center;
       const stage = await box(page, '.stage');
       await page.mouse.move(stage.x + 150, stage.y + 100);
       await page.mouse.down();
       await page.mouse.move(stage.x + 170, stage.y + 120);
       await page.mouse.up();
-      await expect.poll(async () => (await config(page)).view.zoom).toBe(zoom);
+      await expect.poll(async () => (await config(page)).view.center).not.toEqual(centerBeforePan);
       const before = await config(page);
       await page.getByRole('button', { name: 'Enter fullscreen' }).click();
       await page.setViewportSize({ width: 412, height: 900 });
@@ -265,6 +269,7 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
       await expect.poll(() => config(page)).toEqual(before);
     }
     await page.getByRole('button', { name: 'Fit', exact: true }).click();
+    await expect.poll(async () => (await config(page)).view.zoom).toBeNull();
     const before = await config(page);
     await page.getByRole('button', { name: 'Enter fullscreen' }).click();
     await expect

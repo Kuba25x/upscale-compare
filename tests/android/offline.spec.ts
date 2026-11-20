@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { installAndroidBridge } from './bridge';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 
 for (const [width, height] of [
   [3840, 2160],
@@ -25,11 +26,13 @@ for (const [width, height] of [
       { name: 'Original B.png', type: 'image/png', width, height, size: image.buffer.length },
     ]);
     await page.goto('/');
+    await expect(
+      page.getByRole('button', { name: 'Your images stay on this device.' }),
+    ).toBeVisible();
+    await expectLocalComparisonUI(page);
     await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
     await expect(page.getByTestId('stage')).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: 'Share Comparison', exact: true }),
-    ).toBeDisabled();
+    await expectLocalComparisonUI(page);
     await expect
       .poll(() =>
         page

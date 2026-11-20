@@ -1,3 +1,3 @@
 import { mobileLandscapeTests } from '../shared/mobile-landscape';
 
-mobileLandscapeTests(true);
+mobileLandscapeTests();

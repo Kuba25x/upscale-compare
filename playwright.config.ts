@@ -8,7 +8,7 @@ export default defineConfig({
   expect: { timeout: 6000 },
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5181',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -82,9 +82,16 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'npm run dev -- --port 5173',
+      command: 'npm run dev -- --port 5181 --strictPort',
+      url: 'http://127.0.0.1:5181',
+      reuseExistingServer: false,
+      env: { VITE_LOCAL_SHARING_TEST_UI: 'false' },
+    },
+    {
+      command: 'npm run dev -- --host 127.0.0.1 --port 5173 --strictPort',
       url: 'http://127.0.0.1:5173',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
+      env: { VITE_LOCAL_SHARING_TEST_UI: 'true' },
     },
     {
       command: `npm run db:local -- --persist-to ${testState} && npm run costs:local -- --persist-to ${testState} && npm run dev:api -- --persist-to ${testState}`,

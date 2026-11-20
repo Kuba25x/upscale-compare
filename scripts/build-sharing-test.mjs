@@ -9,6 +9,7 @@ Object.assign(process.env, {
   VITE_BASE_PATH: settings.basePath,
   VITE_API_URL: settings.apiOrigin,
   VITE_DEMO_MODE: 'false',
+  VITE_LOCAL_SHARING_TEST_UI: 'true',
 });
 for (const [directory, siteKey] of [
   ['with-key', settings.siteKey],

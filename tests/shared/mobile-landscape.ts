@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
+import { expectLocalComparisonUI } from './local-comparison';
 
 async function open(page: Page) {
   await page.goto('./');
@@ -35,7 +36,7 @@ async function sourceCenter(page: Page) {
   });
 }
 
-export function mobileLandscapeTests(demo: boolean) {
+export function mobileLandscapeTests() {
   test.describe('mobile landscape uploads and presentation', () => {
     test.beforeEach(async ({ page, browserName }, info) =>
       installWebDisplay(
@@ -108,7 +109,7 @@ export function mobileLandscapeTests(demo: boolean) {
         });
       }
     });
-    test('keeps A/B, labels, swapping, metadata and the existing sharing policy in the image panel', async ({
+    test('keeps A/B, labels, swapping and metadata without sharing controls in the image panel', async ({
       page,
     }) => {
       await open(page);
@@ -119,15 +120,7 @@ export function mobileLandscapeTests(demo: boolean) {
       await page.getByRole('button', { name: 'Swap images', exact: true }).click();
       await expect(page.getByLabel('Select image B', { exact: true })).toHaveValue('2');
       await expect(page.getByLabel('Label for image B')).toHaveValue('Native Ultra');
-      const share = page.getByRole('button', { name: 'Share Comparison', exact: true });
-      expect(await share.count()).toBe(1);
-      await share.scrollIntoViewIfNeeded();
-      await expect(share).toBeInViewport();
-      if (demo) {
-        await expect(share).toBeDisabled();
-        await expect(share).toHaveAccessibleDescription(/Public sharing is not available yet/);
-        await expect(page.locator('#demo-sharing-note')).toBeVisible();
-      } else await expect(share).toBeEnabled();
+      await expectLocalComparisonUI(page);
       await page.keyboard.press('Escape');
       await expect(page.locator('.images-toggle')).toBeFocused();
       await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
@@ -138,7 +131,7 @@ export function mobileLandscapeTests(demo: boolean) {
       await page.getByRole('button', { name: 'Save details', exact: true }).click();
       await page.setViewportSize({ width: 412, height: 900 });
       await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
-      await expect(page.locator('.header-actions .share-button')).toHaveCount(1);
+      await expectLocalComparisonUI(page);
       await expect(page.getByLabel('Label for image B')).toHaveValue('Native Ultra');
     });
     for (const mode of ['Split Screen', 'Side-by-Side'])

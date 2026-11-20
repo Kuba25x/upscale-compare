@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { imageFile } from '../e2e/fixtures';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { control, originalBytes, serve } from './helpers';
 
 test('installed Linux Chromium window uses the manifest launch URL and reopens offline', async ({
@@ -70,6 +71,7 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
       .getByTestId('file-input')
       .setInputFiles([imageFile('Private.png'), imageFile('B.png', 1)]);
     await expect(app.getByTestId('stage')).toBeVisible();
+    await expectLocalComparisonUI(app);
     await app.screenshot({ path: testInfo.outputPath('installed-online.png') });
     await browser.close();
     browser = await chromium.launchPersistentContext(join(directory, 'profile'), {
@@ -81,6 +83,7 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
     const file = imageFile('Fresh.png');
     await offline.getByTestId('file-input').setInputFiles([file, imageFile('Fresh B.png', 1)]);
     expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
+    await expectLocalComparisonUI(offline);
     await offline.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
     await expect(
       offline.getByRole('button', { name: 'Side-by-Side', exact: true }),

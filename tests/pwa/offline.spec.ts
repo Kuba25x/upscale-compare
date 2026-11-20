@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { readFile } from 'node:fs/promises';
 import { cacheSnapshot, control, originalBytes, serve } from './helpers';
+import { expectLocalComparisonUI } from '../shared/local-comparison';
 
 test.beforeEach(async ({ request }) => serve(request));
 
@@ -82,9 +83,7 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
       await cdp.detach();
     }
   }
-  await expect(
-    offline.getByRole('button', { name: 'Share Comparison', exact: true }),
-  ).toBeDisabled();
+  await expectLocalComparisonUI(offline);
   if (isMobile) {
     await offline.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
     await expect(offline.locator('.app')).toHaveClass(/comparison-minimalist/);

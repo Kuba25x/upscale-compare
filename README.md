@@ -19,7 +19,6 @@ pair, and inspect the originals locally.
 > is an early preview distributed as a **debug APK**.
 > **Share Comparison is not publicly available** in the web app or Android APK.
 
-
 ## Made for close inspection
 
 - **Split Screen** with a draggable divider, or synchronized **Side-by-Side**.
