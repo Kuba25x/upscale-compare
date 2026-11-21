@@ -2,11 +2,12 @@ import { expect, test } from '@playwright/test';
 import { imageFile } from './fixtures';
 import { expectPhonePortraitHeader, helpDialog, manageImages } from '../shared/phone-controls';
 import { installWebDisplay } from '../shared/web-display';
+import { expectCenteredBrand } from '../shared/layout-alignment';
 
 const files = ['A', 'B', 'C', 'D'].map((name, i) => imageFile(`${name}.png`, i % 2));
 
 for (const width of [320, 360, 390, 430]) {
-  test(`portrait at ${width}px fills the safe width and fits complete labels and touch targets in one row`, async ({
+  test(`portrait at ${width}px centers the landing brand and fits comparison controls in one row`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 820 });
@@ -15,8 +16,10 @@ for (const width of [320, 360, 390, 430]) {
       await page.addStyleTag({
         content: '.app-header { font-family: "DejaVu Sans", system-ui; }',
       });
+    await expectCenteredBrand(page);
     await page.getByTestId('file-input').setInputFiles(files);
     await expectPhonePortraitHeader(page, { icons: width > 320 });
+    await expectCenteredBrand(page);
     const header = page.locator('.app-header');
     expect((await header.boundingBox())!.height).toBeLessThan(96);
     const split = header.getByRole('button', { name: 'Split Screen' });
@@ -34,6 +37,20 @@ for (const width of [320, 360, 390, 430]) {
     await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
   });
 }
+
+test('landscape centers the landing brand and keeps the comparison brand at the start', async ({
+  page,
+}) => {
+  await installWebDisplay(page, 'screen');
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto('/');
+  await expect(page.locator('.app')).toHaveClass(/comparison-compact/);
+  await expectCenteredBrand(page);
+  await page.getByTestId('file-input').setInputFiles(files);
+  const logo = page.locator('.app-header .brand-mark');
+  await expect(page.getByTestId('stage')).toBeVisible();
+  expect((await logo.boundingBox())!.x).toBeCloseTo(8, 0);
+});
 
 test('portrait edits all screenshot labels and keeps the comparison while visiting Help', async ({
   page,

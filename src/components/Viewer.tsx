@@ -12,7 +12,16 @@ import {
 } from 'react';
 import { snapshotContacts, sameContacts, samePositions } from '../lib/contact-snapshot';
 import type { Point } from '../lib/geometry';
-import { Expand, Info, Keyboard, Minus, Plus, Shrink } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Expand,
+  Info,
+  Keyboard,
+  Minus,
+  Plus,
+  Shrink,
+} from 'lucide-react';
 import type { Config, LocalImage, View } from '../../shared/model';
 import {
   gestureDiagnostics,
@@ -866,7 +875,8 @@ export function Viewer({
               }}
             >
               <span className="divider-handle" aria-hidden="true">
-                ‹<span />›
+                <ChevronLeft size={16} />
+                <ChevronRight size={16} />
               </span>
             </div>
           </>

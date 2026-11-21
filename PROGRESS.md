@@ -337,3 +337,8 @@ The APK generates small previews on demand from its private PNG, JPEG, and WebP
 originals. The native bridge returns an orientation-correct preview up to 128 px
 on the longest edge. Original files and the session journal retain their existing
 formats. The in-memory preview cache follows original removal and clearing.
+
+## Shared visual alignment
+
+The landing header centers the logo and title together within its safe padding.
+The Split Screen handle centers two SVG chevrons over the full-height divider.
