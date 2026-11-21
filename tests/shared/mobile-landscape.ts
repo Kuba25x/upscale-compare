@@ -63,6 +63,7 @@ export function mobileLandscapeTests() {
         await expect(page.locator('.app')).toHaveClass(/comparison-compact/);
         await expect(page.locator('.image-selection-bar')).toBeHidden();
         await expect(page.locator('.image-selection-bar')).not.toHaveClass(/image-panel-open/);
+        await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
         const header = (await page.locator('.app-header').boundingBox())!;
         expect(header.height).toBe(52);
         const stage = (await page.getByTestId('stage').boundingBox())!;
@@ -76,7 +77,6 @@ export function mobileLandscapeTests() {
           'Zoom out',
           'Zoom in',
           'Comparison details',
-          'Keyboard shortcuts',
           'Enter fullscreen',
         ]) {
           const control = page.getByRole('button', { name, exact: true });
@@ -132,7 +132,9 @@ export function mobileLandscapeTests() {
       await page.setViewportSize({ width: 412, height: 900 });
       await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
       await expectLocalComparisonUI(page);
-      await expect(page.getByLabel('Label for image B')).toHaveValue('Native Ultra');
+      await expect(page.getByLabel('Select image B').locator('option:checked')).toHaveText(
+        'Native Ultra',
+      );
     });
     for (const mode of ['Split Screen', 'Side-by-Side'])
       test(`${mode}: preserves layers, source center, divider and physical pixel zoom through rotation`, async ({

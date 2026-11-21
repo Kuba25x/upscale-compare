@@ -1,4 +1,5 @@
 import { test, expect, chromium, type BrowserContext } from '@playwright/test';
+import { renameSelectedImage } from '../shared/phone-controls';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -49,7 +50,7 @@ test('a full browser/profile restart starts offline with an empty local session'
     await session.detach();
     const file = imageFile('Do not restore this name.png');
     await first.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1)]);
-    await first.getByLabel('Label for image A').fill('Do not restore this label');
+    await renameSelectedImage(first, 'A', file.name, 'Do not restore this label');
     await first.getByRole('button', { name: 'Comparison details', exact: true }).click();
     await first.getByLabel('Game title').fill('Do not restore metadata');
     await first.getByRole('button', { name: 'Save details', exact: true }).click();
@@ -61,7 +62,9 @@ test('a full browser/profile restart starts offline with an empty local session'
     await second.getByTestId('file-input').setInputFiles([file, imageFile('New B.png', 1)]);
     await expect(second.getByTestId('stage')).toBeVisible();
     expect(await originalBytes(second)).toEqual(Array.from(file.buffer));
-    await expect(second.getByLabel('Label for image A')).toHaveValue('Do not restore this name');
+    await expect(second.getByLabel('Select image A').locator('option:checked')).toHaveText(
+      'Do not restore this name',
+    );
     await second.getByRole('button', { name: 'Comparison details', exact: true }).click();
     await expect(second.getByLabel('Game title')).toHaveValue('');
   } finally {

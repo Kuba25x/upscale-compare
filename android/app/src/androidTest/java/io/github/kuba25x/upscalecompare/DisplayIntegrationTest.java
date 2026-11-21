@@ -371,6 +371,38 @@ public class DisplayIntegrationTest {
                 + "; })()"));
   }
 
+  private void editPortraitLabel() throws Exception {
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    "(() => { const app=document.querySelector('.comparison-phone-portrait');"
+                        + " if(!app) return false;"
+                        + " const m=app.querySelector('.mode-controls').getBoundingClientRect();"
+                        + " const a=app.querySelector('.header-actions').getBoundingClientRect();"
+                        + " return Math.abs(m.y+m.height/2-a.y-a.height/2)<2"
+                        + " && m.y>=parseFloat(getComputedStyle(app).getPropertyValue('--comparison-safe-top'))"
+                        + " && !app.querySelector('.image-selection-bar input')"
+                        + " && !app.querySelector('.inspection-toolbar [aria-label=\"Keyboard shortcuts\"]'); })()")));
+    click(".header-actions [aria-label=\"Manage Images\"]");
+    assertEquals(
+        "true",
+        js(
+            "(() => { const input=document.querySelector('input[aria-label=\"Label for 1.png\"]');"
+                + " Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set(input, 'Portrait original');"
+                + " input.dispatchEvent(new Event('input', {bubbles:true})); return true; })()"));
+    click(".manage-intro .phone-help");
+    eventually(() -> assertEquals("2", js("document.querySelectorAll('dialog[open]').length")));
+    shell("input keyevent KEYCODE_BACK");
+    eventually(() -> assertEquals("1", js("document.querySelectorAll('dialog[open]').length")));
+    click("dialog[open] button[aria-label=\"Close dialog\"]");
+    eventually(
+        () ->
+            assertEquals(
+                "\"Portrait original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt")));
+  }
+
   @Test
   public void realWindowBarsCutoutsPickerResumeBackAndRecreation() throws Exception {
     seedIsolatedSession();
@@ -380,6 +412,7 @@ public class DisplayIntegrationTest {
       eventually(() -> assertEquals("true", js("!!document.querySelector('.stage')")));
       bars(true, true);
       screenshot("portrait-normal");
+      editPortraitLabel();
       click(".fullscreen-button");
       bars(false, true);
       assertEdgeToEdgeAndSafeExit();
@@ -503,6 +536,8 @@ public class DisplayIntegrationTest {
                   "false",
                   js(
                       "document.querySelector('.app').classList.contains('comparison-minimalist')")));
+      assertEquals(
+          "\"Portrait original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt"));
     }
   }
 }

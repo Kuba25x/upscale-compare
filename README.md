@@ -75,8 +75,9 @@ either version can import them offline.
 1. [Open Upscale Compare](https://kuba25x.github.io/upscale-compare/) online and choose
    two to four local PNG, JPEG or static WebP screenshots. Compare in Split Screen
    or Side-by-Side; your originals are never recompressed or uploaded.
-2. For offline use, open **Keyboard shortcuts (?) → Installation and offline**
-   and wait for **App resources are ready offline**.
+2. For offline use, open **Help & About** on a phone or **Keyboard shortcuts (?)**
+   on a computer. Under **Installation and offline**, wait for **App resources are
+   ready offline**.
 3. In Android Chrome's menu, choose **Install app** or **Add to Home screen** and
    confirm installation. Open the app from its icon. Menu wording varies by browser.
 
@@ -89,6 +90,9 @@ On the web, installed PWAs, and Android, open **Manage Images** to add, replace,
 or remove screenshots. **Clear comparison** empties the list so you can add new
 screenshots in the same dialog. Closing the dialog returns to the comparison
 with two to four images, or to **Upload Images** with fewer than two.
+In phone portrait, edit every screenshot label in **Manage Images**. In phone
+landscape, edit the selected A/B labels in the image controls. **Help & About**
+is available in **Manage Images** and on the phone landing screen.
 
 [Installation, supported browsers and limits](docs/PWA.md) ·
 [Manual release and phone checklist](docs/PWA_RELEASE_QA.md)

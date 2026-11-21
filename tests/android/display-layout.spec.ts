@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { helpDialog, manageImages } from '../shared/phone-controls';
 
 const files = [imageFile('A.png', 0), imageFile('B.png', 1), imageFile('C.png', 0)];
 async function open(page: Page) {
@@ -105,6 +106,85 @@ async function assertBars(page: Page, status: boolean, navigation: boolean) {
 async function box(page: Page, selector: string) {
   return (await page.locator(selector).boundingBox())!;
 }
+
+test('portrait phone controls respect cutouts and renamed originals survive WebView reload', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 820 });
+  await open(page);
+  await insets(page, { cutoutTop: 48, cutoutLeft: 26, gestureRight: 16, navigationBottom: 24 });
+  await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
+  const mode = await box(page, '.mode-controls');
+  const actions = await box(page, '.header-actions');
+  expect(mode.x).toBeGreaterThanOrEqual(26);
+  expect(mode.y).toBeGreaterThanOrEqual(48);
+  expect(actions.x + actions.width).toBeLessThanOrEqual(360 - 16);
+  expect(Math.abs(mode.y + mode.height / 2 - actions.y - actions.height / 2)).toBeLessThan(2);
+  await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
+
+  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('test-session')!));
+  const manage = manageImages(page);
+  await page.getByRole('button', { name: 'Manage Images' }).click();
+  await manage.getByRole('textbox', { name: 'Label for A.png' }).fill('Renamed A');
+  await manage.getByRole('textbox', { name: 'Label for C.png' }).fill('Renamed unselected C');
+  await manage.getByRole('button', { name: 'Help & About' }).click();
+  await expect(helpDialog(page)).toBeVisible();
+  await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
+  await expect(helpDialog(page)).toHaveCount(0);
+  await expect(manage.getByRole('textbox', { name: 'Label for C.png' })).toHaveValue(
+    'Renamed unselected C',
+  );
+  await manage.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Renamed A');
+  await expect
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('test-session')!)))
+    .toEqual({
+      ...before,
+      images: [
+        { ...before.images[0], label: 'Renamed A' },
+        before.images[1],
+        { ...before.images[2], label: 'Renamed unselected C' },
+      ],
+    });
+  await page.reload();
+  await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Renamed A');
+  await page.getByLabel('Select image A').selectOption('2');
+  await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Renamed unselected C');
+});
+
+test('narrow phone portrait wraps Manage Images below the modes when side insets take the space', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 820 });
+  await open(page);
+  await insets(page, { cutoutLeft: 48, gestureRight: 32 });
+  const mode = await box(page, '.mode-controls');
+  const actions = await box(page, '.header-actions');
+  expect(actions.y).toBeGreaterThanOrEqual(mode.y + mode.height);
+  expect(actions.x).toBeGreaterThanOrEqual(48);
+  expect(actions.x + actions.width).toBeLessThanOrEqual(320 - 32);
+  await page.getByRole('button', { name: 'Manage Images' }).tap();
+  await expect(manageImages(page).getByRole('textbox', { name: 'Label for A.png' })).toBeVisible();
+});
+
+test('Android tablet keeps the inline labels and keyboard button in both orientations', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(screen, 'width', { value: 800 });
+    Object.defineProperty(screen, 'height', { value: 1280 });
+  });
+  await page.setViewportSize({ width: 800, height: 1280 });
+  await open(page);
+  await expect(page.getByLabel('Label for image A')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.getByRole('button', { name: 'Image controls' }).click();
+  await expect(page.getByLabel('Label for image A')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
+});
+
 test('all four display modes use inset-aware controls and an edge-to-edge image surface', async ({
   page,
 }) => {
@@ -136,6 +216,8 @@ test('all four display modes use inset-aware controls and an edge-to-edge image 
   await assertBars(page, false, false);
   await expect(page.locator('.comparison-minimalist')).toHaveCount(0);
   expect((await box(page, '.app-header')).height).toBe(52);
+  await expect(page.locator('.app-header .segmented button svg')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
   expect((await box(page, '.stage')).height).toBeGreaterThan(412 * 0.8);
   expect((await box(page, '.stage')).x).toBe(0);
   expect((await box(page, '.stage')).width).toBe(900);

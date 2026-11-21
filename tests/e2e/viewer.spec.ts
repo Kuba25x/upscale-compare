@@ -20,6 +20,8 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   const actions = page.locator('.header-actions');
   await expect(actions.getByRole('button')).toHaveCount(1);
   await expect(actions.getByRole('button', { name: 'Manage Images' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
+  await expect(page.getByLabel('Label for image A')).toBeVisible();
   await page.screenshot({ path: 'test-results/viewer-desktop.png' });
 });
 test('requires two valid images and handles decode errors', async ({ page }) => {

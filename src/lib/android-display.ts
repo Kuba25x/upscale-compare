@@ -1,6 +1,10 @@
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { presentationStyle, type ComparisonPresentation } from './comparison-presentation';
+import {
+  phoneOrientation,
+  presentationStyle,
+  type ComparisonPresentation,
+} from './comparison-presentation';
 
 export interface AndroidDisplayState {
   revision: number;
@@ -45,6 +49,7 @@ export function useAndroidDisplay(onError: (message: string) => void) {
       ready: state.width > 0,
       compact: state.landscape,
       minimalist: state.minimalist,
+      phone: phoneOrientation(screen, state.landscape),
       viewportKey: [
         state.landscape,
         state.layoutTop,

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { renameSelectedImage } from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 import { readFile } from 'node:fs/promises';
 import { cacheSnapshot, control, originalBytes, serve } from './helpers';
@@ -51,7 +52,7 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   expect(await originalBytes(offline)).toEqual(Array.from(jpeg.buffer));
   await offline.getByLabel('Select image B', { exact: true }).selectOption('2');
   await offline.getByLabel('Select image A', { exact: true }).selectOption('0');
-  await offline.getByLabel('Label for image A').fill('Private label');
+  await renameSelectedImage(offline, 'A', file.name, 'Private label');
   await offline.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await offline.getByLabel('Game title').fill('Private game');
   await offline.getByRole('button', { name: 'Save details', exact: true }).click();
@@ -105,7 +106,9 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   await restarted.goto(baseURL!);
   await expect(restarted.getByTestId('stage')).toHaveCount(0);
   await restarted.getByTestId('file-input').setInputFiles([file, imageFile('Fresh B.png', 1)]);
-  await expect(restarted.getByLabel('Label for image A')).toHaveValue('Private Original');
+  await expect(restarted.getByLabel('Select image A').locator('option:checked')).toHaveText(
+    'Private Original',
+  );
   await restarted.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await expect(restarted.getByLabel('Game title')).toHaveValue('');
 });

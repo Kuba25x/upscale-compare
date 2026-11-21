@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openComparisonHelp } from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 
 test('uploads local images when offline worker registration fails', async ({ page, baseURL }) => {
@@ -30,7 +31,7 @@ test('uploads local images when offline worker registration fails', async ({ pag
   expect((await page.request.get(new URL('sw.js', baseURL).href)).ok()).toBeTruthy();
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('FSR.png', 1)]);
   await expect(page.getByTestId('stage')).toBeVisible();
-  await page.getByRole('button', { name: 'Keyboard shortcuts', exact: true }).click();
+  await openComparisonHelp(page);
   await expect(page.getByRole('link', { name: /source/i })).toHaveAttribute(
     'href',
     'https://github.com/Kuba25x/upscale-compare',

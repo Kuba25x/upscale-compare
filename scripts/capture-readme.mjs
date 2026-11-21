@@ -56,8 +56,6 @@ try {
       ]);
     await page.getByTestId('stage').waitFor({ state: 'visible' });
     await page.getByRole('button', { name: mode, exact: true }).click();
-    await page.getByLabel('Label for image A').fill('Synthetic A');
-    await page.getByLabel('Label for image B').fill('Synthetic B');
     await page.locator('body').click({ position: { x: 2, y: 2 } });
     await page.evaluate(async () => {
       await Promise.all([...document.images].map((image) => image.decode()));

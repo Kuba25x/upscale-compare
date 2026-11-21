@@ -12,7 +12,7 @@ Availability depends on the deployed version; source changes do not publish the 
 
 1. Open the link in a normal Chrome tab while online. Use the exact HTTPS address
    ending in `/upscale-compare/`; avoid an in-app or private browser.
-2. Choose two local screenshots. Open **Keyboard shortcuts (?)**, then find
+2. Open **Help & About** on the phone landing screen, then find
    **Installation and offline**. Wait for **App resources are ready offline**.
 3. Open Chrome's menu and choose **Install app** or **Add to Home screen**. Confirm
    **Install** if Chrome offers it. Wording depends on Chrome/Android versions.
@@ -26,6 +26,20 @@ before caching finishes. If only a browser shortcut is offered, do not assume it
 is a standalone installation. Check for an existing installation and record the
 browser/version in the manual acceptance checklist. No automatic install dialog,
 custom banner or separate PWA interface is added by the app.
+
+## Phone controls
+
+The phone layout uses the shorter screen dimension below 600 CSS pixels and, on
+the web, a primary touch pointer. In portrait, the full mode and **Manage Images**
+labels share a row. If safe-area insets or larger text leave too little room,
+**Manage Images** wraps to a second row with its full label and touch target.
+Physical rotation controls the layout while the onscreen keyboard is open.
+
+Rename any screenshot from **Manage Images** in portrait. Landscape retains the
+inline A/B editors. **Help & About** opens the existing guide, with installation,
+offline status and version information. Closing the guide returns to
+**Manage Images** when opened from there. The keyboard shortcuts button remains
+on computer and tablet layouts, and external keyboard shortcuts work on phones.
 
 ## Offline and privacy
 

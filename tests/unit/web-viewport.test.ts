@@ -1,5 +1,13 @@
 import { expect, it } from 'vitest';
 import { compactWebLayout, isLandscapeScreen, mobileWebControls } from '../../src/lib/web-viewport';
+import { phoneOrientation } from '../../src/lib/comparison-presentation';
+
+it('uses the screen short edge and physical orientation for phone presentation', () => {
+  expect(phoneOrientation({ width: 390, height: 844 }, false)).toBe('portrait');
+  expect(phoneOrientation({ width: 844, height: 390 }, true)).toBe('landscape');
+  expect(phoneOrientation({ width: 1280, height: 600 }, true)).toBeUndefined();
+  expect(phoneOrientation({ width: 0, height: 844 }, false)).toBeUndefined();
+});
 
 it('requires the primary coarse pointer, no hover, physical landscape and both size limits', () => {
   for (const [width, height] of [

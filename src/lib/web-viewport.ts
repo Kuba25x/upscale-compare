@@ -1,5 +1,9 @@
 import { useLayoutEffect, useState } from 'react';
-import { WEB_PRESENTATION, type ComparisonPresentation } from './comparison-presentation';
+import {
+  phoneOrientation,
+  WEB_PRESENTATION,
+  type ComparisonPresentation,
+} from './comparison-presentation';
 import { isManifestFullscreenLaunch } from './web-app-context';
 
 export function isLandscapeScreen(
@@ -90,6 +94,7 @@ export function useWebViewport() {
         ready: true,
         compact,
         minimalist: false,
+        phone: input.matches ? phoneOrientation(screen, landscape) : undefined,
         viewportKey: [
           orientation?.type ?? landscape,
           dpr,

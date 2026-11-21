@@ -5,6 +5,7 @@ import { installWebDisplay } from '../shared/web-display';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscreen';
 import { cacheSnapshot, control, serve } from './helpers';
+import { helpDialog } from '../shared/phone-controls';
 
 test.beforeEach(async ({ request }) => {
   // Other PWA suites deliberately leave the shared server on a faulty B release.
@@ -110,7 +111,13 @@ for (const sample of [
     await safe(page, page.getByRole('heading', { name: 'Upscale Compare', exact: true }), sample);
     await safe(page, page.locator('.brand-mark'), sample);
     await safe(page, page.getByRole('button', { name: 'Upload Images', exact: true }), sample);
-    await safe(page, page.locator('.landing-footer button'), sample);
+    const landingHelp = page.getByRole('button', { name: 'Help & About' });
+    await safe(page, landingHelp, sample);
+    await safe(
+      page,
+      page.locator('.landing-footer').getByRole('button', { name: /stay in/ }),
+      sample,
+    );
     expect(await page.evaluate(() => (window as any).fullscreenCalls)).toEqual([]);
     await page.getByTestId('file-input').setInputFiles([imageFile('A.png'), imageFile('B.png', 1)]);
     await expect(page.getByTestId('stage')).toBeVisible();
@@ -130,22 +137,26 @@ for (const sample of [
       'Zoom out',
       'Zoom in',
       'Comparison details',
-      'Keyboard shortcuts',
       'Minimalist mode',
     ])
       await safe(page, page.getByRole('button', { name, exact: true }), sample);
+    await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
     if (sample.width > sample.height) {
       expect((await page.getByTestId('stage').boundingBox())!.x).toBe(0);
       expect((await page.getByTestId('stage').boundingBox())!.width).toBe(sample.width);
       await page.getByRole('button', { name: 'Image controls', exact: true }).click();
+      for (const name of ['Label for image A', 'Label for image B'])
+        await safe(page, page.getByLabel(name, { exact: true }), sample);
+    } else {
+      const [mode, manage] = await Promise.all([
+        page.locator('.mode-controls').boundingBox(),
+        page.locator('.header-actions').boundingBox(),
+      ]);
+      expect(Math.abs(mode!.y + mode!.height / 2 - manage!.y - manage!.height / 2)).toBeLessThan(2);
+      await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
     }
     await expectLocalComparisonUI(page);
-    for (const name of [
-      'Select image A',
-      'Select image B',
-      'Label for image A',
-      'Label for image B',
-    ])
+    for (const name of ['Select image A', 'Select image B'])
       await safe(page, page.getByLabel(name, { exact: true }), sample);
     if (sample.width > sample.height)
       await page.getByRole('button', { name: 'Image controls', exact: true }).click();
@@ -162,6 +173,13 @@ for (const sample of [
     await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Your images' });
     await safe(page, dialog, sample);
+    if (sample.width < sample.height)
+      await safe(page, dialog.getByRole('textbox', { name: 'Label for A.png' }), sample);
+    await dialog.getByRole('button', { name: 'Help & About' }).click();
+    const help = helpDialog(page);
+    await safe(page, help, sample);
+    await expect(help.getByRole('heading', { name: 'Installation and offline' })).toBeVisible();
+    await help.getByRole('button', { name: 'Close dialog' }).click();
     await safe(page, dialog.getByRole('button', { name: 'Remove image B.png' }), sample);
     await dialog.getByRole('button', { name: 'Clear comparison' }).click();
     await expect(dialog).toContainText('No images in this comparison.');
@@ -229,14 +247,17 @@ test('manifest fullscreen works with CSS minimalist fallback when the Fullscreen
   expect(await page.evaluate(() => (window as any).fullscreenCalls)).toEqual([]);
 });
 
-test('keyboard and dialogs stay within the reported visual and safe viewport', async ({ page }) => {
+test('the portrait label editor stays within the reported visual and safe viewport', async ({
+  page,
+}) => {
   await windowMode(page, 'fullscreen');
   await page.setViewportSize({ width: 412, height: 900 });
   await page.goto('./?pwa=fullscreen');
   await insets(page, 56, 0, 28, 0);
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('B.png', 1)]);
-  await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
-  await page.getByLabel('Game title').focus();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+  const label = page.getByRole('textbox', { name: 'Label for B.png', exact: true });
+  await label.focus();
   await page.evaluate(() => {
     (window as any).testVisualViewport = { height: 300, width: 412, offsetTop: 0 };
     visualViewport!.dispatchEvent(new Event('resize'));
@@ -256,6 +277,8 @@ test('keyboard and dialogs stay within the reported visual and safe viewport', a
   expect(box.y).toBeGreaterThanOrEqual(56);
   await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
   await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
+  await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
+  await expect(label).toBeFocused();
 });
 
 test('the marked launch URL reopens offline without persisting local images or metadata', async ({
@@ -315,6 +338,8 @@ test('a desktop installed window that honors manifest fullscreen keeps full cont
   await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
   await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
   await expect(page.getByRole('button', { name: 'Manage Images', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Keyboard shortcuts', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Label for image A')).toBeVisible();
   await page.getByRole('button', { name: 'Minimalist mode', exact: true }).click();
   await expect(page.locator('.app')).toHaveClass(/comparison-minimalist/);
   await page.getByRole('button', { name: 'Show controls', exact: true }).click();
