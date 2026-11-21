@@ -200,7 +200,10 @@ export function mobileMinimalistTests() {
         await open(page, mode);
         for (const zoom of [1, 2, 4]) {
           await page.setViewportSize({ width: 412, height: 900 });
+          // The zoom selector is visible in both orientations. Wait for the portrait layout.
+          await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
           await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption(String(zoom));
+          await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', String(zoom));
           const before = await snapshot(page);
           await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
           for (const viewport of [
@@ -240,6 +243,7 @@ export function mobileMinimalistTests() {
         await page.setViewportSize({ width: 900, height: 412 });
         await expect(page.locator('.app')).toHaveClass(/comparison-compact/);
         await page.getByRole('button', { name: 'Fit', exact: true }).click();
+        await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', 'fit');
         const before = await snapshot(page);
         await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
         await page.setViewportSize({ width: 900, height: 412 });
