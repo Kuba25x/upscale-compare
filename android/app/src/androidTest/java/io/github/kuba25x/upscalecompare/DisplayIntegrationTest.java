@@ -371,6 +371,22 @@ public class DisplayIntegrationTest {
                 + "; })()"));
   }
 
+  private void assertManageImagesPreviews() throws Exception {
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    """
+                    (() => {
+                      const previews = [...document.querySelectorAll('dialog[open] .upload-list img')];
+                      return previews.length === 2 && previews.every(img =>
+                        img.src.startsWith('data:image/png;base64,') && img.complete &&
+                        img.naturalWidth === 2 && img.naturalHeight === 3);
+                    })()
+                    """)));
+  }
+
   private void editPortraitLabel() throws Exception {
     eventually(
         () ->
@@ -395,6 +411,7 @@ public class DisplayIntegrationTest {
                     })()
                     """)));
     click(".header-actions [aria-label=\"Manage Images\"]");
+    assertManageImagesPreviews();
     eventually(
         () ->
             assertEquals(
@@ -556,6 +573,8 @@ public class DisplayIntegrationTest {
                       "document.querySelector('.app').classList.contains('comparison-minimalist')")));
       assertEquals(
           "\"Portrait original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt"));
+      click(".header-actions [aria-label=\"Manage Images\"]");
+      assertManageImagesPreviews();
     }
   }
 }

@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
-import { installAndroidBridge } from './bridge';
+import { installAndroidBridge, thumbnailDataUrl } from './bridge';
 const files = [0, 1, 2, 3].map((i) => imageFile(`Original ${i}.png`, i % 2));
 async function open(page: Page) {
   await page.route('**/original-*.png', (route) => {
@@ -30,6 +30,64 @@ async function config(page: Page) {
 async function lastRequest(page: Page) {
   return page.evaluate(() => (window as any).pickerCalls.at(-1));
 }
+
+test('Manage Images previews follow all rows, tolerate failure and return after restoration', async ({
+  page,
+}) => {
+  await open(page);
+  await choose(page, [0, 1, 2]);
+  await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await expect(page.getByTestId('stage')).toBeVisible();
+  expect(await page.evaluate(() => (window as any).thumbnailCalls)).toBeUndefined();
+  await page.evaluate(() => {
+    (window as any).failThumbnail = '00000000-0000-4000-8000-000000000003';
+  });
+  const manage = page.getByRole('button', { name: 'Manage Images', exact: true });
+  await manage.click();
+  const dialog = page.getByRole('dialog', { name: 'Your images' });
+  const previews = dialog.locator('.upload-list img');
+  const expectPreviews = async (indices: Array<number | null>) => {
+    await expect
+      .poll(() =>
+        previews.evaluateAll((images: HTMLImageElement[]) =>
+          images.map((image) => (image.naturalWidth > 0 ? image.getAttribute('src') : null)),
+        ),
+      )
+      .toEqual(indices.map((index) => (index === null ? null : thumbnailDataUrl(index))));
+  };
+
+  await expectPreviews([0, 1, null]);
+  const row = dialog.locator('.upload-list-item').filter({
+    has: page.getByRole('textbox', { name: 'Label for Original 0.png' }),
+  });
+  const label = row.getByRole('textbox');
+  const imageBounds = (await row.locator('img').boundingBox())!;
+  const labelBounds = (await label.boundingBox())!;
+  expect(imageBounds.x + imageBounds.width).toBeLessThanOrEqual(labelBounds.x);
+  expect(imageBounds.y).toBeLessThan(labelBounds.y + labelBounds.height);
+  expect(imageBounds.y + imageBounds.height).toBeGreaterThan(labelBounds.y);
+  await dialog.getByRole('textbox', { name: 'Label for Original 2.png' }).fill('Still editable');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+
+  await choose(page, [3]);
+  await dialog.getByRole('button', { name: 'Add images' }).click();
+  await expectPreviews([0, 1, null, 3]);
+  await dialog.getByRole('button', { name: 'Remove image Original 1.png' }).click();
+  await expectPreviews([0, null, 3]);
+  await choose(page, [1]);
+  await dialog.locator('.upload-list-item').nth(1).getByRole('button', { name: 'Replace' }).click();
+  await expectPreviews([0, 1, 3]);
+
+  await dialog.getByRole('button', { name: 'Close dialog' }).click();
+  await manage.click();
+  await expectPreviews([0, 1, 3]);
+  await page.reload();
+  await manage.click();
+  await expectPreviews([0, 1, 3]);
+  await dialog.getByRole('button', { name: 'Clear comparison' }).click();
+  await expectPreviews([]);
+});
+
 test('Photo Picker defaults, min/max validation, single replacement and remaining slots', async ({
   page,
 }) => {

@@ -1,11 +1,19 @@
 import type { Page } from '@playwright/test';
+import { PNG } from 'pngjs';
+
+export function thumbnailDataUrl(index: number) {
+  const image = new PNG({ width: 2, height: 2 });
+  image.data.fill(255);
+  image.data[0] = index;
+  return `data:image/png;base64,${PNG.sync.write(image).toString('base64')}`;
+}
 
 export async function installAndroidBridge(
   page: Page,
   images: Array<{ name: string; type: string; width: number; height: number; size: number }>,
 ) {
   await page.addInitScript(
-    ({ images }) => {
+    ({ images, thumbnails }) => {
       const win = window as any;
       const originals = images.map((image, n) => ({
         ...image,
@@ -65,7 +73,7 @@ export async function installAndroidBridge(
           },
           {
             name: 'Originals',
-            methods: ['pick', 'restore', 'paths', 'save', 'discard'].map((name) => ({
+            methods: ['pick', 'restore', 'paths', 'thumbnail', 'save', 'discard'].map((name) => ({
               name,
               rtype: 'promise',
             })),
@@ -113,6 +121,12 @@ export async function installAndroidBridge(
             return { images: selected };
           }
           if (method === 'paths') return { paths };
+          if (method === 'thumbnail') {
+            win.thumbnailCalls ??= [];
+            win.thumbnailCalls.push(args.id);
+            if (win.failThumbnail === args.id) throw new Error('Preview unavailable');
+            return { dataUrl: thumbnails[originals.findIndex((image) => image.id === args.id)] };
+          }
           if (method === 'save') {
             win.draftId = args.draftId;
             localStorage.setItem('test-session', JSON.stringify(args.session));
@@ -122,6 +136,6 @@ export async function installAndroidBridge(
         },
       };
     },
-    { images },
+    { images, thumbnails: images.map((_, index) => thumbnailDataUrl(index)) },
   );
 }

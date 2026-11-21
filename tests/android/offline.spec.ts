@@ -111,7 +111,18 @@ for (const [width, height] of [
     await expect(page.getByRole('button', { name: 'Enter fullscreen' })).toBeVisible();
     expect(await page.evaluate(() => (window as any).barsHidden)).toBe(false);
     await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
-    await expect(page.locator('.upload-list img')).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page
+          .locator('.upload-list img')
+          .evaluateAll((images: HTMLImageElement[]) =>
+            images.map(({ naturalWidth, naturalHeight }) => [naturalWidth, naturalHeight]),
+          ),
+      )
+      .toEqual([
+        [2, 2],
+        [2, 2],
+      ]);
     await page.evaluate(() => {
       (window as any).cancelPick = true;
     });

@@ -330,3 +330,10 @@ the inline A/B editors and header. On phones, **Help & About** opens the existin
 guide from **Manage Images** or the landing screen. Playwright covers the view
 sizes, phone and tablet isolation, and mocked cutouts. Native instrumentation
 checks the portrait layout and label restoration on the Android emulator.
+
+## Android Manage Images previews
+
+The APK generates small previews on demand from its private PNG, JPEG, and WebP
+originals. The native bridge returns an orientation-correct preview up to 128 px
+on the longest edge. Original files and the session journal retain their existing
+formats. The in-memory preview cache follows original removal and clearing.

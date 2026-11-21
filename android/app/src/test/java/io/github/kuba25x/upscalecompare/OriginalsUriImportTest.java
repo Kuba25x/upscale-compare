@@ -224,6 +224,75 @@ public class OriginalsUriImportTest {
     plugin.load();
   }
 
+  private String thumbnail(String id) throws Exception {
+    var call = new OriginalsPickerLifecycleTest.Call("thumbnail", new JSObject().put("id", id));
+    plugin.thumbnail(call);
+    assertTrue(call.done.await(5, java.util.concurrent.TimeUnit.SECONDS));
+    assertNull(call.error);
+    return call.result.getString("dataUrl");
+  }
+
+  @Test
+  public void previewsFollowPendingOriginalsReplacementDraftAndRestoration() throws Exception {
+    JSONArray saved = restore().getJSONArray("images");
+    String replaced = saved.getJSONObject(0).getString("id");
+    JSONObject survivor = saved.getJSONObject(1);
+    String survivorId = survivor.getString("id");
+    String before = thumbnail(replaced);
+    assertTrue(before.startsWith("data:image/png;base64,"));
+    assertEquals(before, thumbnail(replaced));
+
+    var picked = pick("third", "fourth");
+    assertNull(picked.error);
+    JSONArray pending = picked.result.getJSONArray("images");
+    JSONObject replacement = pending.getJSONObject(0);
+    String replacementId = replacement.getString("id");
+    assertEquals(before, thumbnail(replacementId));
+    // Commit only one of the additional originals and discard the rest of the import.
+    assertNull(save(new JSONArray().put(replacement).put(survivor), null).error);
+    String abandonedId = pending.getJSONObject(1).getString("id");
+    var discard =
+        new OriginalsPickerLifecycleTest.Call(
+            "discard", new JSObject().put("ids", new JSONArray().put(abandonedId))) {
+          @Override
+          public void resolve() {
+            resolve(new JSObject());
+          }
+        };
+    plugin.discard(discard);
+    assertTrue(discard.done.await(5, java.util.concurrent.TimeUnit.SECONDS));
+    assertNull(discard.error);
+    assertNull(thumbnail(abandonedId));
+    assertNull(thumbnail(replaced));
+    assertEquals(Set.of(replacementId, survivorId), Set.of(root.list()));
+
+    recreatePlugin();
+    assertEquals(before, thumbnail(replacementId));
+    assertArrayEquals(bytes, Files.readAllBytes(new File(root, replacementId).toPath()));
+    assertNull(save(new JSONArray(), survivorId).error);
+    assertNull(thumbnail(replacementId));
+    assertEquals(before, thumbnail(survivorId));
+    assertNull(save(new JSONArray(), null).error);
+    assertNull(thumbnail(survivorId));
+    assertEquals(0, root.listFiles().length);
+    assertArrayEquals(bytes, Files.readAllBytes(provider.png.toPath()));
+  }
+
+  @Test
+  public void previewFailureDoesNotInvalidateRestoredSession() throws Exception {
+    JSONArray images = restore().getJSONArray("images");
+    String badId = images.getJSONObject(0).getString("id");
+    String goodId = images.getJSONObject(1).getString("id");
+    File original = new File(root, badId);
+    byte[] undecodable = new byte[bytes.length];
+    Files.write(original.toPath(), undecodable);
+    assertNull(thumbnail(badId));
+    assertNull(thumbnail("../comparison.json"));
+    assertNotNull(thumbnail(goodId));
+    assertEquals(2, restore().getJSONArray("images").length());
+    assertArrayEquals(undecodable, Files.readAllBytes(original.toPath()));
+  }
+
   @Test
   public void draftRetainsOnlyTheSurvivingOriginalAndCanRestoreAsACompletePair() throws Exception {
     JSONArray originals = restore().getJSONArray("images");
@@ -269,7 +338,7 @@ public class OriginalsUriImportTest {
     File journal = new File(plugin.getContext().getNoBackupFilesDir(), "comparison.json");
     byte[] committed = Files.readAllBytes(journal.toPath());
     plugin.handleOnDestroy();
-    for (String method : new String[] {"restore", "paths", "save", "discard"}) {
+    for (String method : new String[] {"restore", "paths", "thumbnail", "save", "discard"}) {
       var call = new OriginalsPickerLifecycleTest.Call("closed-" + method, new JSObject());
       OriginalsPlugin.class.getMethod(method, com.getcapacitor.PluginCall.class).invoke(plugin, call);
       assertTrue(call.done.await(5, java.util.concurrent.TimeUnit.SECONDS));

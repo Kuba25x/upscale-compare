@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.util.AtomicFile;
+import android.util.LruCache;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.*;
 import com.getcapacitor.annotation.*;
@@ -22,6 +23,7 @@ import org.json.*;
 public class OriginalsPlugin extends Plugin {
   private final ExecutorService io = Executors.newSingleThreadExecutor();
   private final Set<String> pending = new HashSet<>();
+  private final LruCache<String, String> thumbnails = new LruCache<>(4);
   private final AtomicBoolean picking = new AtomicBoolean();
   private File root;
   private AtomicFile journal;
@@ -115,10 +117,18 @@ public class OriginalsPlugin extends Plugin {
     return size;
   }
 
-  private void sweep() throws Exception {
+  private Set<String> availableOriginals() throws Exception {
     Set<String> keep = retained(session);
     keep.addAll(pending);
     if (draftId != null) keep.add(draftId);
+    return keep;
+  }
+
+  private void sweep() throws Exception {
+    Set<String> keep = availableOriginals();
+    for (String id : thumbnails.snapshot().keySet()) {
+      if (!keep.contains(id)) thumbnails.remove(id);
+    }
     OriginalPolicy.sweep(root, keep);
   }
 
@@ -176,6 +186,29 @@ public class OriginalsPlugin extends Plugin {
     run(
         call,
         () -> call.resolve(new JSObject().put("paths", pathsFor(call.getArray("ids").toList()))));
+  }
+
+  @PluginMethod
+  public void thumbnail(PluginCall call) {
+    run(
+        call,
+        () -> {
+          String id = call.getString("id");
+          if (!availableOriginals().contains(id) || !original(id).isFile()) {
+            call.resolve(new JSObject());
+            return;
+          }
+          String dataUrl = thumbnails.get(id);
+          if (dataUrl == null) {
+            try {
+              dataUrl = OriginalThumbnail.create(original(id));
+              if (dataUrl != null) thumbnails.put(id, dataUrl);
+            } catch (IOException | RuntimeException | OutOfMemoryError ignored) {
+              // Thumbnail failures are independent of the stored original and comparison.
+            }
+          }
+          call.resolve(new JSObject().put("dataUrl", dataUrl));
+        });
   }
 
   @PluginMethod
