@@ -1,0 +1,49 @@
+.experiment {
+  overflow: auto;
+}
+.experiment-controls {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+.experiment-controls h1,
+.experiment-controls p {
+  margin: 0;
+}
+.experiment-controls h1 {
+  font-size: 18px;
+}
+.experiment-controls fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+}
+.experiment-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.experiment-controls a {
+  color: var(--accent);
+}
+.experiment-description {
+  display: grid;
+  gap: 4px;
+  max-width: 640px;
+}
+.experiment-description textarea {
+  min-height: 36px;
+}
+.experiment-row input[readonly] {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.experiment .comparison-layout {
+  min-height: 240px;
+}
+.experiment-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
