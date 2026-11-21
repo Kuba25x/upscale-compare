@@ -1,6 +1,6 @@
 # Android Preview release runbook
 
-The public [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+The public [v0.1.0-android-preview.2](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
 is distributed as a **debug APK**, not an output of the owner-signing process below.
 This runbook covers future owner-signed releases; the tools do not create public
 tags or GitHub Releases. Device qualification remains limited; publication is not
@@ -31,10 +31,10 @@ disposable **test-only** key to exercise the signing script; that key and the AP
 
 The next candidate takes its version from [android/release.properties](../android/release.properties).
 
-- versionName: 0.1.0-android-preview.2
-- versionCode: 3
-- planned debug-preview tag: v0.1.0-android-preview.2
-- published debug-preview tag: v0.1.0-android-preview.1 (versionCode 2)
+- versionName: 0.1.0-android-preview.3
+- versionCode: 4
+- planned debug-preview tag: v0.1.0-android-preview.3
+- published debug-preview tag: v0.1.0-android-preview.2 (versionCode 3)
 - package: io.github.kuba25x.upscalecompare
 - minimum API 24; target/compile API 36
 
@@ -205,7 +205,7 @@ Independent final checks:
 
 ```sh
 "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify \
-  --verbose --print-certs /path/to/new-signed-output/upscale-compare-0.1.0-android-preview.2.apk
+  --verbose --print-certs /path/to/new-signed-output/upscale-compare-0.1.0-android-preview.3.apk
 cd /path/to/new-signed-output
 sha256sum -c SHA256SUMS
 ```
