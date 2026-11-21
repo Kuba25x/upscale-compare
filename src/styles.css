@@ -203,6 +203,9 @@ input[type='checkbox'] {
   align-items: center;
   white-space: nowrap;
 }
+.app:not(.has-images) .app-header h1 {
+  margin-inline: auto;
+}
 .brand-mark {
   height: 19px;
   width: 19px;
@@ -422,7 +425,7 @@ input[type='checkbox'] {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 2px;
   width: 40px;
   height: 40px;
   border: 1.5px solid #eef6e5;
@@ -430,7 +433,6 @@ input[type='checkbox'] {
   background: #1c211bd9;
   box-shadow: 0 2px 12px #0007;
   color: #eef6e5;
-  font-size: 19px;
   backdrop-filter: blur(6px);
 }
 /* Keep the full-height pointer target, but draw keyboard focus around its handle. */
@@ -440,11 +442,6 @@ input[type='checkbox'] {
 .divider:focus-visible .divider-handle {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
-}
-.divider-handle span {
-  height: 13px;
-  width: 1px;
-  background: #b2e38e66;
 }
 .divider:hover .divider-handle {
   background: #303c27;
@@ -1301,12 +1298,12 @@ input[type='checkbox'] {
   }
 }
 
-/* Keep the title text itself centered; the decorative mark stays outside its box. */
-.app-header h1 {
+/* Preserve the title alignment in the comparison header. */
+.has-images .app-header h1 {
   position: relative;
   gap: 0;
 }
-.app-header h1 .brand-mark {
+.has-images .app-header h1 .brand-mark {
   position: absolute;
   right: calc(100% + 9px);
   top: 50%;

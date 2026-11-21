@@ -6,6 +6,7 @@ import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscreen';
 import { cacheSnapshot, control, serve } from './helpers';
 import { expectPhonePortraitHeader, helpDialog } from '../shared/phone-controls';
+import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
 
 test.beforeEach(async ({ request }) => {
   // Other PWA suites deliberately leave the shared server on a faulty B release.
@@ -108,6 +109,7 @@ for (const sample of [
     await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
     await insets(page, sample.top, sample.right, sample.bottom, sample.left);
     await expectLocalComparisonUI(page);
+    await expectCenteredBrand(page);
     await safe(page, page.getByRole('heading', { name: 'Upscale Compare', exact: true }), sample);
     await safe(page, page.locator('.brand-mark'), sample);
     await safe(page, page.getByRole('button', { name: 'Upload Images', exact: true }), sample);
@@ -163,6 +165,7 @@ for (const sample of [
     for (const key of ['Home', 'End']) {
       await page.keyboard.press(key);
       await safe(page, page.locator('.divider-handle'), sample);
+      await expectCenteredDividerArrows(page);
     }
     await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
     await safe(page, page.getByRole('dialog'), sample);

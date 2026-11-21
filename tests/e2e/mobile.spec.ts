@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { imageFile, openComparison } from './fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { expectCenteredDividerArrows } from '../shared/layout-alignment';
 test('mobile keeps all main controls accessible without horizontal scrolling', async ({ page }) => {
   await page.goto('/');
   await page.screenshot({ path: 'test-results/landing-mobile.png' });
@@ -17,6 +18,7 @@ test('mobile keeps all main controls accessible without horizontal scrolling', a
 });
 test('touch divider and synchronized pinch navigation respond to touch input', async ({ page }) => {
   await openComparison(page);
+  await expectCenteredDividerArrows(page);
   const stage = await page.getByTestId('stage').boundingBox();
   const client = await page.context().newCDPSession(page);
   const y = Math.round(stage!.y + stage!.height / 2),

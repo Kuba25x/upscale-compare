@@ -3,9 +3,10 @@ import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { expectPhonePortraitHeader, helpDialog, manageImages } from '../shared/phone-controls';
+import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
 
 const files = [imageFile('A.png', 0), imageFile('B.png', 1), imageFile('C.png', 0)];
-async function open(page: Page) {
+async function openLanding(page: Page) {
   await page.route('**/original-*.png', (route) => {
     const index = Number(new URL(route.request().url()).pathname.match(/original-(\d+)/)![1]);
     return route.fulfill({ contentType: 'image/png', body: files[index].buffer });
@@ -28,6 +29,9 @@ async function open(page: Page) {
     gestureLeft: 8,
     gestureRight: 8,
   });
+}
+async function open(page: Page) {
+  await openLanding(page);
   await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
   await expect(page.getByTestId('image-A')).toBeVisible();
 }
@@ -37,6 +41,25 @@ async function insets(page: Page, values: Record<string, number>) {
     (window as any).emitDisplayState();
   }, values);
 }
+
+test('landing centers the complete brand within Android safe padding through rotation', async ({
+  page,
+}) => {
+  await openLanding(page);
+  await page.setViewportSize({ width: 360, height: 820 });
+  await insets(page, { cutoutTop: 48, cutoutLeft: 26, gestureRight: 16, navigationBottom: 24 });
+  const header = page.locator('.app-header');
+  await expect(header).toHaveCSS('padding-left', '26px');
+  await expect(header).toHaveCSS('padding-right', '16px');
+  await expectCenteredBrand(page);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await insets(page, { cutoutLeft: 46, gestureRight: 12 });
+  await expect(page.locator('.app')).toHaveClass(/comparison-compact/);
+  await expect(header).toHaveCSS('padding-left', '54px');
+  await expect(header).toHaveCSS('padding-right', '20px');
+  await expectCenteredBrand(page);
+});
 
 test('native measurements feed shared presentation and stale revisions cannot change it', async ({
   page,
@@ -236,6 +259,7 @@ test('all four display modes use inset-aware controls and an edge-to-edge image 
   await expect(page.locator('.image-selection-bar')).toBeHidden();
   await page.getByRole('slider').focus();
   await page.keyboard.press('Home');
+  await expectCenteredDividerArrows(page);
   const safeHandle = await box(page, '.divider-handle');
   await page.mouse.move(safeHandle.x + safeHandle.width / 2, safeHandle.y + safeHandle.height / 2);
   await page.mouse.down();

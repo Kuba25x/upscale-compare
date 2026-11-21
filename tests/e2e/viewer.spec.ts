@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { imageFile, openComparison } from './fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
 test('landing follows the centered wireframe and keeps screenshots local', async ({ page }) => {
   const publications: string[] = [];
   page.on('request', (request) => {
@@ -9,13 +10,13 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   });
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeVisible();
-  const heading = await page.getByRole('heading', { level: 1 }).boundingBox();
-  expect(Math.abs(heading!.x + heading!.width / 2 - 720)).toBeLessThan(1);
+  await expectCenteredBrand(page);
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('FSR.png', 1)]);
   await expect(page.getByTestId('stage')).toBeVisible();
   expect(publications).toEqual([]);
   const title = await page.getByRole('heading', { level: 1 }).boundingBox();
   expect(Math.abs(title!.x + title!.width / 2 - 720)).toBeLessThan(1);
+  await expect(page.locator('.app-header .brand-mark')).toHaveCSS('position', 'absolute');
   await expectLocalComparisonUI(page);
   const actions = page.locator('.header-actions');
   await expect(actions.getByRole('button')).toHaveCount(1);
@@ -59,9 +60,11 @@ test('drag-and-drop opens a comparison without publishing', async ({ page }) => 
 });
 test('divider drags, supports keyboard, and keeps corresponding coordinates', async ({ page }) => {
   await openComparison(page);
+  await expectCenteredDividerArrows(page);
   const stage = await page.getByTestId('stage').boundingBox(),
     divider = page.getByRole('slider', { name: 'Comparison divider' });
-  await page.mouse.move(stage!.x + stage!.width / 2, stage!.y + stage!.height / 2);
+  const chevron = (await divider.locator('.lucide-chevron-left path').boundingBox())!;
+  await page.mouse.move(chevron.x + chevron.width / 2, chevron.y + chevron.height / 4);
   await page.mouse.down();
   await page.mouse.move(stage!.x + stage!.width * 0.7, stage!.y + stage!.height / 2, { steps: 10 });
   await page.mouse.up();

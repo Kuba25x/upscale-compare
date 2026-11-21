@@ -334,6 +334,7 @@ public class DisplayIntegrationTest {
                         + " e=document.querySelector('.minimalist-exit').getBoundingClientRect();"
                         + " return s.x===0 && s.y===0 && Math.abs(s.width-innerWidth)<1 &&"
                         + " e.right<=innerWidth && e.bottom<=s.bottom && e.width>=48; })()")));
+    assertDividerArtwork();
     eventually(
         () ->
             scenario.onActivity(
@@ -369,6 +370,54 @@ public class DisplayIntegrationTest {
                 + " && e.bottom*d <= innerHeight*d-"
                 + state.getInteger("safeBottom")
                 + "; })()"));
+  }
+
+  private void assertDividerArtwork() throws Exception {
+    assertEquals(
+        "true",
+        js(
+            """
+            (() => {
+              const handle = document.querySelector('.divider-handle');
+              const arrows = [...handle.querySelectorAll('svg path')];
+              if (handle.textContent.trim() || handle.children.length !== 2 || arrows.length !== 2)
+                return false;
+              const midpoint = element => {
+                const { x, y, width, height } = element.getBoundingClientRect();
+                return [x + width / 2, y + height / 2];
+              };
+              const [x, y] = midpoint(handle);
+              const [[left, leftY], [right, rightY]] = arrows.map(midpoint);
+              const line = getComputedStyle(handle.parentElement, '::before');
+              const stage = document.querySelector('.stage').getBoundingClientRect();
+              return left < x && right > x && Math.abs((left + right) / 2 - x) < 1
+                && Math.abs(leftY - y) < 1 && Math.abs(rightY - y) < 1
+                && line.content === '""' && line.width === '1px'
+                && Math.abs(parseFloat(line.height) - stage.height) < 1;
+            })()
+            """));
+  }
+
+  private void assertLandingBrandCentered() throws Exception {
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    """
+                    (() => {
+                      const header = document.querySelector('.app:not(.has-images) .app-header');
+                      if (!header) return false;
+                      const bounds = header.getBoundingClientRect();
+                      const style = getComputedStyle(header);
+                      const logo = header.querySelector('.brand-mark').getBoundingClientRect();
+                      const title = header.querySelector('.brand-name').getBoundingClientRect();
+                      const left = bounds.left + parseFloat(style.paddingLeft);
+                      const right = bounds.right - parseFloat(style.paddingRight);
+                      return logo.left >= left && title.right <= right
+                        && Math.abs((logo.left + title.right) / 2 - (left + right) / 2) < 1;
+                    })()
+                    """)));
   }
 
   private void assertManageImagesPreviews() throws Exception {
@@ -575,6 +624,13 @@ public class DisplayIntegrationTest {
           "\"Portrait original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt"));
       click(".header-actions [aria-label=\"Manage Images\"]");
       assertManageImagesPreviews();
+      click("dialog[open] .modal-actions > button:first-child");
+      eventually(() -> assertEquals("true", js("!!document.querySelector('.landing')")));
+      click("dialog[open] button[aria-label=\"Close dialog\"]");
+      assertLandingBrandCentered();
+      rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, true);
+      bars(false, false);
+      assertLandingBrandCentered();
     }
   }
 }

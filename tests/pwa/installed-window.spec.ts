@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { imageFile } from '../e2e/fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
 import { control, originalBytes, serve } from './helpers';
 
 test('installed Linux Chromium window uses the manifest launch URL and reopens offline', async ({
@@ -66,11 +67,12 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
       displayMode: 'standalone',
     });
     const app = await launch(browser);
-    await expect(app.getByRole('heading', { name: 'Upscale Compare', exact: true })).toBeVisible();
+    await expectCenteredBrand(app);
     await app
       .getByTestId('file-input')
       .setInputFiles([imageFile('Private.png'), imageFile('B.png', 1)]);
     await expect(app.getByTestId('stage')).toBeVisible();
+    await expectCenteredDividerArrows(app);
     await expectLocalComparisonUI(app);
     await app.screenshot({ path: testInfo.outputPath('installed-online.png') });
     await browser.close();
