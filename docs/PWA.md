@@ -31,10 +31,10 @@ custom banner or separate PWA interface is added by the app.
 
 The phone layout uses the shorter screen dimension below 600 CSS pixels and, on
 the web, a primary touch pointer. In portrait, **Split Screen**, **Side-by-Side**,
-and **Manage Images** share a row. If safe-area insets or larger text leave too
-little room, **Manage Images** wraps to a second row with its full label and
-touch target. Physical rotation controls the layout while the onscreen keyboard
-is open.
+and **Manage Images** fill one row within the safe area. The buttons show icons
+when their full labels and icons fit. With unusually large insets or text, a
+label may wrap inside its button. Physical rotation controls the layout while
+the onscreen keyboard is open.
 
 Rename any screenshot from **Manage Images** in portrait. Landscape retains the
 inline A/B editors. **Help & About** opens the existing guide, with installation,

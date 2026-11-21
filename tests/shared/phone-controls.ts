@@ -39,3 +39,63 @@ export async function renameSelectedImage(
     await manageImages(page).getByRole('button', { name: 'Close dialog' }).click();
   }
 }
+
+export async function expectPhonePortraitHeader(
+  page: Page,
+  { icons, allowWrappedLabels = false }: { icons?: boolean; allowWrappedLabels?: boolean } = {},
+) {
+  await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
+  const header = page.locator('.app-header');
+  const modes = header.getByRole('group', { name: 'Comparison mode', exact: true });
+  await expect(modes.getByRole('button')).toHaveText(['Split Screen', 'Side-by-Side']);
+  await expect(header.getByText('MODE', { exact: true })).toHaveCount(0);
+  const row = header.locator('.header-controls');
+  const buttons = row.getByRole('button');
+  await expect(buttons).toHaveText(['Split Screen', 'Side-by-Side', 'Manage Images']);
+  if (icons !== undefined)
+    await expect(row.locator('button svg:visible')).toHaveCount(icons ? 3 : 0);
+
+  const { left, right } = await header.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const style = getComputedStyle(node);
+    return {
+      left: box.left + parseFloat(style.paddingLeft),
+      right: box.right - parseFloat(style.paddingRight),
+    };
+  });
+  const boxes = await buttons.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const { left, right, top, height, width } = node.getBoundingClientRect();
+      const label = node.querySelector('span')!;
+      const text = document.createRange();
+      text.selectNodeContents(label);
+      return {
+        left,
+        right,
+        top,
+        height,
+        width,
+        clipped: node.scrollWidth > node.clientWidth || label.scrollWidth > label.clientWidth,
+        lines: text.getClientRects().length,
+      };
+    }),
+  );
+  expect(boxes[0].left).toBeGreaterThanOrEqual(left);
+  expect(boxes[0].left - left).toBeLessThanOrEqual(2);
+  expect(boxes.at(-1)!.right).toBeCloseTo(right, 0);
+  for (const [index, box] of boxes.entries()) {
+    if (index > 0) {
+      const gap = box.left - boxes[index - 1].right;
+      expect(gap).toBeGreaterThanOrEqual(0);
+      expect(gap).toBeLessThanOrEqual(8);
+    }
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(Math.abs(box.top + box.height / 2 - boxes[0].top - boxes[0].height / 2)).toBeLessThan(2);
+    expect(box.clipped).toBe(false);
+    if (!allowWrappedLabels) expect(box.lines).toBe(1);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    page.viewportSize()!.width,
+  );
+}

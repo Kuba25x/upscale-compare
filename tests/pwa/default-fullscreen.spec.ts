@@ -5,7 +5,7 @@ import { installWebDisplay } from '../shared/web-display';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscreen';
 import { cacheSnapshot, control, serve } from './helpers';
-import { helpDialog } from '../shared/phone-controls';
+import { expectPhonePortraitHeader, helpDialog } from '../shared/phone-controls';
 
 test.beforeEach(async ({ request }) => {
   // Other PWA suites deliberately leave the shared server on a faulty B release.
@@ -149,13 +149,8 @@ for (const sample of [
         await safe(page, page.getByLabel(name, { exact: true }), sample);
     } else {
       const header = page.locator('.app-header');
-      await expect(header.getByText('MODE', { exact: true })).toHaveCount(0);
+      await expectPhonePortraitHeader(page);
       await safe(page, header.getByRole('group', { name: 'Comparison mode', exact: true }), sample);
-      const [mode, manage] = await Promise.all([
-        page.locator('.mode-controls').boundingBox(),
-        page.locator('.header-actions').boundingBox(),
-      ]);
-      expect(Math.abs(mode!.y + mode!.height / 2 - manage!.y - manage!.height / 2)).toBeLessThan(2);
       await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
     }
     await expectLocalComparisonUI(page);
@@ -196,6 +191,27 @@ for (const sample of [
     await expect(page.getByTestId('stage')).toBeVisible();
     await page.screenshot({ path: test.info().outputPath(`${sample.name}.png`) });
   });
+
+test('installed phone portrait fills the safe width and updates icons when insets change', async ({
+  page,
+}) => {
+  await windowMode(page, 'fullscreen');
+  await page.setViewportSize({ width: 320, height: 820 });
+  await page.goto('./?pwa=fullscreen');
+  await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
+  await page.getByTestId('file-input').setInputFiles([imageFile('A.png'), imageFile('B.png', 1)]);
+  for (const width of [320, 360, 390, 430]) {
+    await page.setViewportSize({ width, height: 820 });
+    await insets(page, 48, 12, 24, 22);
+    await expectPhonePortraitHeader(page, {
+      icons: width === 320 ? false : width === 430 ? true : undefined,
+    });
+  }
+  await insets(page, 48, 62, 24, 72);
+  await expectPhonePortraitHeader(page, { icons: false });
+  await insets(page, 48, 12, 24, 22);
+  await expectPhonePortraitHeader(page, { icons: true });
+});
 
 for (const mode of ['Split Screen', 'Side-by-Side'])
   test(`${mode}: minimalist is independent of manifest fullscreen across rotations and system Back`, async ({
