@@ -11,11 +11,11 @@ zoom and precise pixel inspection. Open two to four screenshots, choose your A/B
 pair, and inspect the originals locally.
 
 **[Open the web app](https://kuba25x.github.io/upscale-compare/) ·
-[Download Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.1/upscale-compare-debug.apk) ·
+[Download Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.2/upscale-compare-debug.apk) ·
 [Report an issue](https://github.com/Kuba25x/upscale-compare/issues)**
 
 > **Android Preview is available.**
-> [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+> [v0.1.0-android-preview.2](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
 > is an early preview distributed as a **debug APK**.
 > **Share Comparison is not publicly available** in the web app or Android APK.
 
@@ -102,13 +102,13 @@ is available in **Manage Images** and on the phone landing screen.
 Requires **Android 7.0 or later** and an up-to-date Android System WebView.
 No computer or developer tools are needed.
 
-1. [Download the Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.1/upscale-compare-debug.apk)
+1. [Download the Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.2/upscale-compare-debug.apk)
    on your Android device.
 2. Open the downloaded file. If prompted, allow **Install unknown apps** for
    your browser or file manager, then return to the installer.
 3. Tap **Install**, open Upscale Compare and select two to four screenshots.
 
-See the [release page](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+See the [release page](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
 for notes, checksums and source files. This preview is distributed through GitHub
 Releases, not Google Play. Xiaomi 15T with Android 16 is the primary target;
 physical-device qualification is still pending, including on older Android versions.

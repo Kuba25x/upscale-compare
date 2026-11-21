@@ -10,7 +10,7 @@ The [Publish Android Preview workflow](https://github.com/Kuba25x/upscale-compar
 
 ## Build, review, and publish
 
-1. Increase `versionCode` and set a new preview `versionName` in [android/release.properties](../android/release.properties) through a PR. For example, set `0.1.0-android-preview.2` with a code greater than the previous release's code. Merge the reviewed version change before dispatching.
+1. Increase `versionCode` and set a new preview `versionName` in [android/release.properties](../android/release.properties) through a PR. Use a new preview version and a code greater than the previous release's code. Merge the reviewed version change before dispatching.
 2. Open **Actions → Publish Android Preview → Run workflow**. Select `main`, paste its full reviewed commit SHA, and enter the tag `v` followed by the version name. Leave **publish** off to build and test a rehearsal. Turn it on to request publication after approval.
 3. Check the Android browser, JVM, lint, and API 36 emulator results. Download the `android-preview-candidate-…` artifact from this run to inspect or try the exact APK. The package, version, commit, debug signature, source archive, licenses and checksums are checked before upload.
 4. For a publication run, use **Review deployments** to approve `android-preview` on that run after checking the commit and candidate. If `main` changed, dispatch again with the new reviewed tip. Dispatch a fresh run after a failure instead of using **Re-run jobs**.

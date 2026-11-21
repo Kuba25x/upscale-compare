@@ -1,7 +1,7 @@
 # Android offline app
 
 Status: implemented offline preview with automated browser/JVM/API 36 instrumentation
-coverage. [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+coverage. [v0.1.0-android-preview.2](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
 is publicly available as a debug APK. See [installation](../README.md#download-and-install-android)
 for the user guide. Xiaomi 15T / Android 16 physical-device qualification is pending.
 The 256 MiB file ceiling is provisional, not a guarantee that WebView can decode
@@ -111,7 +111,7 @@ repository metadata or signing keys.
 
 ## GitHub Actions and APK downloads
 
-[The public Android Preview](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)
+[The public Android Preview](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
 provides the debug APK, SHA256SUMS, COMMIT, corresponding source and dependency
 notices. Users can install it directly without GitHub Actions or build tools.
 Maintainers can follow the [Android Preview publishing guide](ANDROID_PREVIEW.md)
@@ -207,9 +207,9 @@ exact source SHA; compilation alone is not an instrumentation pass.
 
 ## Future owner-signed release preparation
 
-The next Android Preview candidate uses 0.1.0-android-preview.2 (versionCode 3),
+The next Android Preview candidate uses 0.1.0-android-preview.3 (versionCode 4),
 declared in [android/release.properties](../android/release.properties).
-The published debug preview uses 0.1.0-android-preview.1 (versionCode 2).
+The published debug preview uses 0.1.0-android-preview.2 (versionCode 3).
 A separate read-only release workflow produces an unsigned candidate, source/dependency
 archive, notices, manifest and SHA-256 checksums. It neither tags nor publishes.
 The owner must generate/retain the permanent key on a trusted computer, sign
