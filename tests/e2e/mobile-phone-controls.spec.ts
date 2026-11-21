@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { imageFile } from './fixtures';
-import { helpDialog, manageImages } from '../shared/phone-controls';
+import { expectPhonePortraitHeader, helpDialog, manageImages } from '../shared/phone-controls';
 import { installWebDisplay } from '../shared/web-display';
 
 const files = ['A', 'B', 'C', 'D'].map((name, i) => imageFile(`${name}.png`, i % 2));
 
 for (const width of [320, 360, 390, 430]) {
-  test(`portrait at ${width}px fits one left-aligned row with complete labels and touch targets`, async ({
+  test(`portrait at ${width}px fills the safe width and fits complete labels and touch targets in one row`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 820 });
@@ -16,32 +16,9 @@ for (const width of [320, 360, 390, 430]) {
         content: '.app-header { font-family: "DejaVu Sans", system-ui; }',
       });
     await page.getByTestId('file-input').setInputFiles(files);
-    await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
+    await expectPhonePortraitHeader(page, { icons: width > 320 });
     const header = page.locator('.app-header');
-    const modes = header.getByRole('group', { name: 'Comparison mode', exact: true });
-    await expect(modes.getByRole('button')).toHaveText(['Split Screen', 'Side-by-Side']);
-    await expect(header.getByText('MODE', { exact: true })).toHaveCount(0);
-    const controls = header.locator('.segmented button, .header-actions button');
-    await expect(controls).toHaveText(['Split Screen', 'Side-by-Side', 'Manage Images']);
-    await expect(header.locator('button svg')).toHaveCount(0);
-    const boxes = await controls.evaluateAll((nodes) =>
-      nodes.map((node) => {
-        const { left, right, top, height, width } = node.getBoundingClientRect();
-        return { left, right, top, height, width, clipped: node.scrollWidth > node.clientWidth };
-      }),
-    );
-    expect(boxes[0].left).toBeLessThan(17);
-    for (let i = 0; i < boxes.length; i++) {
-      const { left, right, height, width: targetWidth, top, clipped } = boxes[i];
-      if (i > 0) expect(left).toBeGreaterThanOrEqual(boxes[i - 1].right);
-      expect(right).toBeLessThan(width);
-      expect(targetWidth).toBeGreaterThanOrEqual(44);
-      expect(height).toBeGreaterThanOrEqual(44);
-      expect(Math.abs(top + height / 2 - boxes[0].top - boxes[0].height / 2)).toBeLessThan(2);
-      expect(clipped).toBe(false);
-    }
     expect((await header.boundingBox())!.height).toBeLessThan(96);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
     const split = header.getByRole('button', { name: 'Split Screen' });
     const side = header.getByRole('button', { name: 'Side-by-Side' });
     await expect(split).toHaveCSS('background-color', 'rgb(38, 46, 34)');

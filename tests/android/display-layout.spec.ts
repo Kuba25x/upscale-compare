@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
-import { helpDialog, manageImages } from '../shared/phone-controls';
+import { expectPhonePortraitHeader, helpDialog, manageImages } from '../shared/phone-controls';
 
 const files = [imageFile('A.png', 0), imageFile('B.png', 1), imageFile('C.png', 0)];
 async function open(page: Page) {
@@ -112,17 +112,18 @@ test('portrait phone controls respect cutouts and renamed originals survive WebV
 }) => {
   await page.setViewportSize({ width: 360, height: 820 });
   await open(page);
-  await insets(page, { cutoutTop: 48, cutoutLeft: 26, gestureRight: 16, navigationBottom: 24 });
-  await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
-  const header = page.locator('.app-header');
-  await expect(header.getByText('MODE', { exact: true })).toHaveCount(0);
-  await expect(header.getByRole('group', { name: 'Comparison mode', exact: true })).toBeVisible();
-  const mode = await box(page, '.mode-controls');
-  const actions = await box(page, '.header-actions');
-  expect(mode.x).toBeGreaterThanOrEqual(26);
-  expect(mode.y).toBeGreaterThanOrEqual(48);
-  expect(actions.x + actions.width).toBeLessThanOrEqual(360 - 16);
-  expect(Math.abs(mode.y + mode.height / 2 - actions.y - actions.height / 2)).toBeLessThan(2);
+  for (const width of [320, 360, 390, 430]) {
+    await page.setViewportSize({ width, height: 820 });
+    await insets(page, { cutoutTop: 48, cutoutLeft: 26, gestureRight: 16, navigationBottom: 24 });
+    await expectPhonePortraitHeader(page, {
+      icons: width === 320 ? false : width === 430 ? true : undefined,
+    });
+    const mode = await box(page, '.mode-controls');
+    const actions = await box(page, '.header-actions');
+    expect(mode.x).toBeGreaterThanOrEqual(26);
+    expect(mode.y).toBeGreaterThanOrEqual(48);
+    expect(actions.x + actions.width).toBeCloseTo(width - 16, 0);
+  }
   await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
 
@@ -156,17 +157,13 @@ test('portrait phone controls respect cutouts and renamed originals survive WebV
   await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Renamed unselected C');
 });
 
-test('narrow phone portrait wraps Manage Images below the modes when side insets take the space', async ({
+test('large side insets allow complete button labels to wrap within the same row', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 820 });
   await open(page);
   await insets(page, { cutoutLeft: 56, gestureRight: 48 });
-  const mode = await box(page, '.mode-controls');
-  const actions = await box(page, '.header-actions');
-  expect(actions.y).toBeGreaterThanOrEqual(mode.y + mode.height);
-  expect(actions.x).toBeGreaterThanOrEqual(56);
-  expect(actions.x + actions.width).toBeLessThanOrEqual(320 - 48);
+  await expectPhonePortraitHeader(page, { icons: false, allowWrappedLabels: true });
   await page.getByRole('button', { name: 'Manage Images' }).tap();
   await expect(manageImages(page).getByRole('textbox', { name: 'Label for A.png' })).toBeVisible();
 });

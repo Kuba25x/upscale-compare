@@ -257,6 +257,9 @@ input[type='checkbox'] {
 .segmented button.active svg {
   color: var(--accent);
 }
+.header-controls {
+  display: contents;
+}
 .header-actions {
   grid-column: 3;
   grid-row: 1;
@@ -1829,15 +1832,14 @@ input[type='checkbox'] {
 
 .app.comparison-phone-portrait.has-images:not(.comparison-minimalist) .app-header {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   height: auto;
-  gap: 3px 4px;
+  gap: 3px;
   padding: 0 max(8px, var(--comparison-safe-right, 0px)) 6px
     max(8px, var(--comparison-safe-left, 0px));
 }
 .comparison-phone-portrait.has-images .app-header h1 {
-  order: -1;
-  flex: 0 0 100%;
   justify-content: center;
   min-height: 29px;
 }
@@ -1848,15 +1850,45 @@ input[type='checkbox'] {
   transform: none;
   margin-inline-end: 8px;
 }
+.comparison-phone-portrait .header-controls {
+  display: flex;
+  gap: 4px;
+}
+.comparison-phone-portrait .mode-controls {
+  flex: 2 1 auto;
+  align-items: stretch;
+  min-width: min-content;
+}
+.comparison-phone-portrait .header-actions,
+.comparison-phone-portrait .segmented {
+  flex: 1 1 auto;
+  min-width: min-content;
+}
 .comparison-phone-portrait .segmented {
   padding: 0;
   gap: 1px;
 }
 .comparison-phone-portrait .segmented button,
 .comparison-phone-portrait .header-actions button {
+  flex: 1 1 auto;
+  min-width: 44px;
   min-height: 44px;
   padding: 6px clamp(2px, calc((100vw - 320px) / 20), 5px);
   letter-spacing: -0.2px;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.comparison-phone-portrait .header-controls:not([data-fit-icons], [data-measuring]) button svg {
+  display: none;
+}
+.comparison-phone-portrait .header-controls[data-measuring] {
+  position: absolute;
+  width: max-content;
+  visibility: hidden;
+}
+.comparison-phone-portrait .header-controls[data-measuring] button {
+  white-space: nowrap;
 }
 .comparison-phone-portrait .image-selection-bar {
   min-height: 54px;

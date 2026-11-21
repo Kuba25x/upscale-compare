@@ -377,14 +377,23 @@ public class DisplayIntegrationTest {
             assertEquals(
                 "true",
                 js(
-                    "(() => { const app=document.querySelector('.comparison-phone-portrait');"
-                        + " if(!app) return false;"
-                        + " const m=app.querySelector('.mode-controls').getBoundingClientRect();"
-                        + " const a=app.querySelector('.header-actions').getBoundingClientRect();"
-                        + " return Math.abs(m.y+m.height/2-a.y-a.height/2)<2"
-                        + " && m.y>=parseFloat(getComputedStyle(app).getPropertyValue('--comparison-safe-top'))"
-                        + " && !app.querySelector('.image-selection-bar input')"
-                        + " && !app.querySelector('.inspection-toolbar [aria-label=\"Keyboard shortcuts\"]'); })()")));
+                    """
+                    (() => {
+                      const app = document.querySelector('.comparison-phone-portrait');
+                      if (!app) return false;
+                      const header = app.querySelector('.app-header');
+                      const bounds = header.getBoundingClientRect();
+                      const padding = getComputedStyle(header);
+                      const m = header.querySelector('.mode-controls').getBoundingClientRect();
+                      const a = header.querySelector('.header-actions').getBoundingClientRect();
+                      return Math.abs(m.y + m.height / 2 - a.y - a.height / 2) < 2
+                        && Math.abs(m.left - bounds.left - parseFloat(padding.paddingLeft)) < 1
+                        && Math.abs(a.right - bounds.right + parseFloat(padding.paddingRight)) < 1
+                        && m.y >= parseFloat(getComputedStyle(app).getPropertyValue('--comparison-safe-top'))
+                        && !app.querySelector('.image-selection-bar input')
+                        && !app.querySelector('.inspection-toolbar [aria-label="Keyboard shortcuts"]');
+                    })()
+                    """)));
     click(".header-actions [aria-label=\"Manage Images\"]");
     eventually(
         () ->

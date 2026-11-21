@@ -113,6 +113,7 @@ export default function App({
   const currentImages = useRef(images);
   currentImages.current = images;
   const savingImages = useRef(false);
+  const headerControls = useRef<HTMLDivElement>(null);
   const manageTrigger = useRef<HTMLButtonElement>(null);
   const uploadList = useRef<HTMLDivElement>(null);
   const addImagesButton = useRef<HTMLButtonElement>(null);
@@ -518,6 +519,27 @@ export default function App({
       return withSelection(previous, images, selected);
     });
   const ready = images.length >= 2;
+  useLayoutEffect(() => {
+    const row = headerControls.current;
+    if (!phonePortrait || minimalist || !row) return;
+    const update = () => {
+      // The max-content size includes the actual labels, icons, and gaps.
+      const available = row.getBoundingClientRect().width;
+      row.dataset.measuring = '';
+      const required = row.getBoundingClientRect().width;
+      delete row.dataset.measuring;
+      row.toggleAttribute('data-fit-icons', required <= available);
+    };
+    const observer = new ResizeObserver(update);
+    update();
+    observer.observe(row);
+    document.fonts.addEventListener('loadingdone', update);
+    return () => {
+      observer.disconnect();
+      document.fonts.removeEventListener('loadingdone', update);
+      row.removeAttribute('data-fit-icons');
+    };
+  }, [phonePortrait, minimalist, ready]);
   const manifest = {
     images: images.map((image) => ({ label: image.label, metadata: image.metadata })),
     metadata,
@@ -602,31 +624,6 @@ export default function App({
         }
       />
       <header className="app-header">
-        {ready && (
-          <div className="mode-controls">
-            {!phonePortrait && <span className="eyebrow">MODE</span>}
-            <div className="segmented" role="group" aria-label="Comparison mode">
-              <button
-                aria-label="Split Screen"
-                aria-pressed={config.mode === 'split'}
-                className={config.mode === 'split' ? 'active' : ''}
-                onClick={() => setConfig((previous) => ({ ...previous, mode: 'split' }))}
-              >
-                {!phonePortrait && <SplitSquareHorizontal size={16} />}
-                <span>Split Screen</span>
-              </button>
-              <button
-                aria-label="Side-by-Side"
-                aria-pressed={config.mode === 'side'}
-                className={config.mode === 'side' ? 'active' : ''}
-                onClick={() => setConfig((previous) => ({ ...previous, mode: 'side' }))}
-              >
-                {!phonePortrait && <Columns2 size={16} />}
-                <span>Side-by-Side</span>
-              </button>
-            </div>
-          </div>
-        )}
         <h1>
           <span className="brand-mark" aria-hidden="true">
             <span />
@@ -634,31 +631,56 @@ export default function App({
           <span className="brand-name">Upscale Compare</span>
         </h1>
         {ready && (
-          <div className="header-actions">
-            {presentation.edgeToEdge && (
+          <div className="header-controls" ref={headerControls}>
+            <div className="mode-controls">
+              {!phonePortrait && <span className="eyebrow">MODE</span>}
+              <div className="segmented" role="group" aria-label="Comparison mode">
+                <button
+                  aria-label="Split Screen"
+                  aria-pressed={config.mode === 'split'}
+                  className={config.mode === 'split' ? 'active' : ''}
+                  onClick={() => setConfig((previous) => ({ ...previous, mode: 'split' }))}
+                >
+                  <SplitSquareHorizontal size={16} aria-hidden="true" />
+                  <span>Split Screen</span>
+                </button>
+                <button
+                  aria-label="Side-by-Side"
+                  aria-pressed={config.mode === 'side'}
+                  className={config.mode === 'side' ? 'active' : ''}
+                  onClick={() => setConfig((previous) => ({ ...previous, mode: 'side' }))}
+                >
+                  <Columns2 size={16} aria-hidden="true" />
+                  <span>Side-by-Side</span>
+                </button>
+              </div>
+            </div>
+            <div className="header-actions">
+              {presentation.edgeToEdge && (
+                <button
+                  ref={imagePanelToggle}
+                  className="images-toggle"
+                  aria-label="Image controls"
+                  aria-expanded={compactLayout && imagePanelOpen}
+                  aria-controls="image-controls"
+                  onClick={() => setImagePanelOpen((open) => !open)}
+                >
+                  <ChevronDown size={17} />
+                  <span>Images</span>
+                </button>
+              )}
+              {!compactWeb && shareControl}
               <button
-                ref={imagePanelToggle}
-                className="images-toggle"
-                aria-label="Image controls"
-                aria-expanded={compactLayout && imagePanelOpen}
-                aria-controls="image-controls"
-                onClick={() => setImagePanelOpen((open) => !open)}
+                ref={manageTrigger}
+                className="primary"
+                aria-label="Manage Images"
+                onClick={() => setModal('upload')}
+                disabled={loading}
               >
-                <ChevronDown size={17} />
-                <span>Images</span>
+                <ImagePlus size={17} aria-hidden="true" />
+                <span>Manage Images</span>
               </button>
-            )}
-            {!compactWeb && shareControl}
-            <button
-              ref={manageTrigger}
-              className="primary"
-              aria-label="Manage Images"
-              onClick={() => setModal('upload')}
-              disabled={loading}
-            >
-              {!phonePortrait && <ImagePlus size={17} />}
-              <span>Manage Images</span>
-            </button>
+            </div>
           </div>
         )}
       </header>
