@@ -1826,6 +1826,89 @@ input[type='checkbox'] {
         2
     );
 }
+
+.app.comparison-phone-portrait.has-images:not(.comparison-minimalist) .app-header {
+  display: flex;
+  flex-wrap: wrap;
+  height: auto;
+  gap: 3px 4px;
+  padding: 0 max(8px, var(--comparison-safe-right, 0px)) 6px
+    max(8px, var(--comparison-safe-left, 0px));
+}
+.comparison-phone-portrait.has-images .app-header h1 {
+  order: -1;
+  flex: 0 0 100%;
+  justify-content: center;
+  min-height: 29px;
+}
+.comparison-phone-portrait.has-images .app-header h1 .brand-mark {
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+  margin-inline-end: 8px;
+}
+.comparison-phone-portrait .segmented {
+  padding: 0;
+  gap: 1px;
+}
+.comparison-phone-portrait .segmented button,
+.comparison-phone-portrait .header-actions button {
+  min-height: 44px;
+  padding: 6px clamp(2px, calc((100vw - 320px) / 20), 5px);
+  letter-spacing: -0.2px;
+}
+.comparison-phone-portrait .image-selection-bar {
+  min-height: 54px;
+}
+.comparison-phone-portrait .upload-list-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 6px 8px;
+}
+.comparison-phone-portrait .upload-list-item img {
+  grid-column: 1;
+  grid-row: 1;
+  width: 36px;
+}
+.comparison-phone-portrait .upload-list-item > div {
+  display: contents;
+}
+.comparison-phone-portrait .upload-list-item input {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  width: 100%;
+  min-height: 44px;
+  padding: 5px 7px;
+  font-size: 16px;
+}
+.comparison-phone-portrait.android-app .upload-list-item input {
+  grid-column: 1 / -1;
+}
+.comparison-phone-portrait .upload-list-item .muted {
+  grid-column: 1 / 3;
+  grid-row: 2;
+}
+.comparison-phone-portrait .upload-list-item button {
+  grid-row: 2;
+}
+.phone-help {
+  min-height: 44px;
+  padding-inline: 4px;
+  color: var(--muted);
+}
+:is(.comparison-phone-portrait, .comparison-phone-landscape) .landing-footer,
+:is(.comparison-phone-portrait, .comparison-phone-landscape) .manage-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  column-gap: 8px;
+}
+:is(.comparison-phone-portrait, .comparison-phone-landscape) .manage-intro p {
+  margin-block: 0;
+}
+
 .web-app.installed-fullscreen .alignment-warning {
   max-width: calc(100% - 2 * var(--installed-side-safe) - 16px);
 }

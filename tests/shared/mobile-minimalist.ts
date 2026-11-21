@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { renameSelectedImage } from './phone-controls';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
@@ -14,7 +15,7 @@ export async function open(page: Page, mode = 'Split Screen', url = './') {
   await page.getByTestId('file-input').setInputFiles(files);
   await page.getByLabel('Select image A', { exact: true }).selectOption('2');
   await page.getByLabel('Select image B', { exact: true }).selectOption('0');
-  await page.getByLabel('Label for image A').fill('Native original');
+  await renameSelectedImage(page, 'A', 'C.png', 'Native original');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await page.getByLabel('Game title').fill('Minimalist regression');
   await page.getByRole('button', { name: 'Save details', exact: true }).click();
@@ -60,8 +61,8 @@ export async function snapshot(page: Page) {
       selected: [...document.querySelectorAll('#image-controls select')].map(
         (n) => (n as HTMLSelectElement).value,
       ),
-      labels: [...document.querySelectorAll('#image-controls input')].map(
-        (n) => (n as HTMLInputElement).value,
+      labels: [...document.querySelectorAll<HTMLSelectElement>('#image-controls select')].map(
+        (select) => select.selectedOptions[0].textContent,
       ),
       divider: stage.querySelector('[role="slider"]')?.getAttribute('aria-valuenow') ?? null,
       x: (rect.x + panelWidth / 2 - image.x) / scale,

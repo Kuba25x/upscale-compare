@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
+import { openComparisonHelp } from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 import { serve } from './helpers';
 
 async function help(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: 'Keyboard shortcuts', exact: true }).click();
+  const dialog = await openComparisonHelp(page);
   await expect(
     page.getByRole('heading', { name: 'Installation and offline', exact: true }),
   ).toBeVisible();
+  return dialog;
 }
 
 test('Help reports offline readiness only after the full cache and detects missing resources', async ({
@@ -26,21 +28,21 @@ test('Help reports offline readiness only after the full cache and detects missi
       ),
     )
     .toBe('installing');
-  await help(page);
+  const dialog = await help(page);
   await expect(page.getByTestId('offline-readiness')).toContainText('not ready');
-  await expect(page.getByRole('dialog')).toContainText('Version 0.1.0+aaaaaaa1');
+  await expect(dialog).toContainText('Version 0.1.0+aaaaaaa1');
   await expect(page.getByRole('button', { name: /install/i })).toHaveCount(0);
   await serve(request);
   await expect(page.getByTestId('offline-readiness')).toHaveText(
     'App resources are ready offline.',
   );
   await context.setOffline(true);
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await help(page);
   await expect(page.getByTestId('offline-readiness')).toHaveText(
     'App resources are ready offline.',
   );
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await page.evaluate(async () => {
     for (const name of await caches.keys())
       if (name.startsWith('upscale-compare-precache-')) {
@@ -52,5 +54,5 @@ test('Help reports offline readiness only after the full cache and detects missi
   });
   await help(page);
   await expect(page.getByTestId('offline-readiness')).toContainText('not ready');
-  await expect(page.getByRole('dialog')).toContainText('empty comparison');
+  await expect(dialog).toContainText('empty comparison');
 });

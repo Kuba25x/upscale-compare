@@ -96,7 +96,6 @@ for (const mode of ['Split Screen', 'Side-by-Side'])
         'Zoom in',
         'Zoom out',
         'Comparison details',
-        'Keyboard shortcuts',
         'Fullscreen options',
       ]) {
         const button = page.getByRole('button', { name, exact: true });
@@ -106,6 +105,7 @@ for (const mode of ['Split Screen', 'Side-by-Side'])
         expect(box.x + box.width, name).toBeLessThanOrEqual(900 - right);
         expect(box.height, name).toBeGreaterThanOrEqual(44);
       }
+      await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
       await options(page);
       const dialog = (await page.getByRole('dialog').boundingBox())!;
       expect(dialog.x).toBeGreaterThanOrEqual(left);

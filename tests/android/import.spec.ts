@@ -143,8 +143,12 @@ test('empty and one-image drafts persist no incomplete session and can be filled
   ]);
   await page.reload();
   await expect(page.getByTestId('stage')).toBeVisible();
-  await expect(page.getByLabel('Label for image A')).toHaveValue('Original 2');
-  await expect(page.getByLabel('Label for image B')).toHaveValue('Original 3');
+  await expect(page.getByLabel('Select image A').locator('option:checked')).toHaveText(
+    'Original 2',
+  );
+  await expect(page.getByLabel('Select image B').locator('option:checked')).toHaveText(
+    'Original 3',
+  );
   await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   await dialog.getByRole('button', { name: 'Clear comparison' }).click();
   await expect(dialog).toContainText('No images in this comparison.');

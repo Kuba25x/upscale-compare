@@ -320,3 +320,12 @@ comparison is active. The dialog supports individual removal and clearing,
 and remains open during edits and imports. Closing with fewer than two images
 returns to **Upload Images**. Android stores only complete or empty sessions
 and releases draft originals on close or restart.
+
+## Phone comparison controls
+
+Phone portrait groups the mode buttons and **Manage Images** under the brand
+and moves screenshot label editing into **Manage Images**. Phone landscape retains
+the inline A/B editors and header. On phones, **Help & About** opens the existing
+guide from **Manage Images** or the landing screen. Playwright covers the view
+sizes, phone and tablet isolation, and mocked cutouts. Native instrumentation
+checks the portrait layout and label restoration on the Android emulator.

@@ -55,6 +55,8 @@ const initialConfig: Config = {
   view: { zoom: null, center: { x: 0, y: 0 } },
 };
 type UploadAction = { kind: 'all' | 'add' } | { kind: 'one'; index: number };
+const defaultLabel = (image: LocalImage) =>
+  image.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Screenshot';
 
 function withSelection(config: Config, images: LocalImage[], selected: Config['selected']): Config {
   if (config.view.zoom !== null || images.length < 2) return { ...config, selected };
@@ -90,8 +92,21 @@ export default function App({
   const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
   const [config, setConfig] = useState<Config>(initialConfig);
   const [modal, setModal] = useState<
-    'upload' | 'metadata' | 'share' | 'help' | 'privacy' | 'recovery' | null
+    | 'upload'
+    | 'upload-help'
+    | 'upload-privacy'
+    | 'metadata'
+    | 'share'
+    | 'help'
+    | 'privacy'
+    | 'recovery'
+    | null
   >(null);
+  const phone = presentation.phone;
+  const phonePortrait = phone === 'portrait';
+  const manageHelpOpen = modal === 'upload-help' || modal === 'upload-privacy';
+  const managing = modal === 'upload' || manageHelpOpen;
+  const closePrivacy = () => setModal(manageHelpOpen ? 'upload-help' : null);
   const [error, setError] = useState('');
   const [androidImageSource, setAndroidImageSource] = useState<AndroidImageSource>('photos');
   const [loading, setLoading] = useState(ANDROID_MODE);
@@ -101,9 +116,36 @@ export default function App({
   const manageTrigger = useRef<HTMLButtonElement>(null);
   const uploadList = useRef<HTMLDivElement>(null);
   const addImagesButton = useRef<HTMLButtonElement>(null);
+  const phoneHelpButton = useRef<HTMLButtonElement>(null);
   const focusAfterClose = useRef(false);
   const focusAfterRemoval = useRef<number | null>(null);
+  const focusAfterHelp = useRef(false);
+  const closeHelp = () => {
+    focusAfterHelp.current = Boolean(phoneHelpButton.current);
+    setModal(manageHelpOpen ? 'upload' : null);
+  };
+  const previousLayout = useRef({ phone, managing });
+  useLayoutEffect(() => {
+    const previous = previousLayout.current;
+    previousLayout.current = { phone, managing };
+    // Rotation or Escape can remove the focused editor before it receives blur.
+    if (
+      previous.phone &&
+      (phone !== previous.phone || (phonePortrait && previous.managing && !managing))
+    )
+      setImages((images) =>
+        images.every((image) => image.label.trim())
+          ? images
+          : images.map((image) =>
+              image.label.trim() ? image : { ...image, label: defaultLabel(image) },
+            ),
+      );
+  }, [phone, phonePortrait, managing]);
   useEffect(() => {
+    if (focusAfterHelp.current && (modal === null || modal === 'upload')) {
+      focusAfterHelp.current = false;
+      phoneHelpButton.current?.focus({ preventScroll: true });
+    }
     if (modal === null && focusAfterClose.current) {
       focusAfterClose.current = false;
       manageTrigger.current?.focus({ preventScroll: true });
@@ -348,6 +390,8 @@ export default function App({
   };
   const closeAndroidModal = useEffectEvent(() => {
     if (modal === 'upload') void closeManageImages();
+    else if (modal === 'help' || modal === 'upload-help') closeHelp();
+    else if (modal === 'upload-privacy') closePrivacy();
     else setModal(null);
   });
   useEffect(() => {
@@ -453,6 +497,19 @@ export default function App({
     );
     setPublished(undefined);
   };
+  const labelEditor = (image: LocalImage, index: number, name: string, disabled = false) => (
+    <input
+      aria-label={name}
+      value={image.label}
+      maxLength={120}
+      placeholder="Screenshot label"
+      disabled={disabled}
+      onChange={(event) => editLabel(index, event.target.value)}
+      onBlur={(event) => {
+        if (!event.currentTarget.value.trim()) editLabel(index, defaultLabel(image));
+      }}
+    />
+  );
   const select = (slot: 0 | 1, index: number) =>
     setConfig((previous) => {
       const selected: [number, number] = [...previous.selected];
@@ -526,7 +583,7 @@ export default function App({
         setDragging(false);
         if (!loading)
           void upload([...event.dataTransfer.files], {
-            kind: (ready || modal === 'upload') && !readOnly ? 'add' : 'all',
+            kind: (ready || managing) && !readOnly ? 'add' : 'all',
           });
       }}
     >
@@ -547,15 +604,15 @@ export default function App({
       <header className="app-header">
         {ready && (
           <div className="mode-controls">
-            <span className="eyebrow">MODE</span>
-            <div className="segmented">
+            {!phonePortrait && <span className="eyebrow">MODE</span>}
+            <div className="segmented" role="group" aria-label="Comparison mode">
               <button
                 aria-label="Split Screen"
                 aria-pressed={config.mode === 'split'}
                 className={config.mode === 'split' ? 'active' : ''}
                 onClick={() => setConfig((previous) => ({ ...previous, mode: 'split' }))}
               >
-                <SplitSquareHorizontal size={16} />
+                {!phonePortrait && <SplitSquareHorizontal size={16} />}
                 <span>Split Screen</span>
               </button>
               <button
@@ -564,7 +621,7 @@ export default function App({
                 className={config.mode === 'side' ? 'active' : ''}
                 onClick={() => setConfig((previous) => ({ ...previous, mode: 'side' }))}
               >
-                <Columns2 size={16} />
+                {!phonePortrait && <Columns2 size={16} />}
                 <span>Side-by-Side</span>
               </button>
             </div>
@@ -599,7 +656,7 @@ export default function App({
               onClick={() => setModal('upload')}
               disabled={loading}
             >
-              <ImagePlus size={17} />
+              {!phonePortrait && <ImagePlus size={17} />}
               <span>Manage Images</span>
             </button>
           </div>
@@ -662,23 +719,10 @@ export default function App({
                       </span>
                     </span>
                   </div>
-                  {!readOnly && (
+                  {!readOnly && !phonePortrait && (
                     <label className="rename-label" title="Customize screenshot label">
                       <Pencil size={13} />
-                      <input
-                        aria-label={`Label for image ${slot === 0 ? 'A' : 'B'}`}
-                        value={image.label}
-                        maxLength={120}
-                        placeholder="Screenshot label"
-                        onChange={(event) => editLabel(index, event.target.value)}
-                        onBlur={() => {
-                          if (!image.label.trim())
-                            editLabel(
-                              index,
-                              image.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Screenshot',
-                            );
-                        }}
-                      />
+                      {labelEditor(image, index, `Label for image ${slot === 0 ? 'A' : 'B'}`)}
                     </label>
                   )}
                 </div>
@@ -706,7 +750,7 @@ export default function App({
           </div>
           {!compactWeb && publishedNotice}
         </main>
-      ) : modal !== 'upload' ? (
+      ) : !managing ? (
         <main className="landing">
           <div className="upload-center">
             <button
@@ -746,6 +790,11 @@ export default function App({
                 ? 'Your images stay on this device.'
                 : 'Your images stay in this browser.'}
             </button>
+            {phone && (
+              <button ref={phoneHelpButton} className="text-button phone-help" onClick={help}>
+                Help &amp; About
+              </button>
+            )}
             <a href={SOURCE} target="_blank" rel="noreferrer">
               <Github size={14} />
               Open source · AGPL-3.0
@@ -761,13 +810,13 @@ export default function App({
       {modal === 'recovery' && localSharingTest && (
         <PublicationRecoveryDialog onClose={() => setModal(null)} />
       )}
-      {loading && modal !== 'upload' && (
+      {loading && !managing && (
         <div className="loading-indicator" role="status">
           <LoaderCircle size={17} className="spinner" />
           {route ? 'Opening comparison…' : 'Loading original images…'}
         </div>
       )}
-      {error && modal !== 'upload' && (
+      {error && !managing && (
         <div className="toast" role="alert">
           <span>{error}</span>
           <button className="icon-button" aria-label="Dismiss error" onClick={() => setError('')}>
@@ -780,25 +829,37 @@ export default function App({
           <Upload size={35} />
           <h2>Drop your screenshots</h2>
           <p>
-            {(ready || modal === 'upload') && !readOnly
+            {(ready || managing) && !readOnly
               ? 'Add images to this comparison · Up to 4 total'
               : '2–4 images · PNG, JPEG, or WebP'}
           </p>
         </div>
       )}
-      {modal === 'upload' && (
+      {managing && (
         <Modal
           title={readOnly ? 'Start your own comparison' : 'Your images'}
           onClose={() => void closeManageImages()}
           busy={loading}
         >
-          <p className="muted">
-            {readOnly
-              ? 'Choose two to four screenshots to start a new local comparison.'
-              : ANDROID_MODE
-                ? 'Originals are stored privately on this device.'
-                : 'Files stay in your browser.'}
-          </p>
+          <div className="manage-intro">
+            <p className="muted">
+              {readOnly
+                ? 'Choose two to four screenshots to start a new local comparison.'
+                : ANDROID_MODE
+                  ? 'Originals are stored privately on this device.'
+                  : 'Files stay in your browser.'}
+            </p>
+            {phone && (
+              <button
+                ref={phoneHelpButton}
+                className="text-button phone-help"
+                onClick={() => setModal('upload-help')}
+                disabled={loading}
+              >
+                Help &amp; About
+              </button>
+            )}
+          </div>
           {ANDROID_MODE && (
             <label>
               Image source
@@ -822,7 +883,11 @@ export default function App({
                 <div className="upload-list-item" key={image.url}>
                   {!ANDROID_MODE && <img src={image.url} alt="" />}
                   <div>
-                    <b>{image.label}</b>
+                    {phonePortrait ? (
+                      labelEditor(image, index, `Label for ${image.name}`, loading)
+                    ) : (
+                      <b>{image.label}</b>
+                    )}
                     <span className="muted">
                       {image.width} × {image.height} · {formatBytes(image.size)}
                     </span>
@@ -916,8 +981,8 @@ export default function App({
           onClose={() => setModal(null)}
         />
       )}
-      {modal === 'help' && (
-        <Modal title="A closer look at every pixel" onClose={() => setModal(null)}>
+      {(modal === 'help' || modal === 'upload-help') && (
+        <Modal title="A closer look at every pixel" onClose={closeHelp}>
           <p className="muted">
             Drag the image to pan. Scroll to zoom at the cursor. On touchscreens, drag with one
             finger and pinch with two.
@@ -949,6 +1014,7 @@ export default function App({
             management may affect displayed colors; HDR inspection is not supported.
           </p>
           {__WEB_PWA__ && <InstallationHelp />}
+          {phone && !__WEB_PWA__ && <p className="muted small">Build {__APP_RELEASE__}</p>}
           <p className="muted small">
             <a
               href={`${import.meta.env.BASE_URL}third-party-licenses.txt`}
@@ -962,16 +1028,18 @@ export default function App({
             <a className="text-link" href={SOURCE} target="_blank" rel="noreferrer">
               Source code · AGPL-3.0 ↗
             </a>
-            <button onClick={() => setModal('privacy')}>Privacy</button>
-            <button className="primary" onClick={() => setModal(null)}>
+            <button onClick={() => setModal(manageHelpOpen ? 'upload-privacy' : 'privacy')}>
+              Privacy
+            </button>
+            <button className="primary" onClick={closeHelp}>
               Got it
             </button>
           </div>
         </Modal>
       )}
       <GestureDiagnostics />
-      {modal === 'privacy' && (
-        <Modal title="Your images, your choice" onClose={() => setModal(null)}>
+      {(modal === 'privacy' || modal === 'upload-privacy') && (
+        <Modal title="Your images, your choice" onClose={closePrivacy}>
           <div className="privacy-copy">
             <h3>Compare privately</h3>
             <p>
@@ -1018,7 +1086,7 @@ export default function App({
             >
               Privacy documentation ↗
             </a>
-            <button className="primary" onClick={() => setModal(null)}>
+            <button className="primary" onClick={closePrivacy}>
               Close
             </button>
           </div>

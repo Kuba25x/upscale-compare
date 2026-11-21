@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openComparisonHelp, renameSelectedImage } from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 import { cacheSnapshot, control, originalBytes, serve, update } from './helpers';
 
@@ -29,7 +30,7 @@ for (const { count, from, to } of [
     }
     for (const view of pages) {
       await view.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1)]);
-      await view.getByLabel('Label for image A').fill('Keep my comparison');
+      await renameSelectedImage(view, 'A', file.name, 'Keep my comparison');
       await view.getByRole('button', { name: '200%', exact: true }).click();
       await view.evaluate(() => {
         (window as any).__originalLayers = [...document.querySelectorAll('.comparison-image')];
@@ -51,7 +52,9 @@ for (const { count, from, to } of [
     for (const [name, keys] of Object.entries(before))
       for (const key of keys) expect(afterInstall[name]).toContain(key);
     for (const view of pages) {
-      await expect(view.getByLabel('Label for image A')).toHaveValue('Keep my comparison');
+      await expect(view.getByLabel('Select image A').locator('option:checked')).toHaveText(
+        'Keep my comparison',
+      );
       await expect(view.getByTestId('stage')).toHaveAttribute('data-zoom', '2');
       expect(await view.locator('script[type="module"][src]').getAttribute('src')).toBe(scriptA);
       expect(
@@ -62,14 +65,12 @@ for (const { count, from, to } of [
         ),
       ).toBe(true);
       expect(await originalBytes(view)).toEqual(Array.from(file.buffer));
-      await view.getByRole('button', { name: 'Keyboard shortcuts', exact: true }).click();
+      const help = await openComparisonHelp(view);
       await expect(view.getByTestId('offline-readiness')).toHaveText(
         'App resources are ready offline.',
       );
-      await expect(view.getByRole('dialog')).toContainText(
-        `Version 0.1.0+${from === 'a' ? 'aaaaaaa1' : 'bbbbbbb2'}`,
-      );
-      await view.getByRole('button', { name: 'Close dialog', exact: true }).click();
+      await expect(help).toContainText(`Version 0.1.0+${from === 'a' ? 'aaaaaaa1' : 'bbbbbbb2'}`);
+      await help.getByRole('button', { name: 'Close dialog', exact: true }).click();
     }
     if (count === 2) {
       await pages[1].close();
@@ -124,10 +125,12 @@ for (const fault of ['missing', 'network', 'corrupt']) {
     const before = await cacheSnapshot(page);
     const file = imageFile('Unmodified original.png');
     await page.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1)]);
-    await page.getByLabel('Label for image A').fill('Keep failed-update state');
+    await renameSelectedImage(page, 'A', file.name, 'Keep failed-update state');
     await serve(request, 'b', fault);
     expect(await update(page)).toBe('redundant');
-    await expect(page.getByLabel('Label for image A')).toHaveValue('Keep failed-update state');
+    await expect(page.getByLabel('Select image A').locator('option:checked')).toHaveText(
+      'Keep failed-update state',
+    );
     expect(await originalBytes(page)).toEqual(Array.from(file.buffer));
     const after = await cacheSnapshot(page);
     for (const [name, keys] of Object.entries(before))

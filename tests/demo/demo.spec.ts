@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openComparisonHelp, manageImages } from '../shared/phone-controls';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
@@ -151,13 +152,18 @@ test('keeps privacy information, pixel controls, keyboard shortcuts, and fullscr
   page,
 }) => {
   await openDemo(page);
-  await page.getByRole('button', { name: 'Keyboard shortcuts', exact: true }).click();
-  await page.getByRole('button', { name: 'Privacy', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText(
+  const help = await openComparisonHelp(page);
+  await help.getByRole('button', { name: 'Privacy', exact: true }).click();
+  const privacy = page.getByRole('dialog', { name: 'Your images, your choice' });
+  await expect(privacy).toContainText(
     'Original images, labels, and comparison details stay in your browser and are never uploaded automatically.',
   );
-  await expect(page.getByRole('dialog')).not.toContainText(/Demo|sharing is (?:not |un)available/i);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(privacy).not.toContainText(/Demo|sharing is (?:not |un)available/i);
+  await privacy.getByRole('button', { name: 'Close', exact: true }).click();
+  if (await help.isVisible()) {
+    await help.getByRole('button', { name: 'Got it' }).click();
+    await manageImages(page).getByRole('button', { name: 'Close dialog' }).click();
+  }
   await page.locator('body').click({ position: { x: 2, y: 200 } });
   await page.keyboard.press('4');
   await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', '4');

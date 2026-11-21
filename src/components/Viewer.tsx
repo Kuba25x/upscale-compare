@@ -973,14 +973,16 @@ export function Viewer({
           >
             <Info size={16} />
           </button>
-          <button
-            className="icon-button"
-            aria-label="Keyboard shortcuts"
-            title="Keyboard shortcuts (?)"
-            onClick={onHelp}
-          >
-            <Keyboard size={17} />
-          </button>
+          {!presentation.phone && (
+            <button
+              className="icon-button"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+              onClick={onHelp}
+            >
+              <Keyboard size={17} />
+            </button>
+          )}
           {presentation.edgeToEdge && fullscreenButton}
         </div>
         {comparisonFullscreen && (

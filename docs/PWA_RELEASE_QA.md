@@ -64,7 +64,8 @@ version. Use non-private test patterns; include one PNG, JPEG and static WebP.
       correct title and disabled **Share Comparison**.
 - [ ] Import PNG/JPEG/WebP from local device storage, select each A/B pair and inspect
       Split Screen / Side-by-Side, Fit, 100% and 200%, pan, pinch and divider movement.
-- [ ] Open **Keyboard shortcuts (?) → Installation and offline**. Confirm the expected
+- [ ] Open **Help & About** on a phone or **Keyboard shortcuts (?)** on a computer.
+      Under **Installation and offline**, confirm the expected
       version and wait for **App resources are ready offline**. Do not equate an install
       offer with completed caching.
 - [ ] Install from Chrome's menu. Record its exact wording and confirm the installed

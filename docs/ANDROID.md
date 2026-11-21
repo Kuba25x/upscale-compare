@@ -168,6 +168,12 @@ rotation, keyboard and gesture/three-button Back. Test picker cancellation,
 unavailable documents, full storage, clear comparison, process death during picker,
 copy and save, and restart after cleanup failure. Check that originals belonging to
 the provider never change. A failed decode must report an error without recompression.
+On a physical phone, confirm that the portrait header fits within the reported
+cutout and gesture insets at the smallest available display size. Open the
+onscreen keyboard from **Manage Images**, edit labels, rotate and reopen, and
+verify **Help & About** and Android Back in both orientations. Check external
+keyboard shortcuts and repeat the portrait and landscape checks in Chrome's
+installed PWA.
 
 Collect Android Studio memory/CPU traces, `adb shell dumpsys meminfo` for the app
 and associated WebView renderer, graphics allocations, frame times and logcat

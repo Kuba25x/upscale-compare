@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { openViewer, points } from '../shared/pinch';
 import { imageFile } from '../e2e/fixtures';
+import { renameSelectedImage } from '../shared/phone-controls';
 
 async function start(page: Page) {
   await page.getByRole('button', { name: 'Diagnostics', exact: true }).click();
@@ -29,7 +30,7 @@ test('phone-friendly export and insecure-context copy fallback preserve privacy 
   await page
     .getByTestId('file-input')
     .setInputFiles([imageFile('PRIVATE_FILENAME_MARKER.png'), imageFile('second.png', 1)]);
-  await page.getByLabel('Label for image A').fill('PRIVATE_LABEL_MARKER');
+  await renameSelectedImage(page, 'A', 'PRIVATE_FILENAME_MARKER.png', 'PRIVATE_LABEL_MARKER');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await page.getByLabel('Game title').fill('PRIVATE_METADATA_MARKER');
   await page.getByRole('button', { name: 'Save details', exact: true }).click();
