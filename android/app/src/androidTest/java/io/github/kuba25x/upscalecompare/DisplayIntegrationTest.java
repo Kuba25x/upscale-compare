@@ -407,7 +407,7 @@ public class DisplayIntegrationTest {
                     """
                     (() => {
                       const header = document.querySelector('.app:not(.has-images) .app-header');
-                      if (!header) return false;
+                      if (!header || !document.querySelector('.landing')) return false;
                       const bounds = header.getBoundingClientRect();
                       const style = getComputedStyle(header);
                       const logo = header.querySelector('.brand-mark').getBoundingClientRect();
@@ -625,7 +625,13 @@ public class DisplayIntegrationTest {
       click(".header-actions [aria-label=\"Manage Images\"]");
       assertManageImagesPreviews();
       click("dialog[open] .modal-actions > button:first-child");
-      eventually(() -> assertEquals("true", js("!!document.querySelector('.landing')")));
+      eventually(
+          () ->
+              assertEquals(
+                  "true",
+                  js(
+                      "!!document.querySelector('.app:not(.has-images) dialog[open] "
+                          + "button[aria-label=\"Close dialog\"]:enabled')")));
       click("dialog[open] button[aria-label=\"Close dialog\"]");
       assertLandingBrandCentered();
       rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, true);
