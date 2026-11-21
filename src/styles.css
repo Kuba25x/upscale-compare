@@ -1075,7 +1075,8 @@ input[type='checkbox'] {
     height: 60px;
     display: flex;
     justify-content: center;
-    padding: 0 15px;
+    padding: 0 max(15px, var(--comparison-safe-right, 0px)) 0
+      max(15px, var(--comparison-safe-left, 0px));
   }
   .rename-label {
     flex-basis: 110px;
