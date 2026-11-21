@@ -658,8 +658,10 @@ export function Viewer({
       />
     );
   };
+  // Remount the trigger when the edge-to-edge layout changes so fullscreen exit can restore focus.
   const defaultFullscreenButton = (
     <button
+      key={presentation.edgeToEdge ? 'edge-to-edge' : 'inset'}
       ref={fullscreenTrigger}
       className={presentation.edgeToEdge ? 'icon-button fullscreen-button' : 'icon-button'}
       aria-label={(fullscreenOverride ?? fullscreen) ? 'Exit fullscreen' : 'Enter fullscreen'}
