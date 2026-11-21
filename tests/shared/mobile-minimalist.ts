@@ -200,7 +200,7 @@ export function mobileMinimalistTests() {
         await open(page, mode);
         for (const zoom of [1, 2, 4]) {
           await page.setViewportSize({ width: 412, height: 900 });
-          await page.getByRole('button', { name: `${zoom * 100}%`, exact: true }).click();
+          await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption(String(zoom));
           const before = await snapshot(page);
           await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
           for (const viewport of [
