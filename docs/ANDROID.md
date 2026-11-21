@@ -18,8 +18,10 @@ builds, publication limits and backend deployment controls retain their behavior
 The shared Viewer and geometry retain the existing two modes, contact snapshots,
 synchronized panning, source coordinates and physical-pixel zoom. The Android
 adapter replaces browser File ownership with private native original identifiers.
-Only the selected pair is rendered; Manage Images does not decode full-size
-thumbnails of every stored original. No new comparison renderer is introduced.
+Only the selected pair is rendered at full resolution. Manage Images requests
+local previews that are sampled from the private originals and limited to 128
+pixels on the longest edge. Only the encoded previews cross the bridge. Up to
+four are cached in memory and removed when their originals are discarded.
 The existing favicon design is reused for the launcher and splash screen.
 
 `OriginalsPlugin` defaults to the AndroidX Photo Picker contracts for images.
@@ -267,7 +269,7 @@ and non-content URIs are rejected; app limits remain unchanged.
 
 Photo Picker cloud-provider images may require network access during import. They
 are available to the app offline only after the native copy succeeds. The app
-never asks for thumbnails, transcodes or transfers originals through JavaScript.
+does not request provider thumbnails or transfer original bytes through JavaScript.
 The existing ContentResolver stream, hash, bounds/format checks, private storage
 and atomic commit/cleanup pipeline are retained. A failed batch retains the last
 committed session and removes private partial copies.

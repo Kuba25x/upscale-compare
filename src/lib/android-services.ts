@@ -1,6 +1,7 @@
 import { App } from '@capacitor/app';
 import {
   pickOriginals,
+  loadAndroidThumbnail,
   restoreAndroidSession,
   saveAndroidSession,
   discardOriginals,
@@ -10,6 +11,7 @@ import {
 export const androidServices = {
   app: App,
   pickOriginals,
+  loadAndroidThumbnail,
   restoreAndroidSession,
   saveAndroidSession,
   discardOriginals,

@@ -50,6 +50,7 @@ const Originals = registerPlugin<{
   }): Promise<{ images: Original[] }>;
   restore(): Promise<{ session: unknown; paths: Record<string, string> }>;
   paths(options: { ids: string[] }): Promise<{ paths: Record<string, string> }>;
+  thumbnail(options: { id: string }): Promise<{ dataUrl?: string }>;
   save(options: { session: AndroidSession; draftId?: string }): Promise<{ warning?: string }>;
   discard(options: { ids: string[] }): Promise<void>;
 }>('Originals');
@@ -99,6 +100,10 @@ async function restoreOnce() {
   return { ...checked, images: checked.images.map((i) => materialize(i, paths)) };
 }
 export const restoreAndroidSession = () => (restorePromise ??= restoreOnce());
+export async function loadAndroidThumbnail(id: string): Promise<string | undefined> {
+  const result = await Originals.thumbnail({ id });
+  return result.dataUrl;
+}
 export async function saveAndroidSession(
   session: {
     images: LocalImage[];

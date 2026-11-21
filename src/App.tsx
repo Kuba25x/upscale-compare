@@ -32,7 +32,7 @@ import { readDeletionKey, ShareDialog, type Published } from './components/Share
 import { PublicationRecoveryDialog } from './components/PublicationRecoveryDialog';
 import { JOURNAL_CHANGED, pendingPublications } from './lib/publication-journal';
 
-import type { AndroidImageSource } from './lib/android';
+import type { AndroidImage, AndroidImageSource } from './lib/android';
 import type { AndroidServices } from './lib/android-services';
 import {
   WEB_PRESENTATION,
@@ -70,6 +70,29 @@ function withSelection(config: Config, images: LocalImage[], selected: Config['s
     },
   };
 }
+
+function AndroidThumbnail({
+  id,
+  load,
+}: {
+  id: string;
+  load: AndroidServices['loadAndroidThumbnail'];
+}) {
+  const [src, setSrc] = useState<string>();
+  useEffect(() => {
+    let active = true;
+    void load(id)
+      .then((dataUrl) => {
+        if (active) setSrc(dataUrl);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [id, load]);
+  return <img src={src} alt="" />;
+}
+
 interface AppProps {
   android?: AndroidServices;
   presentation?: ComparisonPresentation;
@@ -903,7 +926,14 @@ export default function App({
               {images.length === 0 && <p className="muted">No images in this comparison.</p>}
               {images.map((image, index) => (
                 <div className="upload-list-item" key={image.url}>
-                  {!ANDROID_MODE && <img src={image.url} alt="" />}
+                  {android ? (
+                    <AndroidThumbnail
+                      id={(image as AndroidImage).id}
+                      load={android.loadAndroidThumbnail}
+                    />
+                  ) : (
+                    <img src={image.url} alt="" />
+                  )}
                   <div>
                     {phonePortrait ? (
                       labelEditor(image, index, `Label for ${image.name}`, loading)
