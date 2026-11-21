@@ -36,8 +36,11 @@ when their full labels and icons fit. With unusually large insets or text, a
 label may wrap inside its button. Physical rotation controls the layout while
 the onscreen keyboard is open.
 
-Rename any screenshot from **Manage Images** in portrait. Landscape retains the
-inline A/B editors. **Help & About** opens the existing guide, with installation,
+Rename any screenshot from **Manage Images** in either orientation. The landscape
+**Images** panel provides quick A/B selection and swapping. The toolbar shows
+the current zoom in the compact selector in both orientations. With unusually
+large insets on a narrow screen, the portrait toolbar can wrap onto a second row.
+**Help & About** opens the existing guide, with installation,
 offline status and version information. Closing the guide returns to
 **Manage Images** when opened from there. The keyboard shortcuts button remains
 on computer and tablet layouts, and external keyboard shortcuts work on phones.

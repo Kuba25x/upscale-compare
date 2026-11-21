@@ -64,6 +64,8 @@ export function Viewer({
   presentation = WEB_PRESENTATION,
 }: Props) {
   const comparisonFullscreen = presentation.minimalist;
+  const compactZoom = presentation.compact || presentation.phone === 'portrait';
+  const fullscreenAtEnd = presentation.edgeToEdge || compactZoom;
   const wasComparisonFullscreen = useRef(false);
   const stage = useRef<HTMLDivElement>(null);
   const fullscreenTrigger = useRef<HTMLButtonElement>(null);
@@ -917,21 +919,22 @@ export function Viewer({
           >
             Fit
           </button>
-          {[1, 2, 4].map((zoom) => (
-            <button
-              key={zoom}
-              className={`zoom-preset${config.view.zoom === zoom ? ' selected' : ''}`}
-              onClick={() => setZoom(zoom)}
-              title={
-                zoom === 1
-                  ? 'One source pixel per physical screen pixel (1)'
-                  : `${zoom * 100}% source-pixel zoom (${zoom})`
-              }
-            >
-              {zoom * 100}%
-            </button>
-          ))}
-          {presentation.edgeToEdge && (
+          {!compactZoom &&
+            [1, 2, 4].map((zoom) => (
+              <button
+                key={zoom}
+                className={config.view.zoom === zoom ? 'selected' : undefined}
+                onClick={() => setZoom(zoom)}
+                title={
+                  zoom === 1
+                    ? 'One source pixel per physical screen pixel (1)'
+                    : `${zoom * 100}% source-pixel zoom (${zoom})`
+                }
+              >
+                {zoom * 100}%
+              </button>
+            ))}
+          {compactZoom && (
             <select
               className="compact-zoom-select"
               aria-label="Zoom preset"
@@ -953,7 +956,7 @@ export function Viewer({
               <option value="4">400%</option>
             </select>
           )}
-          <span className="toolbar-separator" />
+          {!compactZoom && <span className="toolbar-separator" />}
           <button
             className="icon-button"
             aria-label="Zoom out"
@@ -961,11 +964,13 @@ export function Viewer({
           >
             <Minus size={15} />
           </button>
-          <output className="zoom-readout" aria-label="Current zoom">
-            {config.view.zoom === null
-              ? `${Math.round(scale * dpr * 100)}% fit`
-              : `${Math.round(config.view.zoom * 100)}%${config.view.zoom === 1 ? ' · 1:1' : ''}`}
-          </output>
+          {!compactZoom && (
+            <output className="zoom-readout" aria-label="Current zoom">
+              {config.view.zoom === null
+                ? `${Math.round(scale * dpr * 100)}% fit`
+                : `${Math.round(config.view.zoom * 100)}%${config.view.zoom === 1 ? ' · 1:1' : ''}`}
+            </output>
+          )}
           <button
             className="icon-button"
             aria-label="Zoom in"
@@ -973,8 +978,8 @@ export function Viewer({
           >
             <Plus size={15} />
           </button>
-          <span className="toolbar-separator" />
-          {!presentation.edgeToEdge && fullscreenButton}
+          {!compactZoom && <span className="toolbar-separator" />}
+          {!fullscreenAtEnd && fullscreenButton}
           <button
             className="icon-button"
             aria-label="Comparison details"
@@ -993,7 +998,7 @@ export function Viewer({
               <Keyboard size={17} />
             </button>
           )}
-          {presentation.edgeToEdge && fullscreenButton}
+          {fullscreenAtEnd && fullscreenButton}
         </div>
         {comparisonFullscreen && (
           <button

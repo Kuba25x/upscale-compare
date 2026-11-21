@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { imageFile } from './fixtures';
-import { expectPhonePortraitHeader, helpDialog, manageImages } from '../shared/phone-controls';
+import {
+  expectPhonePortraitHeader,
+  expectPhoneZoomToolbar,
+  helpDialog,
+  manageImages,
+} from '../shared/phone-controls';
 import { installWebDisplay } from '../shared/web-display';
 import { expectCenteredBrand } from '../shared/layout-alignment';
 
@@ -19,6 +24,7 @@ for (const width of [320, 360, 390, 430]) {
     await expectCenteredBrand(page);
     await page.getByTestId('file-input').setInputFiles(files);
     await expectPhonePortraitHeader(page, { icons: width > 320 });
+    await expectPhoneZoomToolbar(page);
     await expectCenteredBrand(page);
     const header = page.locator('.app-header');
     expect((await header.boundingBox())!.height).toBeLessThan(96);
@@ -114,12 +120,13 @@ test('rotating with an empty label restores its filename fallback and keeps Mana
   await page.setViewportSize({ width: 844, height: 390 });
   await expect(page.locator('.app')).toHaveClass(/comparison-phone-landscape/);
   await expect(manage).toBeVisible();
+  await expect(manage.getByRole('textbox', { name: 'Label for B.png' })).toHaveValue('B');
   await manage.getByRole('button', { name: 'Close dialog' }).tap();
   await page.getByRole('button', { name: 'Image controls' }).tap();
-  await expect(page.getByLabel('Label for image B')).toHaveValue('B');
+  await expect(page.getByLabel('Select image B').locator('option:checked')).toHaveText('B');
 });
 
-test('phone landscape keeps icons and inline label editing while Help stays in Manage Images', async ({
+test('phone landscape keeps quick selection and swaps while all labels are edited in Manage Images', async ({
   page,
 }) => {
   await installWebDisplay(page);
@@ -134,12 +141,28 @@ test('phone landscape keeps icons and inline label editing while Help stays in M
   expect((await page.locator('.app-header').boundingBox())!.height).toBe(52);
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Image controls' }).tap();
-  await page.getByLabel('Label for image A').fill('Landscape label');
-  await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Landscape label');
+  const panel = page.locator('.image-selection-bar');
+  await expect(panel.getByRole('textbox')).toHaveCount(0);
+  await expect(panel.getByRole('combobox')).toHaveCount(2);
+  await expect(panel.getByRole('button', { name: 'Swap images' })).toBeVisible();
   await page.getByRole('button', { name: 'Manage Images' }).tap();
-  await expect(manageImages(page).getByRole('textbox')).toHaveCount(0);
-  await manageImages(page).getByRole('button', { name: 'Help & About' }).tap();
+  const manage = manageImages(page);
+  await expect(manage.getByRole('textbox')).toHaveCount(4);
+  await expect(manage.locator('.upload-list img')).toHaveCount(4);
+  await manage.getByRole('textbox', { name: 'Label for A.png' }).fill('Landscape label');
+  await manage.getByRole('textbox', { name: 'Label for D.png' }).fill('Unselected image');
+  await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Landscape label');
+  await manage.getByRole('button', { name: 'Help & About' }).tap();
   await expect(helpDialog(page)).toBeVisible();
+  await helpDialog(page).getByRole('button', { name: 'Close dialog' }).tap();
+  await manage.getByRole('button', { name: 'Close dialog' }).tap();
+  if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Image controls' }).tap();
+  await panel.getByLabel('Select image A').selectOption('3');
+  await panel.getByRole('button', { name: 'Swap images' }).tap();
+  await expect(panel.getByLabel('Select image B').locator('option:checked')).toHaveText(
+    'Unselected image',
+  );
+  await expect(page.getByTestId('image-B')).toHaveAttribute('alt', 'Unselected image');
 });
 
 test('touch tablet keeps its controls even in a narrow portrait window', async ({ page }) => {
@@ -153,6 +176,8 @@ test('touch tablet keeps its controls even in a narrow portrait window', async (
   await expect(page.locator('.app')).not.toHaveClass(/comparison-phone-/);
   await expect(page.locator('.app-header').getByText('MODE', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Label for image A')).toBeVisible();
+  await expect(page.getByRole('button', { name: '200%', exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Zoom preset' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
   await expect(page.locator('.app-header .segmented button svg')).toHaveCount(2);
 });

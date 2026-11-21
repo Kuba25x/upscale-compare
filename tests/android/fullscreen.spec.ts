@@ -150,7 +150,7 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
       .locator('.inspection-toolbar > button')
       .evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().x));
     expect(buttonBounds.at(-1)).toBe(Math.max(...buttonBounds));
-    await page.getByRole('button', { name: '200%', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption('2');
     await expect.poll(async () => (await savedConfig(page)).view.zoom).toBe(2);
     const beforePan = await savedConfig(page);
     const normal = (await page.getByTestId('stage').boundingBox())!;

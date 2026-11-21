@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { renameSelectedImage } from '../shared/phone-controls';
+import { chooseZoomPreset, renameSelectedImage } from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 import { readFile } from 'node:fs/promises';
 import { cacheSnapshot, control, originalBytes, serve } from './helpers';
@@ -59,11 +59,11 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   const stage = offline.getByTestId('stage');
   for (const mode of ['Split Screen', 'Side-by-Side']) {
     await offline.getByRole('button', { name: mode, exact: true }).click();
-    await offline.getByRole('button', { name: '200%', exact: true }).click();
+    await chooseZoomPreset(offline, 2);
     await expect(stage).toHaveAttribute('data-zoom', '2');
     await offline.getByRole('button', { name: 'Fit', exact: true }).click();
     await expect(stage).toHaveAttribute('data-zoom', 'fit');
-    await offline.getByRole('button', { name: '100%', exact: true }).click();
+    await chooseZoomPreset(offline, 1);
     await stage.click({ position: { x: 60, y: 60 } });
     const beforePan = await offline.getByTestId('image-A').boundingBox();
     await offline.keyboard.press('ArrowRight');

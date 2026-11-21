@@ -4,6 +4,47 @@ export const manageImages = (page: Page) => page.getByRole('dialog', { name: 'Yo
 export const helpDialog = (page: Page) =>
   page.getByRole('dialog', { name: 'A closer look at every pixel' });
 
+export async function chooseZoomPreset(page: Page, zoom: 1 | 2 | 4) {
+  const preset = page.getByRole('combobox', { name: 'Zoom preset' });
+  if (await preset.isVisible()) await preset.selectOption(String(zoom));
+  else await page.getByRole('button', { name: `${zoom * 100}%`, exact: true }).click();
+}
+
+export async function expectPhoneZoomToolbar(
+  page: Page,
+  { left = 0, right = 0, oneRow = true } = {},
+) {
+  const toolbar = page.locator('.inspection-toolbar');
+  await expect(toolbar.getByRole('combobox', { name: 'Zoom preset' })).toBeVisible();
+  await expect(toolbar.locator('.zoom-readout')).toHaveCount(0);
+  const { controls, scrollWidth, clientWidth, viewportWidth } = await toolbar.evaluate((node) => ({
+    controls: Array.from(node.querySelectorAll('button, select'), (control) => ({
+      name: control.getAttribute('aria-label') ?? control.textContent?.trim(),
+      bounds: control.getBoundingClientRect().toJSON(),
+    })),
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth,
+    viewportWidth: document.documentElement.clientWidth,
+  }));
+  expect(controls.map(({ name }) => name).slice(0, 5)).toEqual([
+    'Fit',
+    'Zoom preset',
+    'Zoom out',
+    'Zoom in',
+    'Comparison details',
+  ]);
+  expect(controls).toHaveLength(6);
+  expect(controls.at(-1)!.name).toMatch(/fullscreen|minimalist/i);
+  expect(scrollWidth).toBe(clientWidth);
+  for (const { bounds } of controls) {
+    expect(bounds.width).toBeGreaterThanOrEqual(44);
+    expect(bounds.height).toBeGreaterThanOrEqual(44);
+    expect(bounds.left).toBeGreaterThanOrEqual(left);
+    expect(bounds.right).toBeLessThanOrEqual(viewportWidth - right);
+    if (oneRow) expect(bounds.y).toBeCloseTo(controls[0].bounds.y, 1);
+  }
+}
+
 export async function openComparisonHelp(page: Page) {
   await expect(page.getByTestId('stage')).toBeVisible();
   const shortcuts = page.getByRole('button', { name: 'Keyboard shortcuts', exact: true });

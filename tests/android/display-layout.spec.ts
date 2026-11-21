@@ -2,7 +2,12 @@ import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
-import { expectPhonePortraitHeader, helpDialog, manageImages } from '../shared/phone-controls';
+import {
+  expectPhonePortraitHeader,
+  expectPhoneZoomToolbar,
+  helpDialog,
+  manageImages,
+} from '../shared/phone-controls';
 import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
 
 const files = [imageFile('A.png', 0), imageFile('B.png', 1), imageFile('C.png', 0)];
@@ -141,6 +146,7 @@ test('portrait phone controls respect cutouts and renamed originals survive WebV
     await expectPhonePortraitHeader(page, {
       icons: width === 320 ? false : width === 430 ? true : undefined,
     });
+    await expectPhoneZoomToolbar(page, { left: 26, right: 16, oneRow: width !== 320 });
     const mode = await box(page, '.mode-controls');
     const actions = await box(page, '.header-actions');
     expect(mode.x).toBeGreaterThanOrEqual(26);
@@ -187,6 +193,7 @@ test('large side insets allow complete button labels to wrap within the same row
   await open(page);
   await insets(page, { cutoutLeft: 56, gestureRight: 48 });
   await expectPhonePortraitHeader(page, { icons: false, allowWrappedLabels: true });
+  await expectPhoneZoomToolbar(page, { left: 56, right: 48, oneRow: false });
   await page.getByRole('button', { name: 'Manage Images' }).tap();
   await expect(manageImages(page).getByRole('textbox', { name: 'Label for A.png' })).toBeVisible();
 });
@@ -201,10 +208,13 @@ test('Android tablet keeps the inline labels and keyboard button in both orienta
   await page.setViewportSize({ width: 800, height: 1280 });
   await open(page);
   await expect(page.getByLabel('Label for image A')).toBeVisible();
+  await expect(page.getByRole('button', { name: '100%', exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Zoom preset' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.getByRole('button', { name: 'Image controls' }).click();
   await expect(page.getByLabel('Label for image A')).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Zoom preset' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
 });
 
@@ -290,7 +300,7 @@ test('all four display modes use inset-aware controls and an edge-to-edge image 
   await expect(page.locator('.image-selection-bar')).toBeVisible();
 });
 
-test('compact image controls allow selection, swapping and labels, with modal and Back routing', async ({
+test('compact image controls keep selection and swapping with labels in Manage Images', async ({
   page,
 }) => {
   await open(page);
@@ -300,9 +310,9 @@ test('compact image controls allow selection, swapping and labels, with modal an
   await trigger.click();
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   await expectLocalComparisonUI(page);
+  await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
   await page.getByLabel('Select image A', { exact: true }).selectOption('2');
   await expect.poll(async () => (await config(page)).selected).toEqual([2, 1]);
-  await page.getByLabel('Label for image A').fill('Alternative A');
   await page.getByRole('button', { name: 'Swap images' }).click();
   await expect.poll(async () => (await config(page)).selected).toEqual([1, 2]);
   await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
@@ -314,13 +324,24 @@ test('compact image controls allow selection, swapping and labels, with modal an
   await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+  const manage = manageImages(page);
+  await expect(manage.getByRole('textbox')).toHaveCount(3);
+  await expect(manage.locator('.upload-list img[src^="data:image/png;base64,"]')).toHaveCount(3);
+  await manage.getByLabel('Label for C.png', { exact: true }).fill('Alternative C');
+  await expect(page.getByTestId('image-B')).toHaveAttribute('alt', 'Alternative C');
+  await expect
+    .poll(
+      async () =>
+        (await page.evaluate(() => JSON.parse(localStorage.getItem('test-session')!))).images[2]
+          .label,
+    )
+    .toBe('Alternative C');
   await page.evaluate(() => {
     (window as any).cancelPick = true;
   });
   await page.getByRole('button', { name: 'Replace all images' }).click();
   await expect.poll(async () => (await config(page)).selected).toEqual([1, 2]);
   await page.setViewportSize({ width: 500, height: 240 });
-  const manage = page.getByRole('dialog', { name: 'Your images' });
   const bounds = (await manage.boundingBox())!;
   expect(bounds.x).toBeGreaterThanOrEqual(46);
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(500 - 12);

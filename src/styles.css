@@ -1380,8 +1380,7 @@ input[type='checkbox'] {
 .comparison-edge-to-edge .stage {
   container-type: size;
 }
-.comparison-edge-to-edge .images-toggle,
-.comparison-edge-to-edge .compact-zoom-select {
+.comparison-edge-to-edge .images-toggle {
   display: none;
 }
 .comparison-edge-to-edge .app-header {
@@ -1444,10 +1443,7 @@ input[type='checkbox'] {
 .comparison-edge-to-edge.comparison-compact .mode-controls {
   gap: 0;
 }
-.comparison-edge-to-edge.comparison-compact .eyebrow,
-.comparison-edge-to-edge.comparison-compact .inspection-toolbar .zoom-preset,
-.comparison-edge-to-edge.comparison-compact .inspection-toolbar .zoom-readout,
-.comparison-edge-to-edge.comparison-compact .toolbar-separator {
+.comparison-edge-to-edge.comparison-compact .eyebrow {
   display: none;
 }
 .comparison-edge-to-edge.comparison-compact .segmented {
@@ -1516,12 +1512,14 @@ input[type='checkbox'] {
   );
   overflow-x: auto;
 }
-.comparison-edge-to-edge.comparison-compact .inspection-toolbar button {
+:is(.comparison-edge-to-edge.comparison-compact, .app.comparison-phone-portrait)
+  .inspection-toolbar
+  button {
   min-width: 44px;
   min-height: 44px;
   flex-shrink: 0;
 }
-.comparison-edge-to-edge.comparison-compact .compact-zoom-select {
+.inspection-toolbar .compact-zoom-select {
   display: block;
   min-height: 44px;
   width: 76px;
@@ -1891,6 +1889,22 @@ input[type='checkbox'] {
 .comparison-phone-portrait .image-selection-bar {
   min-height: 54px;
 }
+.app.comparison-phone-portrait .inspection-toolbar {
+  left: calc(50% + (var(--comparison-safe-left, 0px) - var(--comparison-safe-right, 0px)) / 2);
+  width: max-content;
+  max-width: calc(
+    100% - var(--comparison-safe-left, 0px) - var(--comparison-safe-right, 0px) - 8px
+  );
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0;
+  padding: 2px;
+}
+.comparison-phone-portrait .inspection-toolbar .compact-zoom-select {
+  flex: 1 0 64px;
+  max-width: 76px;
+  padding-inline: 6px;
+}
 .comparison-phone-portrait .upload-list-item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -1904,13 +1918,15 @@ input[type='checkbox'] {
 .comparison-phone-portrait .upload-list-item > div {
   display: contents;
 }
-.comparison-phone-portrait .upload-list-item input {
-  grid-column: 2 / -1;
-  grid-row: 1;
+:is(.comparison-phone-portrait, .comparison-phone-landscape) .upload-list-item input {
   width: 100%;
   min-height: 44px;
   padding: 5px 7px;
   font-size: 16px;
+}
+.comparison-phone-portrait .upload-list-item input {
+  grid-column: 2 / -1;
+  grid-row: 1;
 }
 .comparison-phone-portrait .upload-list-item .muted {
   grid-column: 1 / 3;

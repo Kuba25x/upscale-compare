@@ -3,6 +3,7 @@ import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
 import { expectLocalComparisonUI } from './local-comparison';
+import { chooseZoomPreset, manageImages } from './phone-controls';
 
 async function open(page: Page) {
   await page.goto('./');
@@ -98,28 +99,34 @@ export function mobileLandscapeTests() {
         await page.getByRole('button', { name: 'Image controls' }).click();
         await expect(page.getByLabel('Select image A', { exact: true })).toBeVisible();
         expect((await page.getByTestId('stage').boundingBox())!.height).toBe(stage.height);
-        await page.getByLabel('Label for image A').focus();
+        await page.getByLabel('Select image A', { exact: true }).focus();
         await page
           .locator('.images-toggle')
           .evaluate((button: HTMLButtonElement) => button.click());
         await expect(page.locator('.images-toggle')).toBeFocused();
-        await expect(page.getByLabel('Label for image A')).toBeHidden();
+        await expect(page.getByLabel('Select image A', { exact: true })).toBeHidden();
         await page.screenshot({
           path: test.info().outputPath(`landscape-${viewport.width}x${viewport.height}.png`),
         });
       }
     });
-    test('keeps A/B, labels, swapping and metadata without sharing controls in the image panel', async ({
+    test('keeps A/B and swapping in the image panel with labels in Manage Images', async ({
       page,
     }) => {
       await open(page);
       await page.setViewportSize({ width: 900, height: 412 });
+      await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+      const manage = manageImages(page);
+      await manage.getByLabel('Label for C.png', { exact: true }).fill('Native Ultra');
+      await manage.getByRole('button', { name: 'Close dialog', exact: true }).click();
       await page.getByRole('button', { name: 'Image controls' }).click();
+      await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
       await page.getByLabel('Select image A', { exact: true }).selectOption('2');
-      await page.getByLabel('Label for image A').fill('Native Ultra');
       await page.getByRole('button', { name: 'Swap images', exact: true }).click();
       await expect(page.getByLabel('Select image B', { exact: true })).toHaveValue('2');
-      await expect(page.getByLabel('Label for image B')).toHaveValue('Native Ultra');
+      await expect(page.getByLabel('Select image B').locator('option:checked')).toHaveText(
+        'Native Ultra',
+      );
       await expectLocalComparisonUI(page);
       await page.keyboard.press('Escape');
       await expect(page.locator('.images-toggle')).toBeFocused();
@@ -142,7 +149,7 @@ export function mobileLandscapeTests() {
       }) => {
         await open(page);
         await page.getByRole('button', { name: mode, exact: true }).click();
-        await page.getByRole('button', { name: '200%', exact: true }).click();
+        await chooseZoomPreset(page, 2);
         if (mode === 'Split Screen') {
           await page.getByRole('slider').focus();
           await page.keyboard.press('ArrowRight');
@@ -306,7 +313,10 @@ export function mobileLandscapeTests() {
         .toBeLessThanOrEqual(1);
       const before = await sourceCenter(page);
       await page.getByRole('button', { name: 'Image controls' }).click();
-      await page.getByLabel('Label for image A').focus();
+      await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+      const manage = manageImages(page);
+      await manage.getByLabel('Label for A.png', { exact: true }).focus();
       await page.evaluate(() => {
         (window as any).testVisualViewport = { height: 240, offsetTop: 20 };
         visualViewport!.dispatchEvent(new Event('resize'));
@@ -324,6 +334,8 @@ export function mobileLandscapeTests() {
       const toolbar = (await page.locator('.inspection-toolbar').boundingBox())!;
       expect(toolbar.x + toolbar.width).toBeLessThanOrEqual(900 - 46);
       expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(260);
+      expect((await manage.boundingBox())!.height).toBeLessThanOrEqual(182);
+      await manage.getByRole('button', { name: 'Close dialog', exact: true }).click();
       await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
       await expect
         .poll(async () => (await page.getByRole('dialog').boundingBox())!.height)

@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openComparisonHelp, renameSelectedImage } from '../shared/phone-controls';
+import {
+  chooseZoomPreset,
+  openComparisonHelp,
+  renameSelectedImage,
+} from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 import { cacheSnapshot, control, originalBytes, serve, update } from './helpers';
 
@@ -31,7 +35,7 @@ for (const { count, from, to } of [
     for (const view of pages) {
       await view.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1)]);
       await renameSelectedImage(view, 'A', file.name, 'Keep my comparison');
-      await view.getByRole('button', { name: '200%', exact: true }).click();
+      await chooseZoomPreset(view, 2);
       await view.evaluate(() => {
         (window as any).__originalLayers = [...document.querySelectorAll('.comparison-image')];
       });

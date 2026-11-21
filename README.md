@@ -90,8 +90,9 @@ On the web, installed PWAs, and Android, open **Manage Images** to add, replace,
 or remove screenshots. **Clear comparison** empties the list so you can add new
 screenshots in the same dialog. Closing the dialog returns to the comparison
 with two to four images, or to **Upload Images** with fewer than two.
-In phone portrait, edit every screenshot label in **Manage Images**. In phone
-landscape, edit the selected A/B labels in the image controls. **Help & About**
+On phones, edit any screenshot label in **Manage Images** in either orientation.
+The landscape **Images** panel provides quick A/B selection and swapping. Both
+orientations show the current zoom in the compact zoom selector. **Help & About**
 is available in **Manage Images** and on the phone landing screen.
 
 [Installation, supported browsers and limits](docs/PWA.md) ·

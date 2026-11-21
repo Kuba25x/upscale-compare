@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { renameSelectedImage } from './phone-controls';
+import { chooseZoomPreset, renameSelectedImage } from './phone-controls';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
@@ -20,7 +20,7 @@ export async function open(page: Page, mode = 'Split Screen', url = './') {
   await page.getByLabel('Game title').fill('Minimalist regression');
   await page.getByRole('button', { name: 'Save details', exact: true }).click();
   await page.getByRole('button', { name: mode, exact: true }).click();
-  await page.getByRole('button', { name: '200%', exact: true }).click();
+  await chooseZoomPreset(page, 2);
   if (mode === 'Split Screen') {
     await page.getByRole('slider').focus();
     await page.keyboard.press('ArrowRight');

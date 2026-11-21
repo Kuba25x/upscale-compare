@@ -436,6 +436,55 @@ public class DisplayIntegrationTest {
                     """)));
   }
 
+  private void setFirstImageLabel(String label) throws Exception {
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    """
+                    (() => {
+                      const input = document.querySelector('dialog[open] input[aria-label="Label for 1.png"]');
+                      if (!input) return false;
+                      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')
+                        .set.call(input, %s);
+                      input.dispatchEvent(new Event('input', {bubbles: true}));
+                      return true;
+                    })()
+                    """.formatted(JSONObject.quote(label)))));
+  }
+
+  private void assertPortraitZoomSelector() throws Exception {
+    assertEquals(
+        "true",
+        js(
+            """
+            (() => {
+              const zoom = document.querySelector('.comparison-phone-portrait .compact-zoom-select');
+              if (!zoom || zoom.selectedOptions[0].textContent !== 'Fit') return false;
+              const toolbar = zoom.parentElement;
+              if (toolbar.scrollWidth > toolbar.clientWidth || zoom.getBoundingClientRect().height < 44)
+                return false;
+              zoom.value = '2';
+              zoom.dispatchEvent(new Event('change', { bubbles: true }));
+              return true;
+            })()
+            """));
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    """
+                    (() => {
+                      const image = document.querySelector('[data-testid="image-A"]');
+                      return document.querySelector('.stage').dataset.zoom === '2'
+                        && Math.abs(image.getBoundingClientRect().width * devicePixelRatio - 4) < 0.1;
+                    })()
+                    """)));
+    click(".inspection-toolbar button:first-child");
+  }
+
   private void editPortraitLabel() throws Exception {
     eventually(
         () ->
@@ -461,21 +510,7 @@ public class DisplayIntegrationTest {
                     """)));
     click(".header-actions [aria-label=\"Manage Images\"]");
     assertManageImagesPreviews();
-    eventually(
-        () ->
-            assertEquals(
-                "true",
-                js(
-                    """
-                    (() => {
-                      const input = document.querySelector('dialog[open] input[aria-label="Label for 1.png"]');
-                      if (!input) return false;
-                      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')
-                        .set.call(input, 'Portrait original');
-                      input.dispatchEvent(new Event('input', {bubbles: true}));
-                      return true;
-                    })()
-                    """)));
+    setFirstImageLabel("Portrait original");
     click(".manage-intro .phone-help");
     eventually(() -> assertEquals("2", js("document.querySelectorAll('dialog[open]').length")));
     shell("input keyevent KEYCODE_BACK");
@@ -497,6 +532,7 @@ public class DisplayIntegrationTest {
       bars(true, true);
       screenshot("portrait-normal");
       editPortraitLabel();
+      assertPortraitZoomSelector();
       click(".fullscreen-button");
       bars(false, true);
       assertEdgeToEdgeAndSafeExit();
@@ -539,7 +575,17 @@ public class DisplayIntegrationTest {
       assertEquals(
           "true",
           js("document.querySelector('.image-selection-bar').getBoundingClientRect().height > 0"));
+      assertEquals(
+          "true",
+          js(
+              "document.querySelectorAll('.image-selection-bar select').length === 2 && "
+                  + "!document.querySelector('.image-selection-bar input') && "
+                  + "!!document.querySelector('.image-selection-bar .swap-button')"));
       click(".images-toggle");
+      click(".header-actions [aria-label=\"Manage Images\"]");
+      assertManageImagesPreviews();
+      setFirstImageLabel("Landscape original");
+      click("dialog[open] button[aria-label=\"Close dialog\"]");
       screenshot("landscape-normal");
       String viewportBeforeReveal =
           js("document.querySelector('.stage').getBoundingClientRect().height");
@@ -621,7 +667,7 @@ public class DisplayIntegrationTest {
                   js(
                       "document.querySelector('.app').classList.contains('comparison-minimalist')")));
       assertEquals(
-          "\"Portrait original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt"));
+          "\"Landscape original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt"));
       click(".header-actions [aria-label=\"Manage Images\"]");
       assertManageImagesPreviews();
       click("dialog[open] .modal-actions > button:first-child");
