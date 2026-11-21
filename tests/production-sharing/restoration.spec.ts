@@ -3,6 +3,7 @@ import { PNG } from 'pngjs';
 import type { Config, Manifest, PublicComparison } from '../../shared/model';
 import { browserFile, original, type Original } from '../fixtures/fidelity';
 import { imageFile } from '../e2e/fixtures';
+import { renameSelectedImage } from '../shared/phone-controls';
 import { test, expect, openShare, publishButton, solve, settings } from './fixtures';
 
 const scenarios = [
@@ -170,7 +171,7 @@ for (const scenario of scenarios) {
     });
     for (let i = 0; i < files.length; i++) {
       await page.getByLabel('Select image A').selectOption(String(i));
-      await page.getByLabel('Label for image A', { exact: true }).fill(`Source ${i + 1} — żółć 🎮`);
+      await renameSelectedImage(page, 'A', scenario.names[i], `Source ${i + 1} — żółć 🎮`);
     }
     await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
     await page.getByLabel('Game title', { exact: true }).fill('Generated comparison — α');
