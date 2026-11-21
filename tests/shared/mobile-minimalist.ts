@@ -198,13 +198,15 @@ export function mobileMinimalistTests() {
       }) => {
         await installFullscreen(page, 'missing');
         await open(page, mode);
+        const original = await snapshot(page);
         for (const zoom of [1, 2, 4]) {
           await page.setViewportSize({ width: 412, height: 900 });
           // The zoom selector is visible in both orientations. Wait for the portrait layout.
           await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
           await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption(String(zoom));
-          await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', String(zoom));
-          const before = await snapshot(page);
+          const before = { ...original, zoom: String(zoom) };
+          // Check the original center after the viewer has measured the resized stage.
+          await unchanged(page, before);
           await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
           for (const viewport of [
             { width: 412, height: 900 },
