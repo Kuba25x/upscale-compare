@@ -114,6 +114,9 @@ test('portrait phone controls respect cutouts and renamed originals survive WebV
   await open(page);
   await insets(page, { cutoutTop: 48, cutoutLeft: 26, gestureRight: 16, navigationBottom: 24 });
   await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
+  const header = page.locator('.app-header');
+  await expect(header.getByText('MODE', { exact: true })).toHaveCount(0);
+  await expect(header.getByRole('group', { name: 'Comparison mode', exact: true })).toBeVisible();
   const mode = await box(page, '.mode-controls');
   const actions = await box(page, '.header-actions');
   expect(mode.x).toBeGreaterThanOrEqual(26);
@@ -158,12 +161,12 @@ test('narrow phone portrait wraps Manage Images below the modes when side insets
 }) => {
   await page.setViewportSize({ width: 320, height: 820 });
   await open(page);
-  await insets(page, { cutoutLeft: 48, gestureRight: 32 });
+  await insets(page, { cutoutLeft: 56, gestureRight: 48 });
   const mode = await box(page, '.mode-controls');
   const actions = await box(page, '.header-actions');
   expect(actions.y).toBeGreaterThanOrEqual(mode.y + mode.height);
-  expect(actions.x).toBeGreaterThanOrEqual(48);
-  expect(actions.x + actions.width).toBeLessThanOrEqual(320 - 32);
+  expect(actions.x).toBeGreaterThanOrEqual(56);
+  expect(actions.x + actions.width).toBeLessThanOrEqual(320 - 48);
   await page.getByRole('button', { name: 'Manage Images' }).tap();
   await expect(manageImages(page).getByRole('textbox', { name: 'Label for A.png' })).toBeVisible();
 });

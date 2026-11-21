@@ -323,7 +323,7 @@ and releases draft originals on close or restart.
 
 ## Phone comparison controls
 
-Phone portrait groups the full mode and image-management labels under the brand
+Phone portrait groups the mode buttons and **Manage Images** under the brand
 and moves screenshot label editing into **Manage Images**. Phone landscape retains
 the inline A/B editors and header. On phones, **Help & About** opens the existing
 guide from **Manage Images** or the landing screen. Playwright covers the view

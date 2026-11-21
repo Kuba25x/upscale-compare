@@ -18,8 +18,11 @@ for (const width of [320, 360, 390, 430]) {
     await page.getByTestId('file-input').setInputFiles(files);
     await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
     const header = page.locator('.app-header');
-    const controls = header.locator('.eyebrow, .segmented button, .header-actions button');
-    await expect(controls).toHaveText(['MODE', 'Split Screen', 'Side-by-Side', 'Manage Images']);
+    const modes = header.getByRole('group', { name: 'Comparison mode', exact: true });
+    await expect(modes.getByRole('button')).toHaveText(['Split Screen', 'Side-by-Side']);
+    await expect(header.getByText('MODE', { exact: true })).toHaveCount(0);
+    const controls = header.locator('.segmented button, .header-actions button');
+    await expect(controls).toHaveText(['Split Screen', 'Side-by-Side', 'Manage Images']);
     await expect(header.locator('button svg')).toHaveCount(0);
     const boxes = await controls.evaluateAll((nodes) =>
       nodes.map((node) => {
@@ -28,9 +31,9 @@ for (const width of [320, 360, 390, 430]) {
       }),
     );
     expect(boxes[0].left).toBeLessThan(17);
-    for (let i = 1; i < boxes.length; i++) {
+    for (let i = 0; i < boxes.length; i++) {
       const { left, right, height, width: targetWidth, top, clipped } = boxes[i];
-      expect(left).toBeGreaterThanOrEqual(boxes[i - 1].right);
+      if (i > 0) expect(left).toBeGreaterThanOrEqual(boxes[i - 1].right);
       expect(right).toBeLessThan(width);
       expect(targetWidth).toBeGreaterThanOrEqual(44);
       expect(height).toBeGreaterThanOrEqual(44);
@@ -130,6 +133,8 @@ test('phone landscape keeps icons and inline label editing while Help stays in M
   await page.goto('/');
   await page.getByTestId('file-input').setInputFiles(files);
   await expect(page.locator('.app')).toHaveClass(/comparison-phone-landscape/);
+  await expect(page.locator('.app-header .eyebrow')).toHaveText('MODE');
+  await expect(page.locator('.app-header .eyebrow')).toBeHidden();
   await expect(page.locator('.app-header .segmented button svg')).toHaveCount(2);
   await expect(page.getByRole('button', { name: 'Manage Images' }).locator('svg')).toHaveCount(1);
   expect((await page.locator('.app-header').boundingBox())!.height).toBe(52);
@@ -152,6 +157,7 @@ test('touch tablet keeps its controls even in a narrow portrait window', async (
   await page.goto('/');
   await page.getByTestId('file-input').setInputFiles(files);
   await expect(page.locator('.app')).not.toHaveClass(/comparison-phone-/);
+  await expect(page.locator('.app-header').getByText('MODE', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Label for image A')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
   await expect(page.locator('.app-header .segmented button svg')).toHaveCount(2);

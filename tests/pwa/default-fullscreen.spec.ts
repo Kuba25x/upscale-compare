@@ -148,6 +148,9 @@ for (const sample of [
       for (const name of ['Label for image A', 'Label for image B'])
         await safe(page, page.getByLabel(name, { exact: true }), sample);
     } else {
+      const header = page.locator('.app-header');
+      await expect(header.getByText('MODE', { exact: true })).toHaveCount(0);
+      await safe(page, header.getByRole('group', { name: 'Comparison mode', exact: true }), sample);
       const [mode, manage] = await Promise.all([
         page.locator('.mode-controls').boundingBox(),
         page.locator('.header-actions').boundingBox(),

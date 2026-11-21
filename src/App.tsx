@@ -604,8 +604,8 @@ export default function App({
       <header className="app-header">
         {ready && (
           <div className="mode-controls">
-            <span className="eyebrow">MODE</span>
-            <div className="segmented">
+            {!phonePortrait && <span className="eyebrow">MODE</span>}
+            <div className="segmented" role="group" aria-label="Comparison mode">
               <button
                 aria-label="Split Screen"
                 aria-pressed={config.mode === 'split'}

@@ -1848,12 +1848,6 @@ input[type='checkbox'] {
   transform: none;
   margin-inline-end: 8px;
 }
-.comparison-phone-portrait .mode-controls {
-  gap: 4px;
-}
-.comparison-phone-portrait .eyebrow {
-  letter-spacing: 0.5px;
-}
 .comparison-phone-portrait .segmented {
   padding: 0;
   gap: 1px;
