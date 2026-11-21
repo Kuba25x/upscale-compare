@@ -11,6 +11,10 @@ for (const width of [320, 360, 390, 430]) {
   }) => {
     await page.setViewportSize({ width, height: 820 });
     await page.goto('/');
+    if (width === 320)
+      await page.addStyleTag({
+        content: '.app-header { font-family: "DejaVu Sans", system-ui; }',
+      });
     await page.getByTestId('file-input').setInputFiles(files);
     await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
     const header = page.locator('.app-header');

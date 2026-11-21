@@ -386,12 +386,21 @@ public class DisplayIntegrationTest {
                         + " && !app.querySelector('.image-selection-bar input')"
                         + " && !app.querySelector('.inspection-toolbar [aria-label=\"Keyboard shortcuts\"]'); })()")));
     click(".header-actions [aria-label=\"Manage Images\"]");
-    assertEquals(
-        "true",
-        js(
-            "(() => { const input=document.querySelector('input[aria-label=\"Label for 1.png\"]');"
-                + " Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set(input, 'Portrait original');"
-                + " input.dispatchEvent(new Event('input', {bubbles:true})); return true; })()"));
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    """
+                    (() => {
+                      const input = document.querySelector('dialog[open] input[aria-label="Label for 1.png"]');
+                      if (!input) return false;
+                      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')
+                        .set.call(input, 'Portrait original');
+                      input.dispatchEvent(new Event('input', {bubbles: true}));
+                      return true;
+                    })()
+                    """)));
     click(".manage-intro .phone-help");
     eventually(() -> assertEquals("2", js("document.querySelectorAll('dialog[open]').length")));
     shell("input keyevent KEYCODE_BACK");

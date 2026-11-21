@@ -1831,7 +1831,7 @@ input[type='checkbox'] {
   display: flex;
   flex-wrap: wrap;
   height: auto;
-  gap: 3px 5px;
+  gap: 3px 4px;
   padding: 0 max(8px, var(--comparison-safe-right, 0px)) 6px
     max(8px, var(--comparison-safe-left, 0px));
 }
@@ -1849,19 +1849,20 @@ input[type='checkbox'] {
   margin-inline-end: 8px;
 }
 .comparison-phone-portrait .mode-controls {
-  gap: 5px;
+  gap: 4px;
 }
 .comparison-phone-portrait .eyebrow {
   letter-spacing: 0.5px;
 }
 .comparison-phone-portrait .segmented {
-  padding: 1px;
+  padding: 0;
   gap: 1px;
 }
 .comparison-phone-portrait .segmented button,
 .comparison-phone-portrait .header-actions button {
   min-height: 44px;
-  padding: 6px 5px;
+  padding: 6px clamp(2px, calc((100vw - 320px) / 20), 5px);
+  letter-spacing: -0.2px;
 }
 .comparison-phone-portrait .image-selection-bar {
   min-height: 54px;
