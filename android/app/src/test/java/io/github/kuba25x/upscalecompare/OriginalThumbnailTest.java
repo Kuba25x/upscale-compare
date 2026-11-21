@@ -7,12 +7,16 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.util.Base64;
 import androidx.exifinterface.media.ExifInterface;
-import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import javax.imageio.ImageIO;
+import java.util.zip.CRC32;
+import java.util.zip.DeflaterOutputStream;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -40,14 +44,39 @@ public class OriginalThumbnailTest {
     return thumbnail;
   }
 
+  private void writeChunk(DataOutputStream out, String type, byte[] payload) throws IOException {
+    byte[] name = type.getBytes(StandardCharsets.US_ASCII);
+    CRC32 crc = new CRC32();
+    crc.update(name);
+    crc.update(payload);
+    out.writeInt(payload.length);
+    out.write(name);
+    out.write(payload);
+    out.writeInt((int) crc.getValue());
+  }
+
+  private void writeGrayscalePng(File file, int width, int height) throws IOException {
+    ByteArrayOutputStream pixels = new ByteArrayOutputStream();
+    try (DeflaterOutputStream compressed = new DeflaterOutputStream(pixels)) {
+      // Use one unfiltered, 8-bit grayscale row for the entire fixture.
+      byte[] row = new byte[width + 1];
+      for (int y = 0; y < height; y++) compressed.write(row);
+    }
+    byte[] header = ByteBuffer.allocate(13).putInt(width).putInt(height).put((byte) 8).array();
+    try (DataOutputStream out = new DataOutputStream(new FileOutputStream(file))) {
+      out.writeLong(0x89504e470d0a1a0aL);
+      writeChunk(out, "IHDR", header);
+      writeChunk(out, "IDAT", pixels.toByteArray());
+      writeChunk(out, "IEND", new byte[0]);
+    }
+  }
+
   @Test
   public void largePngsAreSampledBeforeScalingWithoutChangingTheSource() throws Exception {
     for (int width : new int[] {3840, 7680}) {
       int height = width * 9 / 16;
       File original = folder.newFile();
-      // Generate a compressible UHD input without asking Android to allocate a full-size bitmap.
-      BufferedImage fixture = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
-      assertTrue(ImageIO.write(fixture, "png", original));
+      writeGrayscalePng(original, width, height);
       byte[] before = Files.readAllBytes(original.toPath());
       int sample = OriginalThumbnail.sampleSize(width);
       assertTrue(sample > 1 && (width + sample - 1) / sample <= 256);
