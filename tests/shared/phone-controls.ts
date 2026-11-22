@@ -94,20 +94,30 @@ export async function expectPhoneImageMenuKeyboard(page: Page) {
 
 export async function expectPortraitImagePanel(
   page: Page,
-  { left = 0, right = 0, bottom = 0 } = {},
+  { left = 0, right = 0, bottom = 0, gap = 8 } = {},
 ) {
   const panel = page.locator('.phone-image-controls');
   await expect(panel).toBeVisible();
   await expect(panel.locator('select')).toHaveCount(0);
   await expect(panel).toHaveCSS('border-radius', '8px');
   await expect(panel).toHaveCSS('border-width', '1px');
-  const bounds = (await panel.boundingBox())!;
-  const viewer = (await page.locator('.viewer-content').boundingBox())!;
-  const viewport = page.viewportSize()!;
-  expect(bounds.x).toBeGreaterThan(left);
-  expect(bounds.x + bounds.width).toBeLessThan(viewport.width - right);
-  expect(bounds.y + bounds.height).toBeLessThan(viewport.height - bottom);
-  expect(bounds.y).toBeGreaterThan(viewer.y + viewer.height - 1);
+  await expect
+    .poll(() =>
+      panel.evaluate(
+        (node, inset) => innerHeight - inset - node.getBoundingClientRect().bottom,
+        bottom,
+      ),
+    )
+    .toBeCloseTo(gap, 0);
+  const geometry = await panel.evaluate((node) => ({
+    panel: node.getBoundingClientRect().toJSON(),
+    viewerBottom: node.parentElement!.querySelector('.viewer-content')!.getBoundingClientRect()
+      .bottom,
+    viewportWidth: innerWidth,
+  }));
+  expect(geometry.panel.left).toBeGreaterThan(left);
+  expect(geometry.panel.right).toBeLessThan(geometry.viewportWidth - right);
+  expect(geometry.panel.top).toBeGreaterThan(geometry.viewerBottom - 1);
   expect(await panel.evaluate((node) => node.scrollWidth)).toBe(
     await panel.evaluate((node) => node.clientWidth),
   );

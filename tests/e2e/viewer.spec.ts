@@ -31,6 +31,8 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   await expect(page.locator('.app-header').getByText('MODE', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
   await expect(page.getByLabel('Label for image A')).toBeVisible();
+  const panel = await page.locator('.image-selection-bar').boundingBox();
+  expect(panel!.y + panel!.height).toBeCloseTo(page.viewportSize()!.height - 8, 0);
   await page.screenshot({ path: 'test-results/viewer-desktop.png' });
   const select = page.getByRole('combobox', { name: 'Select image A' });
   await select.focus();

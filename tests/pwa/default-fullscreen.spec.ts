@@ -242,6 +242,36 @@ test('installed phone portrait fills the safe width and updates icons when inset
   await expectSplitRange(page);
 });
 
+test('installed portrait panel uses the usable bottom without adding overlapping insets', async ({
+  page,
+}) => {
+  await windowMode(page, 'fullscreen');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./?pwa=fullscreen');
+  await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
+  await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('B.png', 1)]);
+  for (const [safeBottom, visualBottom, boundary] of [
+    [24, 0, 24],
+    [24, 24, 24],
+    [24, 44, 44],
+    [0, 48, 48],
+    [0, 0, 0],
+  ]) {
+    await insets(page, 0, 0, safeBottom, 0);
+    await page.evaluate((visualBottom) => {
+      (window as any).testVisualViewport = { height: innerHeight - visualBottom };
+      visualViewport!.dispatchEvent(new Event('resize'));
+    }, visualBottom);
+    await expectPortraitImagePanel(page, { bottom: boundary });
+  }
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(page.locator('.phone-image-controls')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Image controls', exact: true }).click();
+  await expectLandscapeImagePopover(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectPortraitImagePanel(page);
+});
+
 for (const mode of ['Split Screen', 'Side-by-Side'])
   test(`${mode}: minimalist is independent of manifest fullscreen across rotations and system Back`, async ({
     page,

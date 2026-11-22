@@ -244,6 +244,25 @@ test('large side insets allow complete button labels to wrap within the same row
   await expect(manageImages(page).getByRole('textbox', { name: 'Label for A.png' })).toBeVisible();
 });
 
+test('portrait panel uses the reserved navigation boundary and clears larger gesture insets', async ({
+  page,
+}) => {
+  await open(page);
+  for (const [navigationBottom, gestureBottom, gap] of [
+    [24, 24, 8],
+    [24, 32, 8],
+    [48, 0, 8],
+    [24, 42, 18],
+  ]) {
+    await insets(page, { navigationBottom, gestureBottom });
+    await expectPortraitImagePanel(page, { bottom: navigationBottom, gap });
+  }
+  await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).tap();
+  await expect(page.locator('.phone-image-controls')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).tap();
+  await expectPortraitImagePanel(page, { bottom: 24, gap: 18 });
+});
+
 test('Android tablet keeps the inline labels and keyboard button in both orientations', async ({
   page,
 }) => {

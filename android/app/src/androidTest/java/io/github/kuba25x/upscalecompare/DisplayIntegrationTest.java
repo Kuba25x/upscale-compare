@@ -602,6 +602,29 @@ public class DisplayIntegrationTest {
                 "\"Portrait original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt")));
   }
 
+  private void assertPortraitPanelBottomGap() throws Exception {
+    eventually(
+        () -> {
+          AtomicReference<JSObject> display = new AtomicReference<>();
+          scenario.onActivity(a -> display.set(a.displayLayout.snapshot()));
+          JSONObject panel =
+              new JSONObject(
+                  js(
+                      """
+                      (() => {
+                        const panel = document.querySelector('.phone-image-controls');
+                        return { bottom: panel.getBoundingClientRect().bottom, dpr: devicePixelRatio };
+                      })()
+                      """));
+          double dpr = panel.getDouble("dpr");
+          double reserved = display.get().getInteger("layoutBottom") / dpr;
+          double safe = display.get().getInteger("safeBottom") / dpr;
+          double clearance = display.get().getInteger("height") / dpr - panel.getDouble("bottom");
+          assertEquals(
+              "Clearance above native window bottom", Math.max(reserved + 8, safe), clearance, 1);
+        });
+  }
+
   @Test
   public void realWindowBarsCutoutsPickerResumeBackAndRecreation() throws Exception {
     seedIsolatedSession();
@@ -610,11 +633,14 @@ public class DisplayIntegrationTest {
       rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, false);
       eventually(() -> assertEquals("true", js("!!document.querySelector('.stage')")));
       bars(true, true);
+      assertPortraitPanelBottomGap();
       screenshot("portrait-normal");
       editPortraitLabel();
       assertPortraitZoomMenu();
       click(".fullscreen-button");
       bars(false, true);
+      eventually(
+          () -> assertEquals("true", js("!document.querySelector('.phone-image-controls')")));
       assertEdgeToEdgeAndSafeExit();
       screenshot("portrait-minimalist");
       for (int orientation :
@@ -797,6 +823,7 @@ public class DisplayIntegrationTest {
                   "false",
                   js(
                       "document.querySelector('.app').classList.contains('comparison-minimalist')")));
+      assertPortraitPanelBottomGap();
       assertEquals(
           "\"Landscape original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt"));
       click(".header-actions [aria-label=\"Manage Images\"]");

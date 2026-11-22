@@ -21,6 +21,30 @@ import { expectCenteredBrand } from '../shared/layout-alignment';
 
 const files = ['A', 'B', 'C', 'D'].map((name, i) => imageFile(`${name}.png`, i % 2));
 
+test('portrait panel follows the visible bottom when browser chrome reduces the viewport', async ({
+  page,
+}) => {
+  await installWebDisplay(page);
+  await page.goto('/');
+  await page.getByTestId('file-input').setInputFiles(files);
+  await expectPortraitImagePanel(page);
+  await page.addStyleTag({ content: '.web-app { --comparison-safe-bottom: 12px; }' });
+  await page.evaluate(() => {
+    (window as any).testVisualViewport = { height: innerHeight - 36, offsetTop: 8 };
+    visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await expectPortraitImagePanel(page, { bottom: 28 });
+
+  // A browser can report a taller layout viewport after the dynamic CSS viewport has shrunk.
+  await page.evaluate(() => {
+    const height = innerHeight;
+    Object.defineProperty(window, 'innerHeight', { value: height + 30, configurable: true });
+    (window as any).testVisualViewport = { height };
+    visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await expectPortraitImagePanel(page, { bottom: 42 });
+});
+
 test('image choice menus preserve keyboard focus through rotation', async ({ page }) => {
   await installWebDisplay(page);
   await page.goto('/');
