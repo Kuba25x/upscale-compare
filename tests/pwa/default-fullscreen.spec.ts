@@ -33,8 +33,9 @@ async function windowMode(
   initial: 'fullscreen' | 'browser',
   fine = false,
   outcome: FullscreenOutcome = 'success',
+  mockVisualViewport = true,
 ) {
-  await installWebDisplay(page, 'screen', fine, true);
+  await installWebDisplay(page, 'screen', fine, true, mockVisualViewport);
   await page.addInitScript((initial) => {
     const win = window as any;
     win.nativeWindowMode = initial;
@@ -270,6 +271,50 @@ test('installed portrait panel uses the usable bottom without adding overlapping
   await expectLandscapeImagePopover(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await expectPortraitImagePanel(page);
+});
+
+test('installed portrait panel honors Chromium’s maximum inset when live viewport metrics agree', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'Chromium DevTools provides real CSS environment overrides.',
+  );
+  await windowMode(page, 'fullscreen', false, 'success', false);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 24 } });
+  await page.goto('./?pwa=fullscreen');
+  const app = page.locator('.app');
+  await expect(app).toHaveClass(/installed-fullscreen/);
+  await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('B.png', 1)]);
+  await expect(app).toHaveCSS('padding-bottom', '0px');
+  expect(
+    await app.evaluate(() => innerHeight - visualViewport!.height - visualViewport!.offsetTop),
+  ).toBeCloseTo(0, 0);
+  expect(
+    await app.evaluate(
+      (node) =>
+        node.getBoundingClientRect().bottom - visualViewport!.height - visualViewport!.offsetTop,
+    ),
+  ).toBeCloseTo(0, 0);
+  await expectPortraitImagePanel(page, { bottom: 24 });
+
+  // The current inset can already reserve some or all of the same area.
+  for (const bottom of [12, 24]) {
+    await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom, bottomMax: 24 } });
+    await expect(app).toHaveCSS('padding-bottom', `${bottom}px`);
+    await expectPortraitImagePanel(page, { bottom: 24 });
+  }
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 0 } });
+  await expectPortraitImagePanel(page);
+
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 24 } });
+  await page.evaluate(() => (window as any).changeWindowMode('browser'));
+  await expect(app).not.toHaveClass(/installed-fullscreen/);
+  await expectPortraitImagePanel(page);
+  await cdp.detach();
 });
 
 for (const mode of ['Split Screen', 'Side-by-Side'])
