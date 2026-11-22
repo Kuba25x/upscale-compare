@@ -73,6 +73,7 @@ export function PhoneZoomMenu({
 
   function dismiss(event: KeyboardEvent) {
     event.preventDefault();
+    event.stopPropagation();
     menu.current!.hidePopover();
     trigger.current!.focus({ preventScroll: true });
   }

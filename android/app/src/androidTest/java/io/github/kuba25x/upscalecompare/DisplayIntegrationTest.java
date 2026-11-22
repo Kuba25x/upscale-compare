@@ -667,6 +667,28 @@ public class DisplayIntegrationTest {
       setFirstImageLabel("Landscape original");
       click("dialog[open] button[aria-label=\"Close dialog\"]");
       screenshot("landscape-normal");
+      click(".phone-zoom-trigger");
+      eventually(
+          () ->
+              assertEquals(
+                  "true",
+                  js(
+                      """
+                      (() => {
+                        const menu = document.querySelector('.zoom-presets:popover-open');
+                        if (!menu) return false;
+                        const bounds = menu.getBoundingClientRect();
+                        const app = getComputedStyle(document.querySelector('.app'));
+                        const safe = side => parseFloat(app.getPropertyValue('--comparison-safe-' + side));
+                        return bounds.left >= safe('left') && bounds.right <= innerWidth - safe('right')
+                          && bounds.top >= safe('top') && bounds.bottom <= innerHeight - safe('bottom')
+                          && menu.contains(document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2));
+                      })()
+                      """)));
+      shell("input keyevent KEYCODE_BACK");
+      eventually(
+          () -> assertEquals("true", js("!document.querySelector('.zoom-presets:popover-open')")));
+      bars(false, false);
       String viewportBeforeReveal =
           js("document.querySelector('.stage').getBoundingClientRect().height");
       AtomicReference<JSObject> dimensions = new AtomicReference<>();
@@ -765,5 +787,4 @@ public class DisplayIntegrationTest {
       assertLandingBrandCentered();
     }
   }
-
 }

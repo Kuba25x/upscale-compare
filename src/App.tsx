@@ -446,7 +446,7 @@ export default function App({
   });
   useEffect(() => {
     if (!android) return;
-    // Intercept modal/fullscreen navigation; leave root predictive back to Android.
+    // Intercept transient controls and fullscreen navigation; leave root predictive back to Android.
     void android.app.toggleBackButtonHandler({
       enabled:
         Boolean(modal) ||
