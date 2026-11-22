@@ -42,7 +42,9 @@ test('Android dismisses the anchored zoom menu with Back and when the toolbar is
   await expect(zoomPresets(page)).toBeHidden();
   await phoneZoomTrigger(page).tap();
   await expect(zoomPresets(page)).toBeVisible();
-  await page.getByRole('button', { name: 'Enter fullscreen' }).evaluate((button) => button.click());
+  await page
+    .getByRole('button', { name: 'Enter fullscreen' })
+    .evaluate((button) => (button as HTMLButtonElement).click());
   await expect(page.locator('.app')).toHaveClass(/comparison-minimalist/);
   await expect(zoomPresets(page)).toHaveCount(0);
   await page.getByRole('button', { name: 'Exit fullscreen' }).tap();
