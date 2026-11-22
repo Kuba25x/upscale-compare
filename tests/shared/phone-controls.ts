@@ -99,34 +99,67 @@ export async function expectPortraitImagePanel(
   const panel = page.locator('.phone-image-controls');
   await expect(panel).toBeVisible();
   await expect(panel.locator('select')).toHaveCount(0);
-  await expect(panel).toHaveCSS('border-radius', '8px');
-  await expect(panel).toHaveCSS('border-width', '1px');
+  await expect(panel).toHaveCSS('border-radius', '0px');
+  await expect(panel).toHaveCSS('border-width', '0px');
+  await expect(panel).toHaveCSS('box-shadow', 'none');
   await expect
     .poll(() =>
-      panel.evaluate(
-        (node, inset) => innerHeight - inset - node.getBoundingClientRect().bottom,
-        bottom,
-      ),
+      panel.evaluate((node, inset) => {
+        const buttons = node.querySelectorAll('.phone-image-trigger, .swap-button');
+        const lowestButton = Math.max(
+          ...Array.from(buttons, (b) => b.getBoundingClientRect().bottom),
+        );
+        return innerHeight - inset - lowestButton;
+      }, bottom),
     )
-    .toBeCloseTo(gap, 0);
-  const geometry = await panel.evaluate((node) => ({
-    panel: node.getBoundingClientRect().toJSON(),
-    viewerBottom: node.parentElement!.querySelector('.viewer-content')!.getBoundingClientRect()
-      .bottom,
-    viewportWidth: innerWidth,
-  }));
-  expect(geometry.panel.left).toBeGreaterThan(left);
-  expect(geometry.panel.right).toBeLessThan(geometry.viewportWidth - right);
-  expect(geometry.panel.top).toBeGreaterThan(geometry.viewerBottom - 1);
+    .toBeCloseTo(gap + 5, 0);
+  const geometry = await panel.evaluate((node) => {
+    const app = node.closest('.app')!;
+    const header = app.querySelector('.app-header')!;
+    const stage = app.querySelector('.stage')!;
+    return {
+      panel: node.getBoundingClientRect().toJSON(),
+      stage: stage.getBoundingClientRect().toJSON(),
+      app: app.getBoundingClientRect().toJSON(),
+      reservedBottom: parseFloat(getComputedStyle(app).paddingBottom),
+      headerBottom: header.getBoundingClientRect().bottom,
+      headerColor: getComputedStyle(header).backgroundColor,
+      panelColor: getComputedStyle(node).backgroundColor,
+    };
+  });
+  expect(geometry.stage.top).toBeCloseTo(geometry.headerBottom, 0);
+  expect(geometry.stage.bottom).toBeCloseTo(geometry.panel.top, 0);
+  expect(geometry.stage.left).toBeCloseTo(geometry.app.left, 0);
+  expect(geometry.stage.right).toBeCloseTo(geometry.app.right, 0);
+  expect(geometry.panel.left).toBeCloseTo(geometry.app.left, 0);
+  expect(geometry.panel.right).toBeCloseTo(geometry.app.right, 0);
+  expect(geometry.panel.bottom).toBeCloseTo(geometry.app.bottom - geometry.reservedBottom, 0);
+  expect(geometry.panelColor).toBe(geometry.headerColor);
   expect(await panel.evaluate((node) => node.scrollWidth)).toBe(
     await panel.evaluate((node) => node.clientWidth),
   );
-  for (const button of [
-    phoneImageTrigger(page, 'A'),
-    phoneImageTrigger(page, 'B'),
-    panel.getByRole('button', { name: 'Swap images' }),
-  ]) {
-    const box = (await button.boundingBox())!;
+  const a = phoneImageTrigger(page, 'A');
+  const b = phoneImageTrigger(page, 'B');
+  const swap = panel.getByRole('button', { name: 'Swap images' });
+  for (const button of [a, swap, b]) {
+    await expect(button).toHaveCSS('border-width', '1px');
+    await expect(button).toHaveCSS('border-radius', '6px');
+    await expect(button).toHaveCSS('padding', button === swap ? '5px' : '4px');
+  }
+  const [aBox, swapBox, bBox] = await Promise.all([
+    a.boundingBox(),
+    swap.boundingBox(),
+    b.boundingBox(),
+  ]);
+  const sidePadding = (await page.evaluate(() => matchMedia('(max-width: 620px)').matches))
+    ? 13
+    : 17;
+  expect(aBox!.x).toBeCloseTo(geometry.app.left + left + sidePadding, 0);
+  expect(bBox!.x + bBox!.width).toBeCloseTo(geometry.app.right - right - sidePadding, 0);
+  expect(swapBox!.x - aBox!.x - aBox!.width).toBeCloseTo(4, 0);
+  expect(bBox!.x - swapBox!.x - swapBox!.width).toBeCloseTo(4, 0);
+  expect(swapBox!.width).toBeCloseTo(44, 0);
+  for (const box of [aBox!, swapBox!, bBox!]) {
     expect(box.width).toBeGreaterThanOrEqual(44);
     expect(box.height).toBeGreaterThanOrEqual(44);
   }

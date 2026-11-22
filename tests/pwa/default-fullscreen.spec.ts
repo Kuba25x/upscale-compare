@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { open as openComparison, snapshot, unchanged } from '../shared/mobile-minimalist';
 import { installWebDisplay } from '../shared/web-display';
@@ -232,6 +233,7 @@ test('installed phone portrait fills the safe width and updates icons when inset
       icons: width === 320 ? false : width === 430 ? true : undefined,
     });
     await expectPhoneZoomToolbar(page, { left: 22, right: 12, oneRow: width >= 390 });
+    await expectPortraitImagePanel(page, { left: 22, right: 12, bottom: 24 });
   }
   await insets(page, 48, 62, 24, 72);
   await expectPhonePortraitHeader(page, { icons: false });
@@ -307,6 +309,16 @@ test('installed portrait panel honors Chromium’s maximum inset when live viewp
     await expect(app).toHaveCSS('padding-bottom', `${bottom}px`);
     await expectPortraitImagePanel(page, { bottom: 24 });
   }
+
+  // Sample the rendered surface on both sides of the panel's boundary with the safe area.
+  const screenshot = PNG.sync.read(await page.screenshot({ scale: 'css' }));
+  const edgeColor = (y: number) => {
+    const offset = (y * screenshot.width + 1) * 4;
+    return screenshot.data.subarray(offset, offset + 4);
+  };
+  expect(edgeColor(screenshot.height - 25)).toEqual(edgeColor(2));
+  expect(edgeColor(screenshot.height - 2)).toEqual(edgeColor(2));
+
   await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 0 } });
   await expectPortraitImagePanel(page);
 

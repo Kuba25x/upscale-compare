@@ -602,7 +602,7 @@ public class DisplayIntegrationTest {
                 "\"Portrait original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt")));
   }
 
-  private void assertPortraitPanelBottomGap() throws Exception {
+  private void assertPortraitComparisonLayout() throws Exception {
     eventually(
         () -> {
           AtomicReference<JSObject> display = new AtomicReference<>();
@@ -613,15 +613,40 @@ public class DisplayIntegrationTest {
                       """
                       (() => {
                         const panel = document.querySelector('.phone-image-controls');
-                        return { bottom: panel.getBoundingClientRect().bottom, dpr: devicePixelRatio };
+                        const app = panel.closest('.app');
+                        const header = app.querySelector('.app-header');
+                        const stage = app.querySelector('.stage').getBoundingClientRect();
+                        const appBox = app.getBoundingClientRect();
+                        const panelBox = panel.getBoundingClientRect();
+                        const style = getComputedStyle(panel);
+                        const buttons = Array.from(panel.querySelectorAll('.phone-image-trigger, .swap-button'));
+                        const close = (a, b) => Math.abs(a - b) < 1;
+                        return {
+                          bottom: Math.max(...buttons.map(button => button.getBoundingClientRect().bottom)),
+                          dpr: devicePixelRatio,
+                          connected: close(stage.top, header.getBoundingClientRect().bottom)
+                            && close(stage.bottom, panelBox.top)
+                            && [stage, panelBox].every(box => close(box.left, appBox.left) && close(box.right, appBox.right))
+                            && close(panelBox.bottom, appBox.bottom - parseFloat(getComputedStyle(app).paddingBottom)),
+                          frameless: style.backgroundColor === getComputedStyle(header).backgroundColor
+                            && style.borderWidth === '0px' && style.borderRadius === '0px',
+                          buttonsBordered: buttons.length === 3
+                            && buttons.every(button => getComputedStyle(button).borderWidth === '1px'),
+                        };
                       })()
                       """));
+          assertTrue("Header, stage and controls run edge to edge", panel.getBoolean("connected"));
+          assertTrue("The panel matches the header surface", panel.getBoolean("frameless"));
+          assertTrue("Individual controls retain their borders", panel.getBoolean("buttonsBordered"));
           double dpr = panel.getDouble("dpr");
           double reserved = display.get().getInteger("layoutBottom") / dpr;
           double safe = display.get().getInteger("safeBottom") / dpr;
           double clearance = display.get().getInteger("height") / dpr - panel.getDouble("bottom");
           assertEquals(
-              "Clearance above native window bottom", Math.max(reserved + 8, safe), clearance, 1);
+              "Controls clear the native navigation area",
+              Math.max(reserved + 8, safe) + 5,
+              clearance,
+              1);
         });
   }
 
@@ -633,7 +658,7 @@ public class DisplayIntegrationTest {
       rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, false);
       eventually(() -> assertEquals("true", js("!!document.querySelector('.stage')")));
       bars(true, true);
-      assertPortraitPanelBottomGap();
+      assertPortraitComparisonLayout();
       screenshot("portrait-normal");
       editPortraitLabel();
       assertPortraitZoomMenu();
@@ -823,7 +848,7 @@ public class DisplayIntegrationTest {
                   "false",
                   js(
                       "document.querySelector('.app').classList.contains('comparison-minimalist')")));
-      assertPortraitPanelBottomGap();
+      assertPortraitComparisonLayout();
       assertEquals(
           "\"Landscape original\"", js("document.querySelector('[data-testid=\"image-A\"]').alt"));
       click(".header-actions [aria-label=\"Manage Images\"]");
