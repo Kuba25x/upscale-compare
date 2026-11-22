@@ -1307,7 +1307,7 @@ input[type='checkbox'] {
   }
 }
 
-/* Preserve the title alignment in the comparison header. */
+/* Keep the existing comparison header alignment on touch layouts. */
 .has-images .app-header h1 {
   position: relative;
   gap: 0;
@@ -1317,6 +1317,16 @@ input[type='checkbox'] {
   right: calc(100% + 9px);
   top: 50%;
   transform: translateY(-50%);
+}
+@media (pointer: fine), (pointer: none) {
+  .web-app.has-images .app-header h1 {
+    gap: 9px;
+  }
+  .web-app.has-images .app-header h1 .brand-mark {
+    position: relative;
+    inset: auto;
+    transform: none;
+  }
 }
 /* Center the upload button independently of the hints below it. */
 .upload-center {
