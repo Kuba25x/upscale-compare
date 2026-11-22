@@ -35,15 +35,15 @@ export function webPresentationTests() {
       if (compact) {
         await expect(page.locator('.app')).toHaveClass(/comparison-compact/);
         await expect(page.locator('.image-selection-bar')).toBeHidden();
-        await expect(page.getByLabel('Zoom preset')).toBeVisible();
+        await expect(page.getByLabel('Zoom preset', { exact: true })).toBeVisible();
       } else {
         await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
         await expect(page.locator('.image-selection-bar')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Image controls' })).toHaveCount(0);
-        if (isMobile) await expect(page.getByLabel('Zoom preset')).toBeVisible();
+        if (isMobile) await expect(page.getByLabel('Zoom preset', { exact: true })).toBeVisible();
         else {
           await expect(page.getByRole('button', { name: '100%', exact: true })).toBeVisible();
-          await expect(page.getByLabel('Zoom preset')).toHaveCount(0);
+          await expect(page.getByLabel('Zoom preset', { exact: true })).toHaveCount(0);
         }
       }
       await expect(page.locator('.minimalist-exit')).toHaveCount(0);

@@ -3,7 +3,7 @@ import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
 import { expectLocalComparisonUI } from './local-comparison';
-import { chooseZoomPreset, manageImages } from './phone-controls';
+import { chooseZoomPreset, manageImages, phoneZoomTrigger } from './phone-controls';
 
 async function open(page: Page) {
   await page.goto('./');
@@ -86,7 +86,7 @@ export function mobileLandscapeTests() {
           expect(box.width, name).toBeGreaterThanOrEqual(44);
           expect(box.height, name).toBeGreaterThanOrEqual(44);
         }
-        await expect(page.getByLabel('Zoom preset')).toBeVisible();
+        await expect(phoneZoomTrigger(page)).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
           viewport.width,
         );
