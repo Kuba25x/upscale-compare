@@ -1942,7 +1942,19 @@ input[type='checkbox'] {
   border-radius: 8px;
 }
 .app.android-app.comparison-phone-portrait .phone-image-controls {
-  margin-bottom: calc(8px + var(--comparison-overlay-bottom));
+  /* Root padding already reserves the navigation area. Clear any remaining inset. */
+  margin-bottom: max(8px, var(--comparison-overlay-bottom));
+}
+.app.web-app.comparison-phone-portrait .phone-image-controls {
+  /* Add only the part of the visual viewport loss outside the root's safe-area padding. */
+  margin-bottom: calc(
+    8px +
+      max(
+        0px,
+        100dvh - var(--web-visual-top, 0px) - var(--web-visual-height, 100dvh) -
+          var(--comparison-safe-bottom, 0px)
+      )
+  );
 }
 .comparison-phone-landscape .header-actions .images-toggle {
   display: inline-flex;

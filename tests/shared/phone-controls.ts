@@ -94,7 +94,7 @@ export async function expectPhoneImageMenuKeyboard(page: Page) {
 
 export async function expectPortraitImagePanel(
   page: Page,
-  { left = 0, right = 0, bottom = 0 } = {},
+  { left = 0, right = 0, bottom = 0, gap = 8 } = {},
 ) {
   const panel = page.locator('.phone-image-controls');
   await expect(panel).toBeVisible();
@@ -106,7 +106,14 @@ export async function expectPortraitImagePanel(
   const viewport = page.viewportSize()!;
   expect(bounds.x).toBeGreaterThan(left);
   expect(bounds.x + bounds.width).toBeLessThan(viewport.width - right);
-  expect(bounds.y + bounds.height).toBeLessThan(viewport.height - bottom);
+  await expect
+    .poll(() =>
+      panel.evaluate(
+        (node, inset) => innerHeight - inset - node.getBoundingClientRect().bottom,
+        bottom,
+      ),
+    )
+    .toBeCloseTo(gap, 0);
   expect(bounds.y).toBeGreaterThan(viewer.y + viewer.height - 1);
   expect(await panel.evaluate((node) => node.scrollWidth)).toBe(
     await panel.evaluate((node) => node.clientWidth),
