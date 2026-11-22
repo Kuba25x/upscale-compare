@@ -29,7 +29,17 @@ export const imageChoices = (page: Page, slot: 'A' | 'B') =>
 async function imageControl(page: Page, slot: 'A' | 'B') {
   const trigger = phoneImageTrigger(page, slot);
   const native = page.getByRole('combobox', { name: `Select image ${slot}` });
-  await expect(trigger.or(native)).toBeVisible();
+  const control = trigger.or(native);
+  const panelToggle = page.getByRole('button', { name: 'Image controls', exact: true });
+  await expect(control.or(panelToggle).first()).toBeVisible();
+  if (!(await control.isVisible()) && (await panelToggle.isVisible())) {
+    const closed = await panelToggle.evaluate((button) => {
+      const panel = document.getElementById(button.getAttribute('aria-controls') ?? '');
+      return button.getAttribute('aria-expanded') === 'false' && !panel?.matches(':popover-open');
+    });
+    if (closed) await panelToggle.click();
+  }
+  await expect(control).toBeVisible();
   return { trigger, native, custom: await trigger.isVisible() };
 }
 
@@ -64,14 +74,21 @@ export async function expectSelectedImageIndex(page: Page, slot: 'A' | 'B', inde
 }
 
 export async function expectPhoneImageMenuKeyboard(page: Page) {
+  await phoneImageTrigger(page, 'A').focus();
+  await page.keyboard.press('Tab');
+  await expect(phoneImageTrigger(page, 'B')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   for (const slot of ['A', 'B'] as const) {
     const trigger = phoneImageTrigger(page, slot);
-    await trigger.press('Enter');
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveCSS('outline-style', 'solid');
+    await page.keyboard.press('Enter');
     await expect(page.getByRole('menuitemradio', { checked: true })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
     await expect(trigger).toBeFocused();
     await expect(trigger).toHaveCSS('outline-style', 'solid');
+    if (slot === 'A') await page.keyboard.press('Tab');
   }
 }
 
