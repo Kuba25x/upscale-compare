@@ -5,7 +5,11 @@ import { installWebDisplay } from '../shared/web-display';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscreen';
 import { cacheSnapshot, control, serve } from './helpers';
-import { expectPhonePortraitHeader, helpDialog } from '../shared/phone-controls';
+import {
+  expectPhonePortraitHeader,
+  expectPhoneZoomToolbar,
+  helpDialog,
+} from '../shared/phone-controls';
 import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
 
 test.beforeEach(async ({ request }) => {
@@ -147,14 +151,14 @@ for (const sample of [
       expect((await page.getByTestId('stage').boundingBox())!.x).toBe(0);
       expect((await page.getByTestId('stage').boundingBox())!.width).toBe(sample.width);
       await page.getByRole('button', { name: 'Image controls', exact: true }).click();
-      for (const name of ['Label for image A', 'Label for image B'])
-        await safe(page, page.getByLabel(name, { exact: true }), sample);
+      await safe(page, page.getByRole('button', { name: 'Swap images' }), sample);
     } else {
       const header = page.locator('.app-header');
       await expectPhonePortraitHeader(page);
       await safe(page, header.getByRole('group', { name: 'Comparison mode', exact: true }), sample);
-      await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
     }
+    await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
+    await expectPhoneZoomToolbar(page, sample);
     await expectLocalComparisonUI(page);
     for (const name of ['Select image A', 'Select image B'])
       await safe(page, page.getByLabel(name, { exact: true }), sample);
@@ -174,8 +178,10 @@ for (const sample of [
     await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Your images' });
     await safe(page, dialog, sample);
-    if (sample.width < sample.height)
-      await safe(page, dialog.getByRole('textbox', { name: 'Label for A.png' }), sample);
+    const label = dialog.getByRole('textbox', { name: 'Label for A.png' });
+    await safe(page, label, sample);
+    await label.fill('Fullscreen original');
+    await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Fullscreen original');
     await dialog.getByRole('button', { name: 'Help & About' }).click();
     const help = helpDialog(page);
     await safe(page, help, sample);
@@ -209,9 +215,11 @@ test('installed phone portrait fills the safe width and updates icons when inset
     await expectPhonePortraitHeader(page, {
       icons: width === 320 ? false : width === 430 ? true : undefined,
     });
+    await expectPhoneZoomToolbar(page, { left: 22, right: 12, oneRow: width >= 390 });
   }
   await insets(page, 48, 62, 24, 72);
   await expectPhonePortraitHeader(page, { icons: false });
+  await expectPhoneZoomToolbar(page, { left: 72, right: 62, oneRow: false });
   await insets(page, 48, 12, 24, 22);
   await expectPhonePortraitHeader(page, { icons: true });
 });

@@ -3,7 +3,7 @@ import { PNG } from 'pngjs';
 import type { Config, Manifest, PublicComparison } from '../../shared/model';
 import { browserFile, original, type Original } from '../fixtures/fidelity';
 import { imageFile } from '../e2e/fixtures';
-import { renameSelectedImage } from '../shared/phone-controls';
+import { chooseZoomPreset, renameSelectedImage } from '../shared/phone-controls';
 import { test, expect, openShare, publishButton, solve, settings } from './fixtures';
 
 const scenarios = [
@@ -203,9 +203,7 @@ for (const scenario of scenarios) {
     if (scenario.zoom === null)
       await page.getByRole('button', { name: 'Fit', exact: true }).click();
     else {
-      await page
-        .getByRole('button', { name: scenario.zoom === 1 ? '100%' : '200%', exact: true })
-        .click();
+      await chooseZoomPreset(page, scenario.zoom === 1 ? 1 : 2);
       if (scenario.zoom === 2.5)
         await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
     }
@@ -294,7 +292,7 @@ for (const scenario of scenarios) {
     }
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('button', { name: 'Swap images', exact: true }).click();
-    await page.getByRole('button', { name: '400%', exact: true }).click();
+    await chooseZoomPreset(page, 4);
     await page
       .getByRole('button', {
         name: scenario.mode === 'side' ? 'Split Screen' : 'Side-by-Side',
@@ -320,7 +318,7 @@ test('restores original pixels at 100% source zoom in both public panels', async
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('Reference.png', 1)]);
   await expect(page.getByTestId('stage')).toBeVisible();
   await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
-  await page.getByRole('button', { name: '100%', exact: true }).click();
+  await chooseZoomPreset(page, 1);
   const { url } = await publishSnapshot(page);
   await page.goto(url);
   await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', '1');

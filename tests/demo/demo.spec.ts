@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openComparisonHelp, manageImages } from '../shared/phone-controls';
+import { chooseZoomPreset, openComparisonHelp, manageImages } from '../shared/phone-controls';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
@@ -114,7 +114,7 @@ test('keeps the split divider and synchronized zoom and panning across modes', a
 
 test('preserves pixel-accurate zoom in the production demo', async ({ page }) => {
   await openDemo(page);
-  await page.getByRole('button', { name: '100%', exact: true }).click();
+  await chooseZoomPreset(page, 1);
   const ratio = await page.evaluate(() => devicePixelRatio);
   const bounds = await page.getByTestId('image-A').boundingBox();
   expect(bounds!.width * ratio).toBeCloseTo(640, 4);

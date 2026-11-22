@@ -23,7 +23,7 @@ export function touchGestureTests() {
         { x, y: y + 40 + spread, id: 2 },
       ];
       for (let round = 0; round < 4; round++) {
-        await page.getByRole('button', { name: '100%', exact: true }).tap();
+        await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption('1');
         await client.send('Input.dispatchTouchEvent', {
           type: 'touchStart',
           touchPoints: [contacts(0)[0]],

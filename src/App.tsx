@@ -153,10 +153,7 @@ export default function App({
     const previous = previousLayout.current;
     previousLayout.current = { phone, managing };
     // Rotation or Escape can remove the focused editor before it receives blur.
-    if (
-      previous.phone &&
-      (phone !== previous.phone || (phonePortrait && previous.managing && !managing))
-    )
+    if (previous.phone && (phone !== previous.phone || (previous.managing && !managing)))
       setImages((images) =>
         images.every((image) => image.label.trim())
           ? images
@@ -164,7 +161,7 @@ export default function App({
               image.label.trim() ? image : { ...image, label: defaultLabel(image) },
             ),
       );
-  }, [phone, phonePortrait, managing]);
+  }, [phone, managing]);
   useEffect(() => {
     if (focusAfterHelp.current && (modal === null || modal === 'upload')) {
       focusAfterHelp.current = false;
@@ -764,7 +761,7 @@ export default function App({
                       </span>
                     </span>
                   </div>
-                  {!readOnly && !phonePortrait && (
+                  {!readOnly && !phone && (
                     <label className="rename-label" title="Customize screenshot label">
                       <Pencil size={13} />
                       {labelEditor(image, index, `Label for image ${slot === 0 ? 'A' : 'B'}`)}
@@ -935,7 +932,7 @@ export default function App({
                     <img src={image.url} alt="" />
                   )}
                   <div>
-                    {phonePortrait ? (
+                    {phone ? (
                       labelEditor(image, index, `Label for ${image.name}`, loading)
                     ) : (
                       <b>{image.label}</b>

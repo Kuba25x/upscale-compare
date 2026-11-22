@@ -10,7 +10,7 @@ test('mobile keeps all main controls accessible without horizontal scrolling', a
   for (const name of ['Split Screen', 'Side-by-Side', 'Manage Images'])
     await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
-  await page.getByRole('button', { name: '100%', exact: true }).tap();
+  await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption('1');
   await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', '1');
   await page.getByRole('button', { name: 'Side-by-Side', exact: true }).tap();
   await expect(page.getByTestId('image-A')).toBeVisible();
@@ -40,7 +40,7 @@ test('touch divider and synchronized pinch navigation respond to touch input', a
   await expect(page.getByTestId('stage')).toBeFocused();
   await expect(page.getByRole('slider')).not.toBeFocused();
   await expect(page.locator('.divider-handle')).toHaveCSS('outline-style', 'none');
-  await page.getByRole('button', { name: '100%', exact: true }).tap();
+  await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption('1');
   await client.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
     touchPoints: [
@@ -62,6 +62,66 @@ test('touch divider and synchronized pinch navigation respond to touch input', a
   const a = await page.getByTestId('image-A').boundingBox(),
     b = await page.getByTestId('image-B').boundingBox();
   expect(a).toEqual(b);
+});
+
+test('phone portrait zoom picker preserves physical-pixel presets and displays intermediate zoom', async ({
+  page,
+}) => {
+  await openComparison(page);
+  const stage = page.getByTestId('stage');
+  const zoom = page.getByRole('combobox', { name: 'Zoom preset' });
+  const selected = zoom.locator('option:checked');
+  await expect(selected).toHaveText('Fit');
+  const dpr = await page.evaluate(() => devicePixelRatio);
+  for (const preset of [1, 2, 4]) {
+    await zoom.selectOption(String(preset));
+    await expect(selected).toHaveText(`${preset * 100}%`);
+    await expect(stage).toHaveAttribute('data-zoom', String(preset));
+    expect((await page.getByTestId('image-A').boundingBox())!.width * dpr).toBeCloseTo(
+      640 * preset,
+      2,
+    );
+  }
+  await zoom.selectOption('1');
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).tap();
+  await expect(selected).toHaveText('125%');
+  await page.getByRole('button', { name: 'Zoom out', exact: true }).tap();
+  await expect(selected).toHaveText('100%');
+
+  const box = (await stage.boundingBox())!;
+  const y = Math.round(box.y + box.height / 4);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [
+      { x: 66, y, id: 1 },
+      { x: 166, y, id: 2 },
+    ],
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [
+      { x: 26, y, id: 1 },
+      { x: 207, y, id: 2 },
+    ],
+  });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await expect(selected).toHaveText('181%');
+  await expect(selected).toBeDisabled();
+
+  await page.mouse.move(box.x + 80, y);
+  await page.mouse.wheel(0, -50);
+  await expect(selected).not.toHaveText('181%');
+  const wheelZoom = Number(await stage.getAttribute('data-zoom'));
+  expect(wheelZoom).toBeGreaterThan(1.81);
+  await expect(selected).toHaveText(`${Math.round(wheelZoom * 100)}%`);
+
+  const fit = page.getByRole('button', { name: 'Fit', exact: true });
+  await fit.tap();
+  await expect(selected).toHaveText('Fit');
+  await expect(stage).toHaveAttribute('data-zoom', 'fit');
+  await expect(fit).toHaveClass('selected');
 });
 
 test('image management wraps at 320 px and remains usable in short landscape', async ({ page }) => {

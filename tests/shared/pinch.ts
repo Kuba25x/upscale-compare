@@ -1,12 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
+import { chooseZoomPreset } from './phone-controls';
 type Point = { x: number; y: number };
 
 export async function openViewer(page: Page, mode: string, search = '') {
   await page.goto(`./${search}`);
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('FSR.png', 1)]);
   await page.getByRole('button', { name: mode, exact: true }).click();
-  await page.getByRole('button', { name: '100%', exact: true }).click();
+  await chooseZoomPreset(page, 1);
   // Synthetic touch IDs have no native contact. Shim only their capture bookkeeping.
   // This tests React handlers in each engine, not a physical Android touch pipeline.
   await page.getByTestId('stage').evaluate((stage) => {

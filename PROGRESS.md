@@ -324,9 +324,9 @@ and releases draft originals on close or restart.
 ## Phone comparison controls
 
 In phone portrait, the mode buttons and **Manage Images** fill the safe width
-under the brand and show icons when space allows. Screenshot label editing is
-available in **Manage Images**. Phone landscape retains
-the inline A/B editors and header. On phones, **Help & About** opens the existing
+under the brand and show icons when space allows. Both phone orientations use the
+compact zoom selector and edit screenshot labels in **Manage Images**. Phone
+landscape keeps A/B selection and swapping in the Images panel. **Help & About** opens the existing
 guide from **Manage Images** or the landing screen. Playwright covers the view
 sizes, phone and tablet isolation, and mocked cutouts. Native instrumentation
 checks the portrait layout and label restoration on the Android emulator.

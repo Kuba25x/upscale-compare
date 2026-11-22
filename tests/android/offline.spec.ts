@@ -44,7 +44,8 @@ for (const [width, height] of [
           ]),
       )
       .toEqual([true, width, height]);
-    await page.getByRole('button', { name: '100%', exact: true }).click();
+    const zoom = page.getByRole('combobox', { name: 'Zoom preset' });
+    await zoom.selectOption('1');
     const bounds = await page.getByTestId('image-A').boundingBox();
     expect(bounds!.width * 3).toBeCloseTo(width, 2);
     expect(bounds!.height * 3).toBeCloseTo(height, 2);
@@ -85,7 +86,8 @@ for (const [width, height] of [
         .toBeCloseTo(1.5, 5);
       await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
       await expect(page.getByTestId('stage')).not.toHaveClass(/panning/);
-      await page.getByRole('button', { name: '100%', exact: true }).click();
+      await expect(zoom.locator('option:checked')).toHaveText('150%');
+      await zoom.selectOption('1');
     }
     await client.detach();
     await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();

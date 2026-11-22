@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { renameSelectedImage } from './phone-controls';
+import { chooseZoomPreset, renameSelectedImage } from './phone-controls';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
@@ -20,7 +20,7 @@ export async function open(page: Page, mode = 'Split Screen', url = './') {
   await page.getByLabel('Game title').fill('Minimalist regression');
   await page.getByRole('button', { name: 'Save details', exact: true }).click();
   await page.getByRole('button', { name: mode, exact: true }).click();
-  await page.getByRole('button', { name: '200%', exact: true }).click();
+  await chooseZoomPreset(page, 2);
   if (mode === 'Split Screen') {
     await page.getByRole('slider').focus();
     await page.keyboard.press('ArrowRight');
@@ -198,10 +198,15 @@ export function mobileMinimalistTests() {
       }) => {
         await installFullscreen(page, 'missing');
         await open(page, mode);
+        const original = await snapshot(page);
         for (const zoom of [1, 2, 4]) {
           await page.setViewportSize({ width: 412, height: 900 });
-          await page.getByRole('button', { name: `${zoom * 100}%`, exact: true }).click();
-          const before = await snapshot(page);
+          // The zoom selector is visible in both orientations. Wait for the portrait layout.
+          await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
+          await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption(String(zoom));
+          const before = { ...original, zoom: String(zoom) };
+          // Check the original center after the viewer has measured the resized stage.
+          await unchanged(page, before);
           await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
           for (const viewport of [
             { width: 412, height: 900 },
@@ -240,6 +245,7 @@ export function mobileMinimalistTests() {
         await page.setViewportSize({ width: 900, height: 412 });
         await expect(page.locator('.app')).toHaveClass(/comparison-compact/);
         await page.getByRole('button', { name: 'Fit', exact: true }).click();
+        await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', 'fit');
         const before = await snapshot(page);
         await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).click();
         await page.setViewportSize({ width: 900, height: 412 });
