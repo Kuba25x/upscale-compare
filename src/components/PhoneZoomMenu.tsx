@@ -91,14 +91,17 @@ export function PhoneZoomMenu({
         aria-expanded={open}
         popoverTarget={id}
         onClick={(event) => {
-          if (event.detail === 0 && !open) focusOnOpen.current ??= 'selected';
+          if (event.detail === 0 && !menu.current!.matches(':popover-open'))
+            focusOnOpen.current ??= 'selected';
         }}
         onKeyDown={(event) => {
-          if (event.key === 'Escape' && open) dismiss(event);
+          const popup = menu.current!;
+          const visible = popup.matches(':popover-open');
+          if (event.key === 'Escape' && visible) dismiss(event);
           if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
           event.preventDefault();
           const target = event.key === 'ArrowDown' ? 'first' : 'last';
-          if (open) focusItem(menu.current!, target);
+          if (visible) focusItem(popup, target);
           else {
             focusOnOpen.current = target;
             event.currentTarget.click();
@@ -118,6 +121,11 @@ export function PhoneZoomMenu({
         data-open={open ? '' : undefined}
         onToggle={(event) => {
           const next = event.newState === 'open';
+          // The browser can coalesce a close and an immediate reopen into one toggle.
+          if (next && open && focusOnOpen.current) {
+            focusItem(event.currentTarget, focusOnOpen.current);
+            focusOnOpen.current = undefined;
+          }
           setOpen(next);
           onOpenChange?.(next);
         }}

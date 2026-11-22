@@ -81,6 +81,14 @@ test('zoom menu supports touch, keyboard navigation, and rotation without losing
   await expect(trigger).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(options.first()).toBeFocused();
+  // Reopen before the browser delivers the asynchronous close notification.
+  await popup.evaluate(() => {
+    for (const key of ['Escape', 'ArrowUp'])
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      );
+  });
+  await expect(options.last()).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Zoom out' })).toBeFocused();
   await expect(popup).toBeHidden();
