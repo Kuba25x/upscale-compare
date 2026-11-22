@@ -185,7 +185,7 @@ export function mobileLandscapeTests() {
           await expect(page.getByRole('slider')).toHaveAttribute('aria-valuenow', divider!);
         const ratio = await page.evaluate(() => devicePixelRatio);
         for (const zoom of [1, 2, 4]) {
-          await page.getByLabel('Zoom preset').selectOption(String(zoom));
+          await chooseZoomPreset(page, zoom);
           await expect
             .poll(async () => (await page.getByTestId('image-A').boundingBox())!.width * ratio)
             .toBeCloseTo(640 * zoom, 1);
@@ -220,7 +220,7 @@ export function mobileLandscapeTests() {
       );
       await open(page);
       await page.setViewportSize({ width: 900, height: 412 });
-      await page.getByLabel('Zoom preset').selectOption('1');
+      await chooseZoomPreset(page, 1);
       const image = (await page.getByTestId('image-A').boundingBox())!;
       const ratio = await page.evaluate(() => devicePixelRatio);
       const shot = PNG.sync.read(await page.screenshot());
@@ -265,7 +265,7 @@ export function mobileLandscapeTests() {
       test.skip(browserName !== 'chromium', 'DPR changes use Chromium CDP.');
       await open(page);
       await page.setViewportSize({ width: 900, height: 412 });
-      await page.getByLabel('Zoom preset').selectOption('2');
+      await chooseZoomPreset(page, 2);
       const before = await sourceCenter(page);
       const cdp = await page.context().newCDPSession(page);
       await cdp.send('Input.dispatchTouchEvent', {

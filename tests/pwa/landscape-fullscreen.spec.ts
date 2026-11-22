@@ -3,6 +3,12 @@ import { imageFile } from '../e2e/fixtures';
 import { open as openComparison, snapshot, unchanged } from '../shared/mobile-minimalist';
 import { installWebDisplay } from '../shared/web-display';
 import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscreen';
+import {
+  chooseZoomPreset,
+  expectZoomMenuPlacement,
+  phoneZoomTrigger,
+  zoomPresets,
+} from '../shared/phone-controls';
 
 // Model the installed window and cutout inputs, not Android's OS window flags.
 // Real Chromium/Firefox Fullscreen API behavior is tested separately below.
@@ -81,6 +87,7 @@ for (const mode of ['Split Screen', 'Side-by-Side'])
     for (const [left, right] of [
       [46, 12],
       [12, 46],
+      [24, 24],
     ]) {
       await page.addStyleTag({
         content: `.web-app { --comparison-safe-left:${left}px; --comparison-safe-right:${right}px; --comparison-safe-bottom:16px; }`,
@@ -106,6 +113,11 @@ for (const mode of ['Split Screen', 'Side-by-Side'])
         expect(box.height, name).toBeGreaterThanOrEqual(44);
       }
       await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveCount(0);
+      await phoneZoomTrigger(page).click();
+      await expectZoomMenuPlacement(page, { left, right, bottom: 16 });
+      await page.keyboard.press('Escape');
+      await expect(zoomPresets(page)).toBeHidden();
+      await unchanged(page, before);
       await options(page);
       const dialog = (await page.getByRole('dialog').boundingBox())!;
       expect(dialog.x).toBeGreaterThanOrEqual(left);
@@ -114,12 +126,12 @@ for (const mode of ['Split Screen', 'Side-by-Side'])
       await expect(page.getByRole('button', { name: 'Fullscreen options' })).toBeFocused();
     }
     await unchanged(page, before);
-    await page.getByLabel('Zoom preset').selectOption('1');
+    await chooseZoomPreset(page, 1);
     const dpr = await page.evaluate(() => devicePixelRatio);
     await expect
       .poll(async () => (await page.getByTestId('image-A').boundingBox())!.width * dpr)
       .toBeCloseTo(320, 1);
-    await page.getByLabel('Zoom preset').selectOption('2');
+    await chooseZoomPreset(page, 2);
     await unchanged(page, before);
     await options(page);
     await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click();

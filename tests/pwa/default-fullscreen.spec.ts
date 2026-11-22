@@ -9,7 +9,10 @@ import {
   expectPhonePortraitHeader,
   expectPhoneSelectFocus,
   expectPhoneZoomToolbar,
+  expectZoomMenuPlacement,
   helpDialog,
+  phoneZoomTrigger,
+  zoomPresets,
 } from '../shared/phone-controls';
 import {
   expectCenteredBrand,
@@ -164,6 +167,11 @@ for (const sample of [
     }
     await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
     await expectPhoneZoomToolbar(page, sample);
+    await phoneZoomTrigger(page).click();
+    await expectZoomMenuPlacement(page, sample);
+    await page.keyboard.press('Escape');
+    await expect(zoomPresets(page)).toBeHidden();
+    await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
     await expectLocalComparisonUI(page);
     for (const name of ['Select image A', 'Select image B'])
       await safe(page, page.getByLabel(name, { exact: true }), sample);
