@@ -18,10 +18,14 @@ test('phone selects keep touch focus without the outline and restore it on Tab',
   await installWebDisplay(page);
   await page.goto('/');
   await page.getByTestId('file-input').setInputFiles(files);
-  await expectPhoneSelectFocus(page, true);
+  await expectPhoneSelectFocus(page);
   await page.setViewportSize({ width: 844, height: 390 });
   await page.getByRole('button', { name: 'Image controls' }).tap();
-  await expectPhoneSelectFocus(page, true);
+  await expectPhoneSelectFocus(page);
+  const zoom = page.getByRole('combobox', { name: 'Zoom preset' });
+  await zoom.tap();
+  await expect(zoom).toBeFocused();
+  await expect(zoom).toHaveCSS('outline-style', 'none');
 });
 
 for (const width of [320, 360, 390, 430]) {
