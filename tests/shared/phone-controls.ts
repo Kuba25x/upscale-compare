@@ -101,11 +101,6 @@ export async function expectPortraitImagePanel(
   await expect(panel.locator('select')).toHaveCount(0);
   await expect(panel).toHaveCSS('border-radius', '8px');
   await expect(panel).toHaveCSS('border-width', '1px');
-  const bounds = (await panel.boundingBox())!;
-  const viewer = (await page.locator('.viewer-content').boundingBox())!;
-  const viewport = page.viewportSize()!;
-  expect(bounds.x).toBeGreaterThan(left);
-  expect(bounds.x + bounds.width).toBeLessThan(viewport.width - right);
   await expect
     .poll(() =>
       panel.evaluate(
@@ -114,7 +109,15 @@ export async function expectPortraitImagePanel(
       ),
     )
     .toBeCloseTo(gap, 0);
-  expect(bounds.y).toBeGreaterThan(viewer.y + viewer.height - 1);
+  const geometry = await panel.evaluate((node) => ({
+    panel: node.getBoundingClientRect().toJSON(),
+    viewerBottom: node.parentElement!.querySelector('.viewer-content')!.getBoundingClientRect()
+      .bottom,
+    viewportWidth: innerWidth,
+  }));
+  expect(geometry.panel.left).toBeGreaterThan(left);
+  expect(geometry.panel.right).toBeLessThan(geometry.viewportWidth - right);
+  expect(geometry.panel.top).toBeGreaterThan(geometry.viewerBottom - 1);
   expect(await panel.evaluate((node) => node.scrollWidth)).toBe(
     await panel.evaluate((node) => node.clientWidth),
   );
