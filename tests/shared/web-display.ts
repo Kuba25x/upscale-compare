@@ -6,9 +6,10 @@ export async function installWebDisplay(
   source: 'screen' | 'angle' | 'dimensions' = 'screen',
   finePointer = false,
   emulateTouchInput = false,
+  mockVisualViewport = true,
 ) {
   await page.addInitScript(
-    ({ source, finePointer, emulateTouchInput }) => {
+    ({ source, finePointer, emulateTouchInput, mockVisualViewport }) => {
       const win = window as any;
       const type = () =>
         win.testOrientation ??
@@ -35,6 +36,7 @@ export async function installWebDisplay(
           Object.defineProperty(result, 'matches', { get: () => !finePointer });
         return result;
       };
+      if (!mockVisualViewport) return;
       const viewport = visualViewport!;
       for (const [property, fallback] of [
         ['height', () => innerHeight],
@@ -46,6 +48,6 @@ export async function installWebDisplay(
           get: () => win.testVisualViewport?.[property] ?? fallback(),
         });
     },
-    { source, finePointer, emulateTouchInput },
+    { source, finePointer, emulateTouchInput, mockVisualViewport },
   );
 }

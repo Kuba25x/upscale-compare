@@ -1945,14 +1945,19 @@ input[type='checkbox'] {
   /* Root padding already reserves the navigation area. Clear any remaining inset. */
   margin-bottom: max(8px, var(--comparison-overlay-bottom));
 }
+.app.web-app.installed-fullscreen.comparison-phone-portrait .phone-image-controls {
+  /* Chrome can report a maximum inset separately from the current visible viewport. */
+  --phone-panel-max-bottom: calc(env(safe-area-max-inset-bottom, 0px) - (100lvh - 100dvh));
+}
 .app.web-app.comparison-phone-portrait .phone-image-controls {
-  /* Add only the part of the visual viewport loss outside the root's safe-area padding. */
+  /* The app already pads for the current inset. Add only the uncovered obstruction. */
   margin-bottom: calc(
     8px +
       max(
         0px,
         100dvh - var(--web-visual-top, 0px) - var(--web-visual-height, 100dvh) -
-          var(--comparison-safe-bottom, 0px)
+          var(--comparison-safe-bottom, 0px),
+        var(--phone-panel-max-bottom, 0px) - var(--comparison-safe-bottom, 0px)
       )
   );
 }
