@@ -652,16 +652,45 @@ public class DisplayIntegrationTest {
                     && geometry.getDouble("stage") > geometry.getDouble("height") * .7);
           });
       click(".images-toggle");
-      assertEquals(
-          "true",
-          js("document.querySelector('.image-selection-bar').getBoundingClientRect().height > 0"));
+      eventually(
+          () ->
+              assertEquals(
+                  "true",
+                  js(
+                      """
+                      (() => {
+                        const panel = document.querySelector('.phone-images-popover:popover-open');
+                        const trigger = document.querySelector('.images-toggle').getBoundingClientRect();
+                        const box = panel?.getBoundingClientRect();
+                        return box && Math.abs(box.top - trigger.bottom - 6) < 1
+                          && box.width <= 320 && box.right <= innerWidth && box.left >= 0;
+                      })()
+                      """)));
       assertEquals(
           "true",
           js(
-              "document.querySelectorAll('.image-selection-bar select').length === 2 && "
-                  + "!document.querySelector('.image-selection-bar input') && "
+              "document.querySelectorAll('.image-selection-bar .phone-image-trigger').length === 2 && "
+                  + "!document.querySelector('.image-selection-bar input, .image-selection-bar select') && "
                   + "!!document.querySelector('.image-selection-bar .swap-button')"));
-      click(".images-toggle");
+      click(".phone-image-trigger");
+      eventually(
+          () ->
+              assertEquals(
+                  "true",
+                  js("!!document.querySelector('.phone-image-choices:popover-open[data-open]')")));
+      shell("input keyevent KEYCODE_BACK");
+      eventually(
+          () ->
+              assertEquals(
+                  "true",
+                  js(
+                      "!document.querySelector('.phone-image-choices:popover-open') && "
+                          + "!!document.querySelector('.phone-images-popover:popover-open')")));
+      shell("input keyevent KEYCODE_BACK");
+      eventually(
+          () ->
+              assertEquals(
+                  "true", js("!document.querySelector('.phone-images-popover:popover-open')")));
       click(".header-actions [aria-label=\"Manage Images\"]");
       assertManageImagesPreviews();
       setFirstImageLabel("Landscape original");

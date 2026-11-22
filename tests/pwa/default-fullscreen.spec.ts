@@ -7,8 +7,10 @@ import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscr
 import { cacheSnapshot, control, serve } from './helpers';
 import {
   expectPhonePortraitHeader,
-  expectPhoneSelectFocus,
+  expectPhoneImageMenuKeyboard,
   expectPhoneZoomToolbar,
+  expectLandscapeImagePopover,
+  expectPortraitImagePanel,
   expectZoomMenuPlacement,
   helpDialog,
   phoneZoomTrigger,
@@ -158,11 +160,10 @@ for (const sample of [
     if (sample.width > sample.height) {
       expect((await page.getByTestId('stage').boundingBox())!.x).toBe(0);
       expect((await page.getByTestId('stage').boundingBox())!.width).toBe(sample.width);
-      await page.getByRole('button', { name: 'Image controls', exact: true }).click();
-      await safe(page, page.getByRole('button', { name: 'Swap images' }), sample);
     } else {
       const header = page.locator('.app-header');
       await expectPhonePortraitHeader(page);
+      await expectPortraitImagePanel(page, sample);
       await safe(page, header.getByRole('group', { name: 'Comparison mode', exact: true }), sample);
     }
     await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
@@ -173,9 +174,14 @@ for (const sample of [
     await expect(zoomPresets(page)).toBeHidden();
     await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
     await expectLocalComparisonUI(page);
+    if (sample.width > sample.height) {
+      await page.getByRole('button', { name: 'Image controls', exact: true }).click();
+      await expectLandscapeImagePopover(page, sample);
+      await safe(page, page.getByRole('button', { name: 'Swap images' }), sample);
+    }
     for (const name of ['Select image A', 'Select image B'])
       await safe(page, page.getByLabel(name, { exact: true }), sample);
-    await expectPhoneSelectFocus(page);
+    await expectPhoneImageMenuKeyboard(page);
     if (sample.width > sample.height)
       await page.getByRole('button', { name: 'Image controls', exact: true }).click();
     await expectSplitRange(page);
@@ -229,6 +235,7 @@ test('installed phone portrait fills the safe width and updates icons when inset
   await insets(page, 48, 62, 24, 72);
   await expectPhonePortraitHeader(page, { icons: false });
   await expectPhoneZoomToolbar(page, { left: 72, right: 62, oneRow: false });
+  await expectPortraitImagePanel(page, { left: 72, right: 62, bottom: 24 });
   await insets(page, 48, 12, 24, 22);
   await expectPhonePortraitHeader(page, { icons: true });
   await insets(page, 48, 22, 24, 22);

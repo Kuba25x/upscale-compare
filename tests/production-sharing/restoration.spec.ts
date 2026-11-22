@@ -3,7 +3,12 @@ import { PNG } from 'pngjs';
 import type { Config, Manifest, PublicComparison } from '../../shared/model';
 import { browserFile, original, type Original } from '../fixtures/fidelity';
 import { imageFile } from '../e2e/fixtures';
-import { chooseZoomPreset, renameSelectedImage } from '../shared/phone-controls';
+import {
+  chooseZoomPreset,
+  renameSelectedImage,
+  selectImage,
+  expectSelectedImageIndex,
+} from '../shared/phone-controls';
 import { test, expect, openShare, publishButton, solve, settings } from './fixtures';
 
 const scenarios = [
@@ -99,8 +104,8 @@ async function assertGeometry(page: Page, config: Config, files: Original[]) {
     'data-zoom',
     String(config.view.zoom ?? 'fit'),
   );
-  await expect(page.getByLabel('Select image A')).toHaveValue(String(config.selected[0]));
-  await expect(page.getByLabel('Select image B')).toHaveValue(String(config.selected[1]));
+  await expectSelectedImageIndex(page, 'A', config.selected[0]);
+  await expectSelectedImageIndex(page, 'B', config.selected[1]);
   await expect(
     page.getByRole('button', {
       name: config.mode === 'side' ? 'Side-by-Side' : 'Split Screen',
@@ -170,7 +175,7 @@ for (const scenario of scenarios) {
       expect(result.height).toBe(files[i].height);
     });
     for (let i = 0; i < files.length; i++) {
-      await page.getByLabel('Select image A').selectOption(String(i));
+      await selectImage(page, 'A', i);
       await renameSelectedImage(page, 'A', scenario.names[i], `Source ${i + 1} — żółć 🎮`);
     }
     await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
@@ -191,8 +196,8 @@ for (const scenario of scenarios) {
         .fill(`${files[i].width} × ${files[i].height}`);
     }
     await page.getByRole('button', { name: 'Save details', exact: true }).click();
-    await page.getByLabel('Select image A').selectOption(String(files.length - 1));
-    await page.getByLabel('Select image B').selectOption('0');
+    await selectImage(page, 'A', files.length - 1);
+    await selectImage(page, 'B', 0);
     const divider = page.getByRole('slider');
     await divider.focus();
     await page.keyboard.press('Home');

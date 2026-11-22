@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export const manageImages = (page: Page) => page.getByRole('dialog', { name: 'Your images' });
 export const helpDialog = (page: Page) =>
@@ -21,27 +21,126 @@ export async function chooseZoomPreset(page: Page, zoom: number) {
   else await page.getByRole('button', { name: `${zoom * 100}%`, exact: true }).click();
 }
 
-export async function expectPhoneSelectFocus(page: Page) {
-  for (const name of ['Select image A', 'Select image B']) {
-    const select = page.getByRole('combobox', { name, exact: true });
-    await select.focus();
-    await page.keyboard.press('Shift+Tab');
-    await page.keyboard.press('Tab');
-    await expect(select).toBeFocused();
-    await expect(select).toHaveCSS('outline-color', 'rgb(178, 227, 142)');
-    await expect(select).toHaveCSS('outline-style', 'solid');
+export const phoneImageTrigger = (scope: Page | Locator, slot: 'A' | 'B') =>
+  scope.getByRole('button', { name: `Select image ${slot}`, exact: true });
+export const imageChoices = (page: Page, slot: 'A' | 'B') =>
+  page.getByRole('menu', { name: `Image ${slot} screenshots` }).getByRole('menuitemradio');
 
-    // Synthetic touch keeps :focus-visible active and exercises the Android heuristic.
-    await select.dispatchEvent('pointerdown', { pointerType: 'touch' });
-    await expect(select).toBeFocused();
-    await expect(select).toHaveCSS('outline-style', 'none');
-
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Shift+Tab');
-    await expect(select).toBeFocused();
-    await expect(select).toHaveCSS('outline-style', 'solid');
-    await expect(select).toHaveCSS('outline-color', 'rgb(178, 227, 142)');
+async function imageControl(page: Page, slot: 'A' | 'B') {
+  const trigger = phoneImageTrigger(page, slot);
+  const native = page.getByRole('combobox', { name: `Select image ${slot}` });
+  const control = trigger.or(native);
+  const panelToggle = page.getByRole('button', { name: 'Image controls', exact: true });
+  await expect(control.or(panelToggle).first()).toBeVisible();
+  if (!(await control.isVisible()) && (await panelToggle.isVisible())) {
+    const closed = await panelToggle.evaluate((button) => {
+      const panel = document.getElementById(button.getAttribute('aria-controls') ?? '');
+      return button.getAttribute('aria-expanded') === 'false' && !panel?.matches(':popover-open');
+    });
+    if (closed) await panelToggle.click();
   }
+  await expect(control).toBeVisible();
+  return { trigger, native, custom: await trigger.isVisible() };
+}
+
+export async function selectImage(page: Page, slot: 'A' | 'B', index: number) {
+  const { trigger, native, custom } = await imageControl(page, slot);
+  if (custom) {
+    await trigger.click();
+    await imageChoices(page, slot).nth(index).click();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  } else {
+    await native.selectOption(String(index));
+  }
+}
+
+export async function expectSelectedImageLabel(page: Page, slot: 'A' | 'B', label: string) {
+  const { trigger, native, custom } = await imageControl(page, slot);
+  await expect(
+    custom ? trigger.locator('.phone-image-label') : native.locator('option:checked'),
+  ).toHaveText(label);
+}
+
+export async function expectSelectedImageIndex(page: Page, slot: 'A' | 'B', index: number) {
+  const { trigger, native, custom } = await imageControl(page, slot);
+  if (custom) {
+    await trigger.click();
+    await expect(imageChoices(page, slot).nth(index)).toHaveAttribute('aria-checked', 'true');
+    await trigger.click();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  } else {
+    await expect(native).toHaveValue(String(index));
+  }
+}
+
+export async function expectPhoneImageMenuKeyboard(page: Page) {
+  await phoneImageTrigger(page, 'A').focus();
+  await page.keyboard.press('Tab');
+  await expect(phoneImageTrigger(page, 'B')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  for (const slot of ['A', 'B'] as const) {
+    const trigger = phoneImageTrigger(page, slot);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveCSS('outline-style', 'solid');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitemradio', { checked: true })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveCSS('outline-style', 'solid');
+    if (slot === 'A') await page.keyboard.press('Tab');
+  }
+}
+
+export async function expectPortraitImagePanel(
+  page: Page,
+  { left = 0, right = 0, bottom = 0 } = {},
+) {
+  const panel = page.locator('.phone-image-controls');
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('select')).toHaveCount(0);
+  await expect(panel).toHaveCSS('border-radius', '8px');
+  await expect(panel).toHaveCSS('border-width', '1px');
+  const bounds = (await panel.boundingBox())!;
+  const viewer = (await page.locator('.viewer-content').boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(bounds.x).toBeGreaterThan(left);
+  expect(bounds.x + bounds.width).toBeLessThan(viewport.width - right);
+  expect(bounds.y + bounds.height).toBeLessThan(viewport.height - bottom);
+  expect(bounds.y).toBeGreaterThan(viewer.y + viewer.height - 1);
+  expect(await panel.evaluate((node) => node.scrollWidth)).toBe(
+    await panel.evaluate((node) => node.clientWidth),
+  );
+  for (const button of [
+    phoneImageTrigger(page, 'A'),
+    phoneImageTrigger(page, 'B'),
+    panel.getByRole('button', { name: 'Swap images' }),
+  ]) {
+    const box = (await button.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+  }
+}
+
+export async function expectLandscapeImagePopover(
+  page: Page,
+  { left = 0, right = 0, bottom = 0 } = {},
+) {
+  const trigger = page.getByRole('button', { name: 'Image controls', exact: true });
+  const panel = page.getByRole('group', { name: 'Image controls', exact: true });
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel).toBeVisible();
+  const anchor = (await trigger.boundingBox())!;
+  const bounds = (await panel.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(bounds.width).toBeCloseTo(Math.min(320, viewport.width - left - right - 12), 0);
+  expect(bounds.x).toBeGreaterThanOrEqual(left);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width - right);
+  expect(bounds.x).toBeLessThanOrEqual(anchor.x + 1);
+  expect(bounds.x + bounds.width).toBeGreaterThan(anchor.x + anchor.width / 2);
+  expect(bounds.y).toBeCloseTo(anchor.y + anchor.height + 6, 0);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height - bottom);
+  await expect(panel.locator('select')).toHaveCount(0);
 }
 
 export async function expectPhoneZoomToolbar(

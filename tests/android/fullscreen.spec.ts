@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
-import { chooseZoomPreset } from '../shared/phone-controls';
+import { chooseZoomPreset, selectImage } from '../shared/phone-controls';
 
 const files = [imageFile(), imageFile('B.png', 1, 512, 384), imageFile('C.png', 0, 320, 256)];
 async function openComparison(page: Page, mode: string) {
@@ -23,8 +23,8 @@ async function openComparison(page: Page, mode: string) {
   );
   await page.goto('/');
   await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
-  await page.getByLabel('Select image A', { exact: true }).selectOption('2');
-  await page.getByLabel('Select image B', { exact: true }).selectOption('0');
+  await selectImage(page, 'A', 2);
+  await selectImage(page, 'B', 0);
   await page.getByRole('button', { name: mode, exact: true }).click();
   await expect
     .poll(() => page.getByTestId('image-A').evaluate((node: HTMLImageElement) => node.naturalWidth))

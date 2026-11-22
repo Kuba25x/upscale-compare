@@ -32,6 +32,7 @@ import {
 import { WEB_PRESENTATION, type ComparisonPresentation } from '../lib/comparison-presentation';
 import { clamp, originFor, panBy, pinchAt, scaleFor, zoomAt } from '../lib/geometry';
 import { PhoneZoomMenu } from './PhoneZoomMenu';
+import type { PopoverChange } from './useAnchoredPopover';
 
 /** The platform may decorate this control without changing viewer geometry. */
 export type FullscreenControl = (
@@ -44,7 +45,7 @@ interface Props {
   onChange: (update: (previous: Config) => Config) => void;
   onMetadata: () => void;
   onHelp: () => void;
-  onZoomMenuOpenChange?: (open: boolean) => void;
+  onPhonePopoverChange?: PopoverChange;
   onImageError?: () => void;
   fullscreenOverride?: boolean;
   onToggleFullscreen?: () => void | Promise<void>;
@@ -58,7 +59,7 @@ export function Viewer({
   onChange,
   onMetadata,
   onHelp,
-  onZoomMenuOpenChange,
+  onPhonePopoverChange,
   onImageError,
   fullscreenOverride,
   onToggleFullscreen,
@@ -954,7 +955,7 @@ export function Viewer({
             <PhoneZoomMenu
               zoom={config.view.zoom}
               onZoom={setZoom}
-              onOpenChange={onZoomMenuOpenChange}
+              onOpenChange={onPhonePopoverChange}
             />
           )}
           {compactZoom && !presentation.phone && (
