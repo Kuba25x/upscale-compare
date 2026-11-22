@@ -265,13 +265,13 @@ public class DisplayIntegrationTest {
                   minimalist ? colorNear(pixel, 23, 25, 30) : colorNear(pixel, 20, 21, 25));
             }
             if (name.equals("portrait-normal")) {
-              for (int y : new int[] {2, frame.getHeight() - 3}) {
-                int pixel = frame.getPixel(frame.getWidth() / 4, y);
+              int x = frame.getWidth() / 4;
+              assertTrue("Status bar background changed", colorNear(frame.getPixel(x, 2), 16, 17, 20));
+              int panelBottom = frame.getHeight() - state.get().getInteger("layoutBottom");
+              for (int y : new int[] {panelBottom - 2, frame.getHeight() - 3}) {
                 assertTrue(
-                    "System bar background is disconnected from the app",
-                    Math.abs(Color.red(pixel) - 16) <= 2
-                        && Math.abs(Color.green(pixel) - 17) <= 2
-                        && Math.abs(Color.blue(pixel) - 20) <= 2);
+                    "Panel surface does not continue through the bottom inset at y=" + y,
+                    colorNear(frame.getPixel(x, y), 20, 21, 25));
               }
             }
           } finally {
