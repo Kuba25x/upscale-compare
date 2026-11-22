@@ -126,6 +126,34 @@ export default function App({
     | null
   >(null);
   const phone = presentation.phone;
+  const isPhone = Boolean(phone);
+  useEffect(() => {
+    if (!isPhone) return;
+    let touchedSelect: HTMLSelectElement | undefined;
+    const clearTouchFocus = () => {
+      touchedSelect?.removeAttribute('data-touch-focus');
+      touchedSelect = undefined;
+    };
+    const pointerDown = ({ target, pointerType }: PointerEvent) => {
+      clearTouchFocus();
+      if (
+        pointerType === 'touch' &&
+        target instanceof HTMLSelectElement &&
+        target.matches('.compact-zoom-select, .select-image select')
+      ) {
+        // The native picker can return focus to the select after it closes.
+        touchedSelect = target;
+        target.setAttribute('data-touch-focus', '');
+      }
+    };
+    document.addEventListener('pointerdown', pointerDown, true);
+    document.addEventListener('keydown', clearTouchFocus, true);
+    return () => {
+      document.removeEventListener('pointerdown', pointerDown, true);
+      document.removeEventListener('keydown', clearTouchFocus, true);
+      clearTouchFocus();
+    };
+  }, [isPhone]);
   const phonePortrait = phone === 'portrait';
   const manageHelpOpen = modal === 'upload-help' || modal === 'upload-privacy';
   const managing = modal === 'upload' || manageHelpOpen;

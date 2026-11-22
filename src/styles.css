@@ -75,6 +75,9 @@ summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
+select[data-touch-focus]:focus-visible {
+  outline: none;
+}
 button.primary {
   background: var(--accent);
   color: var(--accent-ink);
