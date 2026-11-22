@@ -76,6 +76,7 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
       .getByTestId('file-input')
       .setInputFiles([imageFile('Private.png'), imageFile('B.png', 1)]);
     await expect(app.getByTestId('stage')).toBeVisible();
+    await expectCenteredBrand(app);
     await expectCenteredDividerArrows(app);
     await expectSplitRange(app);
     await expectLocalComparisonUI(app);
@@ -87,10 +88,12 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
     });
     const offline = await launch(browser);
     await expect(offline.getByTestId('stage')).toHaveCount(0);
+    await expectCenteredBrand(offline);
     const file = imageFile('Fresh.png');
     const other = imageFile('Fresh B.png', 1);
     await offline.getByTestId('file-input').setInputFiles([file, other]);
     expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
+    await expectCenteredBrand(offline);
     await expectLocalComparisonUI(offline);
     await offline.getByRole('button', { name: 'Manage Images', exact: true }).click();
     const dialog = offline.getByRole('dialog', { name: 'Your images' });

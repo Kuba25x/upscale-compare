@@ -189,8 +189,10 @@ test('touch tablet keeps its controls even in a narrow portrait window', async (
   });
   await page.setViewportSize({ width: 430, height: 900 });
   await page.goto('/');
+  await expectCenteredBrand(page);
   await page.getByTestId('file-input').setInputFiles(files);
   await expect(page.locator('.app')).not.toHaveClass(/comparison-phone-/);
+  await expect(page.locator('.app-header .brand-mark')).toHaveCSS('position', 'absolute');
   await expect(page.locator('.app-header').getByText('MODE', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Label for image A')).toBeVisible();
   await expect(page.getByRole('button', { name: '200%', exact: true })).toBeVisible();

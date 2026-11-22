@@ -19,9 +19,7 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('FSR.png', 1)]);
   await expect(page.getByTestId('stage')).toBeVisible();
   expect(publications).toEqual([]);
-  const title = await page.getByRole('heading', { level: 1 }).boundingBox();
-  expect(Math.abs(title!.x + title!.width / 2 - 720)).toBeLessThan(1);
-  await expect(page.locator('.app-header .brand-mark')).toHaveCSS('position', 'absolute');
+  await expectCenteredBrand(page);
   await expectLocalComparisonUI(page);
   const actions = page.locator('.header-actions');
   await expect(actions.getByRole('button')).toHaveCount(1);
@@ -38,6 +36,29 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   await expect(select).toBeFocused();
   await expect(select).toHaveCSS('outline-style', 'solid');
 });
+
+test('desktop branding stays centered across header breakpoints', async ({ page }) => {
+  const widths = [620, 621, 1120, 1121, 1600];
+  await page.goto('/');
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectCenteredBrand(page);
+  }
+  await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('FSR.png', 1)]);
+  await expect(page.getByTestId('stage')).toBeVisible();
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectCenteredBrand(page);
+  }
+  const header = page.locator('.app-header');
+  const brand = (await header.getByRole('heading').boundingBox())!;
+  const modes = (await header.getByRole('group', { name: 'Comparison mode' }).boundingBox())!;
+  const manage = (await header.getByRole('button', { name: 'Manage Images' }).boundingBox())!;
+  expect(modes.x + modes.width).toBeLessThan(brand.x);
+  expect(manage.x).toBeGreaterThan(brand.x + brand.width);
+  await expect(header).toHaveCSS('height', '68px');
+});
+
 test('requires two valid images and handles decode errors', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('file-input').setInputFiles([imageFile()]);
