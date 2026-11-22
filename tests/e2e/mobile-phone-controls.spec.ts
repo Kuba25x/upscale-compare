@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { imageFile } from './fixtures';
 import {
   expectPhonePortraitHeader,
+  expectPhoneSelectFocus,
   expectPhoneZoomToolbar,
   helpDialog,
   manageImages,
@@ -10,6 +11,22 @@ import { installWebDisplay } from '../shared/web-display';
 import { expectCenteredBrand } from '../shared/layout-alignment';
 
 const files = ['A', 'B', 'C', 'D'].map((name, i) => imageFile(`${name}.png`, i % 2));
+
+test('phone selects keep touch focus without the outline and restore it on Tab', async ({
+  page,
+}) => {
+  await installWebDisplay(page);
+  await page.goto('/');
+  await page.getByTestId('file-input').setInputFiles(files);
+  await expectPhoneSelectFocus(page);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.getByRole('button', { name: 'Image controls' }).tap();
+  await expectPhoneSelectFocus(page);
+  const zoom = page.getByRole('combobox', { name: 'Zoom preset' });
+  await zoom.tap();
+  await expect(zoom).toBeFocused();
+  await expect(zoom).toHaveCSS('outline-style', 'none');
+});
 
 for (const width of [320, 360, 390, 430]) {
   test(`portrait at ${width}px centers the landing brand and fits comparison controls in one row`, async ({

@@ -580,6 +580,7 @@ public class DisplayIntegrationTest {
       screenshot("portrait-normal");
       editPortraitLabel();
       assertPortraitZoomSelector();
+      assertZoomFocusAfterTouch();
       click(".fullscreen-button");
       bars(false, true);
       assertEdgeToEdgeAndSafeExit();
@@ -731,5 +732,34 @@ public class DisplayIntegrationTest {
       bars(false, false);
       assertLandingBrandCentered();
     }
+  }
+
+  private void assertZoomFocusAfterTouch() throws Exception {
+    assertEquals(
+        "true",
+        js(
+            """
+            (() => {
+              const select = document.querySelector('.compact-zoom-select');
+              select.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+              select.focus();
+              return document.activeElement === select && getComputedStyle(select).outlineStyle === 'none';
+            })()
+            """));
+    js("document.querySelector('.inspection-toolbar button').focus()");
+    shell("input keyevent KEYCODE_TAB");
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    """
+                    (() => {
+                      const select = document.querySelector('.compact-zoom-select');
+                      return document.activeElement === select
+                        && getComputedStyle(select).outlineColor === 'rgb(178, 227, 142)'
+                        && getComputedStyle(select).outlineStyle === 'solid';
+                    })()
+                    """)));
   }
 }

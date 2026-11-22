@@ -4,6 +4,7 @@ import { installAndroidBridge } from './bridge';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import {
   expectPhonePortraitHeader,
+  expectPhoneSelectFocus,
   expectPhoneZoomToolbar,
   helpDialog,
   manageImages,
@@ -16,6 +17,17 @@ import {
 } from '../shared/layout-alignment';
 
 const files = [imageFile('A.png', 0), imageFile('B.png', 1), imageFile('C.png', 0)];
+
+test('Android phone selects distinguish touch and keyboard focus through rotation', async ({
+  page,
+}) => {
+  await open(page);
+  await expectPhoneSelectFocus(page);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.getByRole('button', { name: 'Image controls' }).tap();
+  await expectPhoneSelectFocus(page);
+});
+
 async function openLanding(page: Page) {
   await page.route('**/original-*.png', (route) => {
     const index = Number(new URL(route.request().url()).pathname.match(/original-(\d+)/)![1]);

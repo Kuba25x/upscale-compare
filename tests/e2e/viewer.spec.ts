@@ -30,6 +30,13 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
   await expect(page.getByLabel('Label for image A')).toBeVisible();
   await page.screenshot({ path: 'test-results/viewer-desktop.png' });
+  const select = page.getByRole('combobox', { name: 'Select image A' });
+  await select.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await select.dispatchEvent('pointerdown', { pointerType: 'touch' });
+  await expect(select).toBeFocused();
+  await expect(select).toHaveCSS('outline-style', 'solid');
 });
 test('requires two valid images and handles decode errors', async ({ page }) => {
   await page.goto('/');

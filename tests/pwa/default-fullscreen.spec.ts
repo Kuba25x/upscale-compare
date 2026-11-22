@@ -7,6 +7,7 @@ import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscr
 import { cacheSnapshot, control, serve } from './helpers';
 import {
   expectPhonePortraitHeader,
+  expectPhoneSelectFocus,
   expectPhoneZoomToolbar,
   helpDialog,
 } from '../shared/phone-controls';
@@ -166,6 +167,7 @@ for (const sample of [
     await expectLocalComparisonUI(page);
     for (const name of ['Select image A', 'Select image B'])
       await safe(page, page.getByLabel(name, { exact: true }), sample);
+    await expectPhoneSelectFocus(page);
     if (sample.width > sample.height)
       await page.getByRole('button', { name: 'Image controls', exact: true }).click();
     await expectSplitRange(page);

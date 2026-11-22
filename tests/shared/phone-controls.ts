@@ -10,6 +10,29 @@ export async function chooseZoomPreset(page: Page, zoom: 1 | 2 | 4) {
   else await page.getByRole('button', { name: `${zoom * 100}%`, exact: true }).click();
 }
 
+export async function expectPhoneSelectFocus(page: Page) {
+  for (const name of ['Zoom preset', 'Select image A', 'Select image B']) {
+    const select = page.getByRole('combobox', { name, exact: true });
+    await select.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(select).toBeFocused();
+    await expect(select).toHaveCSS('outline-color', 'rgb(178, 227, 142)');
+    await expect(select).toHaveCSS('outline-style', 'solid');
+
+    // Synthetic touch keeps :focus-visible active and exercises the Android heuristic.
+    await select.dispatchEvent('pointerdown', { pointerType: 'touch' });
+    await expect(select).toBeFocused();
+    await expect(select).toHaveCSS('outline-style', 'none');
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(select).toBeFocused();
+    await expect(select).toHaveCSS('outline-style', 'solid');
+    await expect(select).toHaveCSS('outline-color', 'rgb(178, 227, 142)');
+  }
+}
+
 export async function expectPhoneZoomToolbar(
   page: Page,
   { left = 0, right = 0, oneRow = true } = {},
