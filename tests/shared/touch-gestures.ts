@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
+import { chooseZoomPreset } from './phone-controls';
 
 // Native Chromium touch dispatch. This does not emulate Firefox for Android.
 export function touchGestureTests() {
@@ -23,7 +24,7 @@ export function touchGestureTests() {
         { x, y: y + 40 + spread, id: 2 },
       ];
       for (let round = 0; round < 4; round++) {
-        await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption('1');
+        await chooseZoomPreset(page, 1);
         await client.send('Input.dispatchTouchEvent', {
           type: 'touchStart',
           touchPoints: [contacts(0)[0]],

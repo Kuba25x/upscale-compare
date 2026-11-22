@@ -21,6 +21,10 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   expect(publications).toEqual([]);
   await expectCenteredBrand(page);
   await expectLocalComparisonUI(page);
+  for (const name of ['100%', '200%', '400%'])
+    await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+  await expect(page.locator('.zoom-readout')).toBeVisible();
+  await expect(page.getByLabel('Zoom preset')).toHaveCount(0);
   const actions = page.locator('.header-actions');
   await expect(actions.getByRole('button')).toHaveCount(1);
   await expect(actions.getByRole('button', { name: 'Manage Images' })).toBeEnabled();

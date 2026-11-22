@@ -1527,8 +1527,7 @@ input[type='checkbox'] {
   min-height: 44px;
   flex-shrink: 0;
 }
-.inspection-toolbar .compact-zoom-select {
-  display: block;
+.inspection-toolbar :is(.compact-zoom-select, .phone-zoom-trigger) {
   min-height: 44px;
   width: 76px;
   flex-shrink: 0;
@@ -1537,6 +1536,48 @@ input[type='checkbox'] {
   color: #c6e7af;
   background: #20251d;
   font-size: 11px;
+}
+.inspection-toolbar .compact-zoom-select {
+  display: block;
+}
+.inspection-toolbar .phone-zoom-trigger {
+  gap: 4px;
+}
+.zoom-presets {
+  position: fixed;
+  inset: auto;
+  width: 112px;
+  margin: 0;
+  padding: 3px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 3px 12px #0006;
+}
+.zoom-presets:not([data-open]) {
+  visibility: hidden;
+}
+.zoom-presets button {
+  width: 100%;
+  min-height: 44px;
+  justify-content: flex-start;
+  padding-inline: 10px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.zoom-presets button[aria-checked='true'] {
+  color: var(--accent);
+  background: #303a28;
+}
+.zoom-presets button:focus-visible {
+  outline-offset: -2px;
 }
 .comparison-edge-to-edge.comparison-compact .badge-a {
   left: calc(8px + var(--comparison-safe-left, 0px));
@@ -1902,7 +1943,7 @@ input[type='checkbox'] {
   gap: 0;
   padding: 2px;
 }
-.comparison-phone-portrait .inspection-toolbar .compact-zoom-select {
+.comparison-phone-portrait .inspection-toolbar .phone-zoom-trigger {
   flex: 1 0 64px;
   max-width: 76px;
   padding-inline: 6px;

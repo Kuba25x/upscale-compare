@@ -31,6 +31,7 @@ import {
 } from '../lib/gesture-diagnostics';
 import { WEB_PRESENTATION, type ComparisonPresentation } from '../lib/comparison-presentation';
 import { clamp, originFor, panBy, pinchAt, scaleFor, zoomAt } from '../lib/geometry';
+import { PhoneZoomMenu } from './PhoneZoomMenu';
 
 /** The platform may decorate this control without changing viewer geometry. */
 export type FullscreenControl = (
@@ -43,6 +44,7 @@ interface Props {
   onChange: (update: (previous: Config) => Config) => void;
   onMetadata: () => void;
   onHelp: () => void;
+  onZoomMenuOpenChange?: (open: boolean) => void;
   onImageError?: () => void;
   fullscreenOverride?: boolean;
   onToggleFullscreen?: () => void | Promise<void>;
@@ -56,6 +58,7 @@ export function Viewer({
   onChange,
   onMetadata,
   onHelp,
+  onZoomMenuOpenChange,
   onImageError,
   fullscreenOverride,
   onToggleFullscreen,
@@ -64,7 +67,7 @@ export function Viewer({
   presentation = WEB_PRESENTATION,
 }: Props) {
   const comparisonFullscreen = presentation.minimalist;
-  const compactZoom = presentation.compact || presentation.phone === 'portrait';
+  const compactZoom = presentation.compact || Boolean(presentation.phone);
   const fullscreenAtEnd = presentation.edgeToEdge || compactZoom;
   const wasComparisonFullscreen = useRef(false);
   const stage = useRef<HTMLDivElement>(null);
@@ -307,6 +310,7 @@ export function Viewer({
   useEffect(() => {
     const element = stage.current!;
     const wheel = (event: WheelEvent) => {
+      if (event.target instanceof Element && event.target.closest('.zoom-presets')) return;
       event.preventDefault();
       const diagnosticEvent = gestureDiagnostics?.eventId(event);
       if (gestureDiagnostics?.recording)
@@ -946,7 +950,14 @@ export function Viewer({
                 {zoom * 100}%
               </button>
             ))}
-          {compactZoom && (
+          {presentation.phone && !comparisonFullscreen && (
+            <PhoneZoomMenu
+              zoom={config.view.zoom}
+              onZoom={setZoom}
+              onOpenChange={onZoomMenuOpenChange}
+            />
+          )}
+          {compactZoom && !presentation.phone && (
             <select
               className="compact-zoom-select"
               aria-label="Zoom preset"

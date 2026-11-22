@@ -3,6 +3,7 @@ import { installAndroidBridge } from './bridge';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { chooseZoomPreset, phoneZoomTrigger } from '../shared/phone-controls';
 
 for (const [width, height] of [
   [3840, 2160],
@@ -44,8 +45,8 @@ for (const [width, height] of [
           ]),
       )
       .toEqual([true, width, height]);
-    const zoom = page.getByRole('combobox', { name: 'Zoom preset' });
-    await zoom.selectOption('1');
+    const zoom = phoneZoomTrigger(page);
+    await chooseZoomPreset(page, 1);
     const bounds = await page.getByTestId('image-A').boundingBox();
     expect(bounds!.width * 3).toBeCloseTo(width, 2);
     expect(bounds!.height * 3).toBeCloseTo(height, 2);
@@ -86,8 +87,8 @@ for (const [width, height] of [
         .toBeCloseTo(1.5, 5);
       await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
       await expect(page.getByTestId('stage')).not.toHaveClass(/panning/);
-      await expect(zoom.locator('option:checked')).toHaveText('150%');
-      await zoom.selectOption('1');
+      await expect(zoom).toHaveText('150%');
+      await chooseZoomPreset(page, 1);
     }
     await client.detach();
     await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();

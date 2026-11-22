@@ -4,8 +4,11 @@ import {
   expectPhonePortraitHeader,
   expectPhoneSelectFocus,
   expectPhoneZoomToolbar,
+  expectZoomMenuPlacement,
   helpDialog,
   manageImages,
+  phoneZoomTrigger,
+  zoomPresets,
 } from '../shared/phone-controls';
 import { installWebDisplay } from '../shared/web-display';
 import { expectCenteredBrand } from '../shared/layout-alignment';
@@ -22,10 +25,82 @@ test('phone selects keep touch focus without the outline and restore it on Tab',
   await page.setViewportSize({ width: 844, height: 390 });
   await page.getByRole('button', { name: 'Image controls' }).tap();
   await expectPhoneSelectFocus(page);
-  const zoom = page.getByRole('combobox', { name: 'Zoom preset' });
-  await zoom.tap();
-  await expect(zoom).toBeFocused();
-  await expect(zoom).toHaveCSS('outline-style', 'none');
+});
+
+test('zoom menu supports touch, keyboard navigation, and rotation without losing its anchor', async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await installWebDisplay(page);
+  await page.goto('/');
+  await page.getByTestId('file-input').setInputFiles(files);
+  const trigger = phoneZoomTrigger(page);
+  const popup = zoomPresets(page);
+  const options = popup.getByRole('menuitemradio');
+  await expect(trigger).toHaveAccessibleDescription('Fit');
+  await expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+  await trigger.tap();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(trigger).toHaveCSS('outline-style', 'none');
+  await expect(options).toHaveText(['100%', '200%', '400%', '600%']);
+  await expect(popup.getByRole('menuitemradio', { checked: true })).toHaveCount(0);
+  await expect(popup).toHaveCSS('background-color', 'rgb(25, 27, 32)');
+  await expectZoomMenuPlacement(page);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(page.locator('.app')).toHaveClass(/comparison-phone-landscape/);
+  await expectZoomMenuPlacement(page);
+  await options.last().tap();
+  await expect(popup).toBeHidden();
+  await expect(trigger).toHaveAccessibleDescription('600%');
+  await expect(trigger).toHaveCSS('outline-style', 'none');
+  await trigger.tap();
+  const active = popup.getByRole('menuitemradio', { checked: true });
+  await expect(active).toHaveText('600%');
+  await expect(active).toHaveCSS('color', 'rgb(178, 227, 142)');
+  await page.getByTestId('stage').tap({ position: { x: 24, y: 24 } });
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+  await page.getByRole('button', { name: 'Fit', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveCSS('outline-style', 'solid');
+  await page.keyboard.press('Enter');
+  await expect(options.last()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(options.first()).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(options.last()).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveCSS('outline-style', 'solid');
+  await expect(popup).toBeHidden();
+  await page.keyboard.press('Space');
+  await expect(popup).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(popup).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(options.first()).toBeFocused();
+  // Reopen before the browser delivers the asynchronous close notification.
+  await popup.evaluate(() => {
+    for (const key of ['Escape', 'ArrowUp'])
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      );
+  });
+  await expect(options.last()).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Zoom out' })).toBeFocused();
+  await expect(popup).toBeHidden();
+});
+
+test('zoom menu flips below a toolbar moved near the top of the viewport', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('file-input').setInputFiles(files);
+  await phoneZoomTrigger(page).tap();
+  await expectZoomMenuPlacement(page);
+  await page.addStyleTag({ content: '.inspection-toolbar { top: 8px; bottom: auto; }' });
+  await expectZoomMenuPlacement(page, { above: false });
 });
 
 for (const width of [320, 360, 390, 430]) {
@@ -42,6 +117,14 @@ for (const width of [320, 360, 390, 430]) {
     await page.getByTestId('file-input').setInputFiles(files);
     await expectPhonePortraitHeader(page, { icons: width > 320 });
     await expectPhoneZoomToolbar(page);
+    await phoneZoomTrigger(page).tap();
+    await expectZoomMenuPlacement(page);
+    for (const option of await zoomPresets(page).getByRole('menuitemradio').all()) {
+      const box = (await option.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    await page.keyboard.press('Escape');
     await expectCenteredBrand(page);
     const header = page.locator('.app-header');
     expect((await header.boundingBox())!.height).toBeLessThan(96);
@@ -197,6 +280,7 @@ test('touch tablet keeps its controls even in a narrow portrait window', async (
   await expect(page.getByLabel('Label for image A')).toBeVisible();
   await expect(page.getByRole('button', { name: '200%', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Zoom preset' })).toHaveCount(0);
+  await expect(phoneZoomTrigger(page)).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
   await expect(page.locator('.app-header .segmented button svg')).toHaveCount(2);
 });

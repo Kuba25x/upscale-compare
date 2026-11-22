@@ -126,6 +126,7 @@ export default function App({
     | null
   >(null);
   const phone = presentation.phone;
+  const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const isPhone = Boolean(phone);
   useEffect(() => {
     if (!isPhone) return;
@@ -139,7 +140,7 @@ export default function App({
       if (
         pointerType === 'touch' &&
         target instanceof HTMLSelectElement &&
-        target.matches('.compact-zoom-select, .select-image select')
+        target.matches('.select-image select')
       ) {
         // The native picker can return focus to the select after it closes.
         touchedSelect = target;
@@ -445,20 +446,36 @@ export default function App({
   });
   useEffect(() => {
     if (!android) return;
-    // Intercept modal/fullscreen navigation; leave root predictive back to Android.
+    // Intercept transient controls and fullscreen navigation; leave root predictive back to Android.
     void android.app.toggleBackButtonHandler({
-      enabled: Boolean(modal) || loading || minimalist || (compactLayout && imagePanelOpen),
+      enabled:
+        Boolean(modal) ||
+        loading ||
+        zoomMenuOpen ||
+        minimalist ||
+        (compactLayout && imagePanelOpen),
     });
     const listener = android.app.addListener('backButton', () => {
       if (loading) return;
       if (modal) closeAndroidModal();
+      else if (zoomMenuOpen)
+        document.querySelector<HTMLElement>('.zoom-presets[data-open]')?.hidePopover();
       else if (minimalist) void onSetMinimalist?.(false);
       else if (compactLayout && imagePanelOpen) setImagePanelOpen(false);
     });
     return () => {
       void listener.then((handle) => handle.remove());
     };
-  }, [android, modal, loading, minimalist, onSetMinimalist, compactLayout, imagePanelOpen]);
+  }, [
+    android,
+    modal,
+    loading,
+    zoomMenuOpen,
+    minimalist,
+    onSetMinimalist,
+    compactLayout,
+    imagePanelOpen,
+  ]);
 
   const requestFiles = (action: UploadAction, source: AndroidImageSource = androidImageSource) => {
     if (android) {
@@ -753,6 +770,7 @@ export default function App({
             onChange={updateConfig}
             onMetadata={details}
             onHelp={help}
+            onZoomMenuOpenChange={android ? setZoomMenuOpen : undefined}
           />
           <div
             ref={imagePanel}

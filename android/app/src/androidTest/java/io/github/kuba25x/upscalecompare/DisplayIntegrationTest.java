@@ -501,22 +501,53 @@ public class DisplayIntegrationTest {
                     """.formatted(JSONObject.quote(label)))));
   }
 
-  private void assertPortraitZoomSelector() throws Exception {
+  private void assertPortraitZoomMenu() throws Exception {
     assertEquals(
         "true",
         js(
             """
             (() => {
-              const zoom = document.querySelector('.comparison-phone-portrait .compact-zoom-select');
-              if (!zoom || zoom.selectedOptions[0].textContent !== 'Fit') return false;
+              const zoom = document.querySelector('.comparison-phone-portrait .phone-zoom-trigger');
+              if (!zoom || zoom.textContent.trim() !== 'Fit') return false;
               const toolbar = zoom.parentElement;
               if (toolbar.scrollWidth > toolbar.clientWidth || zoom.getBoundingClientRect().height < 44)
                 return false;
-              zoom.value = '2';
-              zoom.dispatchEvent(new Event('change', { bubbles: true }));
               return true;
             })()
             """));
+    js("document.querySelector('.inspection-toolbar button').focus()");
+    shell("input keyevent KEYCODE_TAB");
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    """
+                    (() => {
+                      const zoom = document.querySelector('.phone-zoom-trigger');
+                      return document.activeElement === zoom
+                        && getComputedStyle(zoom).outlineStyle === 'solid';
+                    })()
+                    """)));
+    shell("input keyevent KEYCODE_ENTER");
+    eventually(
+        () ->
+            assertEquals(
+                "true",
+                js(
+                    """
+                    (() => {
+                      const menu = document.querySelector('.zoom-presets:popover-open');
+                      if (!menu) return false;
+                      const box = menu.getBoundingClientRect();
+                      const zoom = document.querySelector('.phone-zoom-trigger').getBoundingClientRect();
+                      return Math.abs(zoom.top - box.bottom - 6) < 1
+                        && menu.children.length === 4
+                        && document.activeElement.textContent.trim() === '100%';
+                    })()
+                    """)));
+    shell("input keyevent KEYCODE_DPAD_UP");
+    shell("input keyevent KEYCODE_ENTER");
     eventually(
         () ->
             assertEquals(
@@ -525,8 +556,10 @@ public class DisplayIntegrationTest {
                     """
                     (() => {
                       const image = document.querySelector('[data-testid="image-A"]');
-                      return document.querySelector('.stage').dataset.zoom === '2'
-                        && Math.abs(image.getBoundingClientRect().width * devicePixelRatio - 4) < 0.1;
+                      return document.querySelector('.stage').dataset.zoom === '6'
+                        && Math.abs(image.getBoundingClientRect().width * devicePixelRatio - 12) < 0.1
+                        && document.activeElement.matches('.phone-zoom-trigger')
+                        && !document.querySelector('.zoom-presets:popover-open');
                     })()
                     """)));
     click(".inspection-toolbar button:first-child");
@@ -579,8 +612,7 @@ public class DisplayIntegrationTest {
       bars(true, true);
       screenshot("portrait-normal");
       editPortraitLabel();
-      assertPortraitZoomSelector();
-      assertZoomFocusAfterTouch();
+      assertPortraitZoomMenu();
       click(".fullscreen-button");
       bars(false, true);
       assertEdgeToEdgeAndSafeExit();
@@ -635,6 +667,28 @@ public class DisplayIntegrationTest {
       setFirstImageLabel("Landscape original");
       click("dialog[open] button[aria-label=\"Close dialog\"]");
       screenshot("landscape-normal");
+      click(".phone-zoom-trigger");
+      eventually(
+          () ->
+              assertEquals(
+                  "true",
+                  js(
+                      """
+                      (() => {
+                        const menu = document.querySelector('.zoom-presets:popover-open');
+                        if (!menu) return false;
+                        const bounds = menu.getBoundingClientRect();
+                        const app = getComputedStyle(document.querySelector('.app'));
+                        const safe = side => parseFloat(app.getPropertyValue('--comparison-safe-' + side));
+                        return bounds.left >= safe('left') && bounds.right <= innerWidth - safe('right')
+                          && bounds.top >= safe('top') && bounds.bottom <= innerHeight - safe('bottom')
+                          && menu.contains(document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2));
+                      })()
+                      """)));
+      shell("input keyevent KEYCODE_BACK");
+      eventually(
+          () -> assertEquals("true", js("!document.querySelector('.zoom-presets:popover-open')")));
+      bars(false, false);
       String viewportBeforeReveal =
           js("document.querySelector('.stage').getBoundingClientRect().height");
       AtomicReference<JSObject> dimensions = new AtomicReference<>();
@@ -732,34 +786,5 @@ public class DisplayIntegrationTest {
       bars(false, false);
       assertLandingBrandCentered();
     }
-  }
-
-  private void assertZoomFocusAfterTouch() throws Exception {
-    assertEquals(
-        "true",
-        js(
-            """
-            (() => {
-              const select = document.querySelector('.compact-zoom-select');
-              select.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
-              select.focus();
-              return document.activeElement === select && getComputedStyle(select).outlineStyle === 'none';
-            })()
-            """));
-    js("document.querySelector('.inspection-toolbar button').focus()");
-    shell("input keyevent KEYCODE_TAB");
-    eventually(
-        () ->
-            assertEquals(
-                "true",
-                js(
-                    """
-                    (() => {
-                      const select = document.querySelector('.compact-zoom-select');
-                      return document.activeElement === select
-                        && getComputedStyle(select).outlineColor === 'rgb(178, 227, 142)'
-                        && getComputedStyle(select).outlineStyle === 'solid';
-                    })()
-                    """)));
   }
 }

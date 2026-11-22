@@ -203,7 +203,7 @@ export function mobileMinimalistTests() {
           await page.setViewportSize({ width: 412, height: 900 });
           // The zoom selector is visible in both orientations. Wait for the portrait layout.
           await expect(page.locator('.app')).toHaveClass(/comparison-phone-portrait/);
-          await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption(String(zoom));
+          await chooseZoomPreset(page, zoom);
           const before = { ...original, zoom: String(zoom) };
           // Check the original center after the viewer has measured the resized stage.
           await unchanged(page, before);

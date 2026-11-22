@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
+import { chooseZoomPreset } from '../shared/phone-controls';
 
 const files = [imageFile(), imageFile('B.png', 1, 512, 384), imageFile('C.png', 0, 320, 256)];
 async function openComparison(page: Page, mode: string) {
@@ -150,7 +151,7 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
       .locator('.inspection-toolbar > button')
       .evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().x));
     expect(buttonBounds.at(-1)).toBe(Math.max(...buttonBounds));
-    await page.getByRole('combobox', { name: 'Zoom preset' }).selectOption('2');
+    await chooseZoomPreset(page, 2);
     await expect.poll(async () => (await savedConfig(page)).view.zoom).toBe(2);
     const beforePan = await savedConfig(page);
     const normal = (await page.getByTestId('stage').boundingBox())!;

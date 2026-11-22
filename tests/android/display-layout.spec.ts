@@ -3,11 +3,15 @@ import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import {
+  chooseZoomPreset,
   expectPhonePortraitHeader,
   expectPhoneSelectFocus,
   expectPhoneZoomToolbar,
+  expectZoomMenuPlacement,
   helpDialog,
   manageImages,
+  phoneZoomTrigger,
+  zoomPresets,
 } from '../shared/phone-controls';
 import {
   expectCenteredBrand,
@@ -26,6 +30,25 @@ test('Android phone selects distinguish touch and keyboard focus through rotatio
   await page.setViewportSize({ width: 844, height: 390 });
   await page.getByRole('button', { name: 'Image controls' }).tap();
   await expectPhoneSelectFocus(page);
+});
+
+test('Android dismisses the anchored zoom menu with Back and when the toolbar is removed', async ({
+  page,
+}) => {
+  await open(page);
+  await phoneZoomTrigger(page).tap();
+  await expectZoomMenuPlacement(page, { top: 32, bottom: 24, left: 8, right: 8 });
+  await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
+  await expect(zoomPresets(page)).toBeHidden();
+  await phoneZoomTrigger(page).tap();
+  await expect(zoomPresets(page)).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Enter fullscreen' })
+    .evaluate((button) => (button as HTMLButtonElement).click());
+  await expect(page.locator('.app')).toHaveClass(/comparison-minimalist/);
+  await expect(zoomPresets(page)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Exit fullscreen' }).tap();
+  await expect(phoneZoomTrigger(page)).toHaveAttribute('aria-expanded', 'false');
 });
 
 async function openLanding(page: Page) {
@@ -227,11 +250,13 @@ test('Android tablet keeps the inline labels and keyboard button in both orienta
   await expect(page.getByLabel('Label for image A')).toBeVisible();
   await expect(page.getByRole('button', { name: '100%', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Zoom preset' })).toHaveCount(0);
+  await expect(phoneZoomTrigger(page)).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.getByRole('button', { name: 'Image controls' }).click();
   await expect(page.getByLabel('Label for image A')).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Zoom preset' })).toBeVisible();
+  await expect(phoneZoomTrigger(page)).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
 });
 
@@ -398,8 +423,8 @@ for (const mode of ['Split Screen', 'Side-by-Side']) {
         i.addEventListener('load', () => (window as any).loads++),
       );
     });
-    for (const zoom of [1, 2, 4]) {
-      await page.getByLabel('Zoom preset', { exact: true }).selectOption(String(zoom));
+    for (const zoom of [1, 2, 4, 6]) {
+      await chooseZoomPreset(page, zoom);
       await expect(page.getByTestId('stage')).toHaveAttribute('data-zoom', String(zoom));
       await expect.poll(async () => (await config(page)).view.zoom).toBe(zoom);
       const centerBeforePan = (await config(page)).view.center;

@@ -154,6 +154,7 @@ export function useMobileFullscreen(eligible: boolean, controlsEligible = false)
     };
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || !session.current || session.current.cancelled) return;
+      if (document.querySelector('[popover][data-open]')) return;
       if (session.current.mode === 'controls' && document.querySelector('dialog[open]')) return;
       event.preventDefault();
       event.stopPropagation();

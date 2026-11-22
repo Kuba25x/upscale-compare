@@ -77,6 +77,10 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
       .setInputFiles([imageFile('Private.png'), imageFile('B.png', 1)]);
     await expect(app.getByTestId('stage')).toBeVisible();
     await expectCenteredBrand(app);
+    for (const name of ['100%', '200%', '400%'])
+      await expect(app.getByRole('button', { name, exact: true })).toBeVisible();
+    await expect(app.getByLabel('Current zoom')).toBeVisible();
+    await expect(app.getByLabel('Zoom preset')).toHaveCount(0);
     await expectCenteredDividerArrows(app);
     await expectSplitRange(app);
     await expectLocalComparisonUI(app);

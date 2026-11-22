@@ -4,14 +4,25 @@ export const manageImages = (page: Page) => page.getByRole('dialog', { name: 'Yo
 export const helpDialog = (page: Page) =>
   page.getByRole('dialog', { name: 'A closer look at every pixel' });
 
-export async function chooseZoomPreset(page: Page, zoom: 1 | 2 | 4) {
+export const phoneZoomTrigger = (page: Page) =>
+  page.getByRole('button', { name: 'Zoom preset', exact: true });
+export const zoomPresets = (page: Page) => page.getByRole('menu', { name: 'Zoom presets' });
+
+export async function chooseZoomPreset(page: Page, zoom: number) {
+  const trigger = phoneZoomTrigger(page);
   const preset = page.getByRole('combobox', { name: 'Zoom preset' });
-  if (await preset.isVisible()) await preset.selectOption(String(zoom));
+  if (await trigger.isVisible()) {
+    await trigger.click();
+    await zoomPresets(page)
+      .getByRole('menuitemradio', { name: `${zoom * 100}%`, exact: true })
+      .click();
+    await expect(zoomPresets(page)).toBeHidden();
+  } else if (await preset.isVisible()) await preset.selectOption(String(zoom));
   else await page.getByRole('button', { name: `${zoom * 100}%`, exact: true }).click();
 }
 
 export async function expectPhoneSelectFocus(page: Page) {
-  for (const name of ['Zoom preset', 'Select image A', 'Select image B']) {
+  for (const name of ['Select image A', 'Select image B']) {
     const select = page.getByRole('combobox', { name, exact: true });
     await select.focus();
     await page.keyboard.press('Shift+Tab');
@@ -38,10 +49,10 @@ export async function expectPhoneZoomToolbar(
   { left = 0, right = 0, oneRow = true } = {},
 ) {
   const toolbar = page.locator('.inspection-toolbar');
-  await expect(toolbar.getByRole('combobox', { name: 'Zoom preset' })).toBeVisible();
+  await expect(phoneZoomTrigger(page)).toBeVisible();
   await expect(toolbar.locator('.zoom-readout')).toHaveCount(0);
   const { controls, scrollWidth, clientWidth, viewportWidth } = await toolbar.evaluate((node) => ({
-    controls: Array.from(node.querySelectorAll('button, select'), (control) => ({
+    controls: Array.from(node.querySelectorAll(':scope > button'), (control) => ({
       name: control.getAttribute('aria-label') ?? control.textContent?.trim(),
       bounds: control.getBoundingClientRect().toJSON(),
     })),
@@ -66,6 +77,40 @@ export async function expectPhoneZoomToolbar(
     expect(bounds.right).toBeLessThanOrEqual(viewportWidth - right);
     if (oneRow) expect(bounds.y).toBeCloseTo(controls[0].bounds.y, 1);
   }
+}
+
+export async function expectZoomMenuPlacement(
+  page: Page,
+  { top = 0, bottom = 0, left = 0, right = 0, above = true } = {},
+) {
+  const popup = zoomPresets(page);
+  await expect(popup).toBeVisible();
+  const fits = () =>
+    popup.evaluate(
+      (menu, { top, bottom, left, right, above }) => {
+        const trigger = document.querySelector('.phone-zoom-trigger')!.getBoundingClientRect();
+        const box = menu.getBoundingClientRect();
+        const viewport = document.documentElement;
+        const expectedX = Math.max(
+          left + 6,
+          Math.min(trigger.left, viewport.clientWidth - right - box.width - 6),
+        );
+        const gap = above ? trigger.top - box.bottom : box.top - trigger.bottom;
+        return (
+          Math.abs(gap - 6) < 1 &&
+          Math.abs(box.left - expectedX) < 1 &&
+          box.left >= left &&
+          box.right <= viewport.clientWidth - right &&
+          box.top >= top &&
+          box.bottom <= viewport.clientHeight - bottom &&
+          menu.contains(
+            document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2),
+          )
+        );
+      },
+      { top, bottom, left, right, above },
+    );
+  await expect.poll(fits).toBe(true);
 }
 
 export async function openComparisonHelp(page: Page) {
