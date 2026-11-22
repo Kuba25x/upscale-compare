@@ -630,8 +630,10 @@ public class DisplayIntegrationTest {
                             && close(panelBox.bottom, appBox.bottom - parseFloat(getComputedStyle(app).paddingBottom)),
                           frameless: style.backgroundColor === getComputedStyle(header).backgroundColor
                             && style.borderWidth === '0px' && style.borderRadius === '0px',
-                          buttonsBordered: buttons.length === 3
-                            && buttons.every(button => getComputedStyle(button).borderWidth === '1px'),
+                          buttonsBordered: buttons.length === 3 && buttons.every(button => {
+                            const border = getComputedStyle(button);
+                            return border.borderTopStyle === 'solid' && parseFloat(border.borderTopWidth) > 0;
+                          }),
                         };
                       })()
                       """));
