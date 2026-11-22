@@ -3,6 +3,7 @@ import {
   chooseZoomPreset,
   openComparisonHelp,
   renameSelectedImage,
+  expectSelectedImageLabel,
 } from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 import { cacheSnapshot, control, originalBytes, serve, update } from './helpers';
@@ -56,9 +57,7 @@ for (const { count, from, to } of [
     for (const [name, keys] of Object.entries(before))
       for (const key of keys) expect(afterInstall[name]).toContain(key);
     for (const view of pages) {
-      await expect(view.getByLabel('Select image A').locator('option:checked')).toHaveText(
-        'Keep my comparison',
-      );
+      await expectSelectedImageLabel(view, 'A', 'Keep my comparison');
       await expect(view.getByTestId('stage')).toHaveAttribute('data-zoom', '2');
       expect(await view.locator('script[type="module"][src]').getAttribute('src')).toBe(scriptA);
       expect(
@@ -132,9 +131,7 @@ for (const fault of ['missing', 'network', 'corrupt']) {
     await renameSelectedImage(page, 'A', file.name, 'Keep failed-update state');
     await serve(request, 'b', fault);
     expect(await update(page)).toBe('redundant');
-    await expect(page.getByLabel('Select image A').locator('option:checked')).toHaveText(
-      'Keep failed-update state',
-    );
+    await expectSelectedImageLabel(page, 'A', 'Keep failed-update state');
     expect(await originalBytes(page)).toEqual(Array.from(file.buffer));
     const after = await cacheSnapshot(page);
     for (const [name, keys] of Object.entries(before))

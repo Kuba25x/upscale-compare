@@ -2,29 +2,118 @@ import { expect, test } from '@playwright/test';
 import { imageFile } from './fixtures';
 import {
   expectPhonePortraitHeader,
-  expectPhoneSelectFocus,
+  expectPhoneImageMenuKeyboard,
+  expectLandscapeImagePopover,
+  expectPortraitImagePanel,
   expectPhoneZoomToolbar,
   expectZoomMenuPlacement,
   helpDialog,
   manageImages,
+  imageChoices,
+  phoneImageTrigger,
   phoneZoomTrigger,
   zoomPresets,
+  selectImage,
+  expectSelectedImageLabel,
 } from '../shared/phone-controls';
 import { installWebDisplay } from '../shared/web-display';
 import { expectCenteredBrand } from '../shared/layout-alignment';
 
 const files = ['A', 'B', 'C', 'D'].map((name, i) => imageFile(`${name}.png`, i % 2));
 
-test('phone selects keep touch focus without the outline and restore it on Tab', async ({
+test('image choice menus preserve keyboard focus through rotation', async ({ page }) => {
+  await installWebDisplay(page);
+  await page.goto('/');
+  await page.getByTestId('file-input').setInputFiles(files);
+  await expectPhoneImageMenuKeyboard(page);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.getByRole('button', { name: 'Image controls' }).tap();
+  await expectPhoneImageMenuKeyboard(page);
+});
+
+for (const count of [2, 3, 4]) {
+  test(`portrait chooses and swaps among ${count} screenshots with custom menus`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto('/');
+    await page.getByTestId('file-input').setInputFiles(files.slice(0, count));
+    const a = phoneImageTrigger(page, 'A');
+    const b = phoneImageTrigger(page, 'B');
+    await expect(a).toHaveAccessibleDescription('A 640 × 480');
+    await expect(a).toHaveAttribute('aria-haspopup', 'menu');
+    await a.tap();
+    const choices = imageChoices(page, 'A');
+    await expect(choices).toHaveCount(count);
+    await expect(choices.first()).toHaveAttribute('aria-checked', 'true');
+    await expect(choices.first()).toHaveCSS('color', 'rgb(178, 227, 142)');
+    await expect(page.getByRole('menu', { name: 'Image A screenshots' })).toHaveCSS(
+      'background-color',
+      'rgb(25, 27, 32)',
+    );
+    await choices.last().tap();
+    const last = ['A', 'B', 'C', 'D'][count - 1];
+    await expect(page.getByTestId('image-A')).toHaveAttribute('alt', last);
+    await expect(a).toHaveCSS('outline-style', 'none');
+    await b.click();
+    await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCSS(
+      'color',
+      'rgb(188, 202, 250)',
+    );
+    // Choosing the image already in the other slot swaps the pair.
+    await imageChoices(page, 'B').last().click();
+    await expect(page.getByTestId('image-B')).toHaveAttribute('alt', last);
+    await expect(page.getByTestId('image-A')).not.toHaveAttribute('alt', last);
+    await page.getByRole('button', { name: 'Swap images' }).tap();
+    await expect(page.getByTestId('image-A')).toHaveAttribute('alt', last);
+  });
+}
+
+test('landscape anchors a compact Images popover and dismisses nested menus one at a time', async ({
   page,
 }) => {
   await installWebDisplay(page);
   await page.goto('/');
   await page.getByTestId('file-input').setInputFiles(files);
-  await expectPhoneSelectFocus(page);
+  await selectImage(page, 'A', 3);
   await page.setViewportSize({ width: 844, height: 390 });
-  await page.getByRole('button', { name: 'Image controls' }).tap();
-  await expectPhoneSelectFocus(page);
+  await page.addStyleTag({
+    content:
+      '.web-app { --comparison-safe-left:48px; --comparison-safe-right:16px; --comparison-safe-bottom:24px; }',
+  });
+  const stage = (await page.getByTestId('stage').boundingBox())!;
+  const images = page.getByRole('button', { name: 'Image controls', exact: true });
+  const panel = page.getByRole('group', { name: 'Image controls', exact: true });
+  await images.press('Space');
+  await expectLandscapeImagePopover(page, { left: 48, right: 16, bottom: 24 });
+  const a = phoneImageTrigger(page, 'A');
+  await expect(a).toBeFocused();
+  await expect(a).toHaveAccessibleDescription('D 640 × 480');
+  await page.keyboard.press('Enter');
+  await expect(imageChoices(page, 'A').last()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(imageChoices(page, 'A').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(a).toBeFocused();
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(images).toBeFocused();
+  await expect(panel).toBeHidden();
+  await images.tap();
+  await phoneImageTrigger(page, 'B').tap();
+  await imageChoices(page, 'B').nth(2).tap();
+  await expect(panel).toBeVisible();
+  await page.getByTestId('stage').tap({ position: { x: 90, y: 40 } });
+  await expect(panel).toBeHidden();
+  expect(await page.getByTestId('stage').boundingBox()).toEqual(stage);
+  await images.tap();
+  await a.tap();
+  await expect(imageChoices(page, 'A')).toHaveCount(4);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectPortraitImagePanel(page, { left: 48, right: 16, bottom: 24 });
+  await expect(imageChoices(page, 'A')).toHaveCount(0);
+  await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'D');
+  await expect(page.getByTestId('image-B')).toHaveAttribute('alt', 'C');
 });
 
 test('zoom menu supports touch, keyboard navigation, and rotation without losing its anchor', async ({
@@ -114,9 +203,23 @@ for (const width of [320, 360, 390, 430]) {
         content: '.app-header { font-family: "DejaVu Sans", system-ui; }',
       });
     await expectCenteredBrand(page);
-    await page.getByTestId('file-input').setInputFiles(files);
+    const longName = 'A screenshot comparison with a long original filename';
+    await page
+      .getByTestId('file-input')
+      .setInputFiles(width === 320 ? [imageFile(`${longName}.png`), files[1]] : files);
     await expectPhonePortraitHeader(page, { icons: width > 320 });
     await expectPhoneZoomToolbar(page);
+    await expectPortraitImagePanel(page);
+    if (width === 320) {
+      const a = phoneImageTrigger(page, 'A');
+      await expect(a).toHaveAccessibleDescription(`${longName} 640 × 480`);
+      expect(
+        await a
+          .locator('.phone-image-label')
+          .evaluate((label) => label.scrollWidth > label.clientWidth),
+      ).toBe(true);
+    }
+    await expect(page.getByRole('button', { name: 'Image controls' })).toHaveCount(0);
     await phoneZoomTrigger(page).tap();
     await expectZoomMenuPlacement(page);
     for (const option of await zoomPresets(page).getByRole('menuitemradio').all()) {
@@ -199,7 +302,7 @@ test('portrait edits all screenshot labels and keeps the comparison while visiti
   await expect(empty).toHaveValue('B');
   await expect(manage.getByRole('textbox', { name: 'Label for D.png' })).toHaveValue('Edited 4');
   await manage.getByRole('button', { name: 'Close dialog' }).tap();
-  await page.getByLabel('Select image B').selectOption('3');
+  await selectImage(page, 'B', 3);
   await expect(page.getByTestId('image-B')).toHaveAttribute('alt', 'Edited 4');
   await page.getByTestId('stage').focus();
   await page.keyboard.press('2');
@@ -223,7 +326,7 @@ test('rotating with an empty label restores its filename fallback and keeps Mana
   await expect(manage.getByRole('textbox', { name: 'Label for B.png' })).toHaveValue('B');
   await manage.getByRole('button', { name: 'Close dialog' }).tap();
   await page.getByRole('button', { name: 'Image controls' }).tap();
-  await expect(page.getByLabel('Select image B').locator('option:checked')).toHaveText('B');
+  await expectSelectedImageLabel(page, 'B', 'B');
 });
 
 test('phone landscape keeps quick selection and swaps while all labels are edited in Manage Images', async ({
@@ -243,7 +346,9 @@ test('phone landscape keeps quick selection and swaps while all labels are edite
   await page.getByRole('button', { name: 'Image controls' }).tap();
   const panel = page.locator('.image-selection-bar');
   await expect(panel.getByRole('textbox')).toHaveCount(0);
-  await expect(panel.getByRole('combobox')).toHaveCount(2);
+  await expect(panel.locator('select')).toHaveCount(0);
+  await expect(phoneImageTrigger(panel, 'A')).toBeVisible();
+  await expect(phoneImageTrigger(panel, 'B')).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Swap images' })).toBeVisible();
   await page.getByRole('button', { name: 'Manage Images' }).tap();
   const manage = manageImages(page);
@@ -257,11 +362,9 @@ test('phone landscape keeps quick selection and swaps while all labels are edite
   await helpDialog(page).getByRole('button', { name: 'Close dialog' }).tap();
   await manage.getByRole('button', { name: 'Close dialog' }).tap();
   if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Image controls' }).tap();
-  await panel.getByLabel('Select image A').selectOption('3');
+  await selectImage(page, 'A', 3);
   await panel.getByRole('button', { name: 'Swap images' }).tap();
-  await expect(panel.getByLabel('Select image B').locator('option:checked')).toHaveText(
-    'Unselected image',
-  );
+  await expectSelectedImageLabel(page, 'B', 'Unselected image');
   await expect(page.getByTestId('image-B')).toHaveAttribute('alt', 'Unselected image');
 });
 
@@ -281,6 +384,8 @@ test('touch tablet keeps its controls even in a narrow portrait window', async (
   await expect(page.getByRole('button', { name: '200%', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Zoom preset' })).toHaveCount(0);
   await expect(phoneZoomTrigger(page)).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: 'Select image A' })).toBeVisible();
+  await expect(phoneImageTrigger(page, 'A')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
   await expect(page.locator('.app-header .segmented button svg')).toHaveCount(2);
 });

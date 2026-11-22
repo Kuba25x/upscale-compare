@@ -3,7 +3,15 @@ import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
 import { expectLocalComparisonUI } from './local-comparison';
-import { chooseZoomPreset, manageImages, phoneZoomTrigger } from './phone-controls';
+import {
+  chooseZoomPreset,
+  manageImages,
+  phoneZoomTrigger,
+  selectImage,
+  expectSelectedImageLabel,
+  expectSelectedImageIndex,
+  expectLandscapeImagePopover,
+} from './phone-controls';
 
 async function open(page: Page) {
   await page.goto('./');
@@ -97,6 +105,7 @@ export function mobileLandscapeTests() {
         expect(handle.width).toBeGreaterThanOrEqual(44);
         expect(handle.height).toBeGreaterThanOrEqual(44);
         await page.getByRole('button', { name: 'Image controls' }).click();
+        await expectLandscapeImagePopover(page);
         await expect(page.getByLabel('Select image A', { exact: true })).toBeVisible();
         expect((await page.getByTestId('stage').boundingBox())!.height).toBe(stage.height);
         await page.getByLabel('Select image A', { exact: true }).focus();
@@ -121,12 +130,10 @@ export function mobileLandscapeTests() {
       await manage.getByRole('button', { name: 'Close dialog', exact: true }).click();
       await page.getByRole('button', { name: 'Image controls' }).click();
       await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
-      await page.getByLabel('Select image A', { exact: true }).selectOption('2');
+      await selectImage(page, 'A', 2);
       await page.getByRole('button', { name: 'Swap images', exact: true }).click();
-      await expect(page.getByLabel('Select image B', { exact: true })).toHaveValue('2');
-      await expect(page.getByLabel('Select image B').locator('option:checked')).toHaveText(
-        'Native Ultra',
-      );
+      await expectSelectedImageIndex(page, 'B', 2);
+      await expectSelectedImageLabel(page, 'B', 'Native Ultra');
       await expectLocalComparisonUI(page);
       await page.keyboard.press('Escape');
       await expect(page.locator('.images-toggle')).toBeFocused();
@@ -139,9 +146,7 @@ export function mobileLandscapeTests() {
       await page.setViewportSize({ width: 412, height: 900 });
       await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
       await expectLocalComparisonUI(page);
-      await expect(page.getByLabel('Select image B').locator('option:checked')).toHaveText(
-        'Native Ultra',
-      );
+      await expectSelectedImageLabel(page, 'B', 'Native Ultra');
     });
     for (const mode of ['Split Screen', 'Side-by-Side'])
       test(`${mode}: preserves layers, source center, divider and physical pixel zoom through rotation`, async ({
@@ -313,6 +318,7 @@ export function mobileLandscapeTests() {
         .toBeLessThanOrEqual(1);
       const before = await sourceCenter(page);
       await page.getByRole('button', { name: 'Image controls' }).click();
+      await expectLandscapeImagePopover(page, { left: 24, right: 46, bottom: 16 });
       await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
       await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
       const manage = manageImages(page);
@@ -328,9 +334,7 @@ export function mobileLandscapeTests() {
             .evaluate((node) => getComputedStyle(node).getPropertyValue('--web-visual-height')),
         )
         .toBe('240px');
-      await expect
-        .poll(async () => (await page.locator('.image-selection-bar').boundingBox())!.y)
-        .toBeGreaterThanOrEqual(70);
+      await expect(page.locator('.image-selection-bar')).toBeHidden();
       const toolbar = (await page.locator('.inspection-toolbar').boundingBox())!;
       expect(toolbar.x + toolbar.width).toBeLessThanOrEqual(900 - 46);
       expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(260);

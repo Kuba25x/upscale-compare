@@ -1,5 +1,5 @@
 import { test, expect, chromium, type BrowserContext } from '@playwright/test';
-import { renameSelectedImage } from '../shared/phone-controls';
+import { renameSelectedImage, expectSelectedImageLabel } from '../shared/phone-controls';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -62,9 +62,7 @@ test('a full browser/profile restart starts offline with an empty local session'
     await second.getByTestId('file-input').setInputFiles([file, imageFile('New B.png', 1)]);
     await expect(second.getByTestId('stage')).toBeVisible();
     expect(await originalBytes(second)).toEqual(Array.from(file.buffer));
-    await expect(second.getByLabel('Select image A').locator('option:checked')).toHaveText(
-      'Do not restore this name',
-    );
+    await expectSelectedImageLabel(second, 'A', 'Do not restore this name');
     await second.getByRole('button', { name: 'Comparison details', exact: true }).click();
     await expect(second.getByLabel('Game title')).toHaveValue('');
   } finally {

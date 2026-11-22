@@ -75,9 +75,6 @@ summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
-select[data-touch-focus]:focus-visible {
-  outline: none;
-}
 button.primary {
   background: var(--accent);
   color: var(--accent-ink);
@@ -1477,7 +1474,7 @@ input[type='checkbox'] {
   border: 0;
   border-radius: 0;
 }
-.comparison-edge-to-edge.comparison-compact .image-selection-bar {
+.comparison-edge-to-edge.comparison-compact .image-selection-bar:not(.phone-images-popover) {
   display: none;
 }
 .comparison-edge-to-edge.comparison-compact .image-selection-bar.image-panel-open {
@@ -1543,10 +1540,9 @@ input[type='checkbox'] {
 .inspection-toolbar .phone-zoom-trigger {
   gap: 4px;
 }
-.zoom-presets {
+.phone-popover {
   position: fixed;
   inset: auto;
-  width: 112px;
   margin: 0;
   padding: 3px;
   overflow: auto;
@@ -1558,10 +1554,16 @@ input[type='checkbox'] {
   border-radius: 8px;
   box-shadow: 0 3px 12px #0006;
 }
-.zoom-presets:not([data-open]) {
+.phone-popover:not([data-open]) {
   visibility: hidden;
 }
-.zoom-presets button {
+.phone-popover:not(:popover-open) {
+  display: none;
+}
+.zoom-presets {
+  width: 112px;
+}
+.phone-choice-menu button {
   width: 100%;
   min-height: 44px;
   justify-content: flex-start;
@@ -1572,11 +1574,11 @@ input[type='checkbox'] {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
-.zoom-presets button[aria-checked='true'] {
-  color: var(--accent);
-  background: #303a28;
+.phone-choice-menu button[aria-checked='true'] {
+  color: var(--choice-accent, var(--accent));
+  background: var(--choice-background, #303a28);
 }
-.zoom-presets button:focus-visible {
+.phone-choice-menu button:focus-visible {
   outline-offset: -2px;
 }
 .comparison-edge-to-edge.comparison-compact .badge-a {
@@ -1929,8 +1931,101 @@ input[type='checkbox'] {
 .comparison-phone-portrait .header-controls[data-measuring] button {
   white-space: nowrap;
 }
-.comparison-phone-portrait .image-selection-bar {
-  min-height: 54px;
+.app.comparison-phone-portrait .image-selection-bar.phone-image-controls {
+  container-type: inline-size;
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+  min-height: 0;
+  gap: 4px;
+  padding: 4px;
+  margin: 6px calc(4px + var(--comparison-safe-right, 0px)) 8px
+    calc(4px + var(--comparison-safe-left, 0px));
+  border-radius: 8px;
+}
+.app.android-app.comparison-phone-portrait .phone-image-controls {
+  margin-bottom: calc(8px + var(--comparison-overlay-bottom));
+}
+.comparison-phone-landscape .header-actions .images-toggle {
+  display: inline-flex;
+}
+.app.comparison-phone-landscape .image-selection-bar.phone-images-popover {
+  width: 320px;
+  min-height: 0;
+  margin: 0;
+  padding: 6px;
+}
+.phone-images-popover:popover-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  gap: 4px;
+}
+.phone-images-popover .phone-image-slot,
+.phone-images-popover .swap-button {
+  grid-area: auto;
+}
+.phone-image-slot {
+  min-width: 0;
+}
+.phone-image-controls .swap-button,
+.phone-images-popover .swap-button {
+  width: 44px;
+  min-height: 44px;
+  border-radius: 6px;
+}
+.image-selection-bar.phone-images-popover .swap-button {
+  width: 100%;
+}
+.phone-image-trigger {
+  width: 100%;
+  min-height: 44px;
+  gap: 4px;
+  padding: 4px;
+  justify-content: flex-start;
+  text-align: left;
+}
+.phone-image-trigger > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.phone-image-trigger .phone-choice-value {
+  flex: 1;
+  min-width: 0;
+}
+.phone-image-label,
+.phone-image-choices button span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.phone-image-label {
+  font-size: 12px;
+}
+.phone-image-trigger .file-info {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: normal;
+}
+@container (max-width: 230px) {
+  .phone-image-controls .phone-image-trigger {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+  .phone-image-controls .phone-image-trigger > svg {
+    display: none;
+  }
+  .phone-image-controls .phone-choice-value {
+    max-width: 100%;
+  }
+}
+.phone-image-choices {
+  width: 240px;
+}
+.phone-image-slot.selector-1 {
+  --choice-accent: #bccafa;
+  --choice-background: #252b40;
 }
 .app.comparison-phone-portrait .inspection-toolbar {
   left: calc(50% + (var(--comparison-safe-left, 0px) - var(--comparison-safe-right, 0px)) / 2);

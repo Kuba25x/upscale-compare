@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { chooseZoomPreset, renameSelectedImage } from './phone-controls';
+import { chooseZoomPreset, renameSelectedImage, selectImage } from './phone-controls';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
@@ -13,8 +13,8 @@ const files = [
 export async function open(page: Page, mode = 'Split Screen', url = './') {
   await page.goto(url);
   await page.getByTestId('file-input').setInputFiles(files);
-  await page.getByLabel('Select image A', { exact: true }).selectOption('2');
-  await page.getByLabel('Select image B', { exact: true }).selectOption('0');
+  await selectImage(page, 'A', 2);
+  await selectImage(page, 'B', 0);
   await renameSelectedImage(page, 'A', 'C.png', 'Native original');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await page.getByLabel('Game title').fill('Minimalist regression');

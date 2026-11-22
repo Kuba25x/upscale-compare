@@ -24,6 +24,8 @@ import { API_URL, fetchComparison, publicImageUrl } from './lib/api';
 import { ANDROID_MODE, DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/config';
 import { formatBytes, loadImage } from './lib/images';
 import { Viewer, type FullscreenControl } from './components/Viewer';
+import { PhoneChoiceMenu } from './components/PhoneChoiceMenu';
+import { useAnchoredPopover } from './components/useAnchoredPopover';
 import { GestureDiagnostics } from './components/GestureDiagnostics';
 import { InstallationHelp } from './components/InstallationHelp';
 import { Modal } from './components/Modal';
@@ -126,36 +128,16 @@ export default function App({
     | null
   >(null);
   const phone = presentation.phone;
-  const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
-  const isPhone = Boolean(phone);
-  useEffect(() => {
-    if (!isPhone) return;
-    let touchedSelect: HTMLSelectElement | undefined;
-    const clearTouchFocus = () => {
-      touchedSelect?.removeAttribute('data-touch-focus');
-      touchedSelect = undefined;
-    };
-    const pointerDown = ({ target, pointerType }: PointerEvent) => {
-      clearTouchFocus();
-      if (
-        pointerType === 'touch' &&
-        target instanceof HTMLSelectElement &&
-        target.matches('.select-image select')
-      ) {
-        // The native picker can return focus to the select after it closes.
-        touchedSelect = target;
-        target.setAttribute('data-touch-focus', '');
-      }
-    };
-    document.addEventListener('pointerdown', pointerDown, true);
-    document.addEventListener('keydown', clearTouchFocus, true);
-    return () => {
-      document.removeEventListener('pointerdown', pointerDown, true);
-      document.removeEventListener('keydown', clearTouchFocus, true);
-      clearTouchFocus();
-    };
-  }, [isPhone]);
   const phonePortrait = phone === 'portrait';
+  const phoneLandscape = phone === 'landscape';
+  const [phonePopovers, setPhonePopovers] = useState<string[]>([]);
+  const trackPhonePopover = useCallback((id: string, open: boolean) => {
+    setPhonePopovers((previous) => {
+      if (previous.includes(id) === open) return previous;
+      return open ? [...previous, id] : previous.filter((entry) => entry !== id);
+    });
+  }, []);
+  const onPhonePopoverChange = android ? trackPhonePopover : undefined;
   const manageHelpOpen = modal === 'upload-help' || modal === 'upload-privacy';
   const managing = modal === 'upload' || manageHelpOpen;
   const closePrivacy = () => setModal(manageHelpOpen ? 'upload-help' : null);
@@ -451,15 +433,15 @@ export default function App({
       enabled:
         Boolean(modal) ||
         loading ||
-        zoomMenuOpen ||
+        phonePopovers.length > 0 ||
         minimalist ||
         (compactLayout && imagePanelOpen),
     });
     const listener = android.app.addListener('backButton', () => {
       if (loading) return;
       if (modal) closeAndroidModal();
-      else if (zoomMenuOpen)
-        document.querySelector<HTMLElement>('.zoom-presets[data-open]')?.hidePopover();
+      else if (phonePopovers.length > 0)
+        document.getElementById(phonePopovers.at(-1)!)?.hidePopover();
       else if (minimalist) void onSetMinimalist?.(false);
       else if (compactLayout && imagePanelOpen) setImagePanelOpen(false);
     });
@@ -470,7 +452,7 @@ export default function App({
     android,
     modal,
     loading,
-    zoomMenuOpen,
+    phonePopovers,
     minimalist,
     onSetMinimalist,
     compactLayout,
@@ -584,6 +566,12 @@ export default function App({
       return withSelection(previous, images, selected);
     });
   const ready = images.length >= 2;
+  const phonePanel = useAnchoredPopover(
+    'below',
+    onPhonePopoverChange,
+    phoneLandscape && ready && !minimalist,
+  );
+  const imageChoices = images.map((image, value) => ({ value, label: image.label || image.name }));
   useLayoutEffect(() => {
     const row = headerControls.current;
     if (!phonePortrait || minimalist || !row) return;
@@ -639,6 +627,7 @@ export default function App({
       onKeyDown={(event) => {
         if (
           compactWeb &&
+          !phone &&
           imagePanelOpen &&
           !modal &&
           event.key === 'Escape' &&
@@ -721,14 +710,26 @@ export default function App({
               </div>
             </div>
             <div className="header-actions">
-              {presentation.edgeToEdge && (
+              {(phoneLandscape || (!phone && presentation.edgeToEdge)) && (
                 <button
-                  ref={imagePanelToggle}
+                  {...(phoneLandscape
+                    ? {
+                        ...phonePanel.triggerProps,
+                        onClick: (event: React.MouseEvent) => {
+                          if (event.detail === 0 && !phonePanel.isOpen())
+                            phonePanel.focusWhenOpen((popup) =>
+                              popup.querySelector('button')?.focus(),
+                            );
+                        },
+                      }
+                    : {
+                        ref: imagePanelToggle,
+                        'aria-expanded': compactLayout && imagePanelOpen,
+                        'aria-controls': 'image-controls',
+                        onClick: () => setImagePanelOpen((open) => !open),
+                      })}
                   className="images-toggle"
                   aria-label="Image controls"
-                  aria-expanded={compactLayout && imagePanelOpen}
-                  aria-controls="image-controls"
-                  onClick={() => setImagePanelOpen((open) => !open)}
                 >
                   <ChevronDown size={17} />
                   <span>Images</span>
@@ -770,72 +771,115 @@ export default function App({
             onChange={updateConfig}
             onMetadata={details}
             onHelp={help}
-            onZoomMenuOpenChange={android ? setZoomMenuOpen : undefined}
+            onPhonePopoverChange={onPhonePopoverChange}
           />
-          <div
-            ref={imagePanel}
-            id="image-controls"
-            className={`image-selection-bar${imagePanelOpen ? ' image-panel-open' : ''}`}
-          >
-            {([0, 1] as const).map((slot) => {
-              const index = config.selected[slot],
-                image = images[index];
-              return (
-                <div className={`image-selector selector-${slot}`} key={slot}>
-                  <span className={`slot-letter slot-${slot}`}>{slot === 0 ? 'A' : 'B'}</span>
-                  <div className="image-selector-fields">
-                    <label className="select-image">
-                      <span className="sr-only">Image {slot === 0 ? 'A' : 'B'}</span>
-                      <select
-                        aria-label={`Select image ${slot === 0 ? 'A' : 'B'}`}
-                        value={index}
-                        onChange={(event) => select(slot, Number(event.target.value))}
-                      >
-                        {images.map((item, i) => (
-                          <option value={i} key={i}>
-                            {item.label || item.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={13} />
-                    </label>
-                    <span className="file-info">
-                      {image.width} × {image.height}
-                      <span>
-                        {' '}
-                        · {formatBytes(image.size)} · {image.type.split('/')[1].toUpperCase()}
-                      </span>
-                    </span>
-                  </div>
-                  {!readOnly && !phone && (
-                    <label className="rename-label" title="Customize screenshot label">
-                      <Pencil size={13} />
-                      {labelEditor(image, index, `Label for image ${slot === 0 ? 'A' : 'B'}`)}
-                    </label>
-                  )}
-                </div>
-              );
-            })}
-            <button
-              className="swap-button icon-button"
-              aria-label="Swap images"
-              title="Swap A and B (X)"
-              onClick={() =>
-                setConfig((previous) => ({
-                  ...previous,
-                  selected: [previous.selected[1], previous.selected[0]],
-                }))
-              }
+          {(!phone || !minimalist) && (
+            <div
+              key={phone ?? 'default'}
+              {...(phoneLandscape
+                ? { ...phonePanel.popupProps, role: 'group', 'aria-label': 'Image controls' }
+                : { id: 'image-controls', ref: imagePanel })}
+              className={`image-selection-bar${
+                phoneLandscape
+                  ? ' phone-popover phone-images-popover'
+                  : phonePortrait
+                    ? ' phone-image-controls'
+                    : imagePanelOpen
+                      ? ' image-panel-open'
+                      : ''
+              }`}
             >
-              <ArrowLeftRight size={16} />
-            </button>
-            {compactWeb && (localSharingTest || publishedNotice) && (
-              <div className="image-panel-publication">
-                {shareControl}
-                {publishedNotice}
-              </div>
-            )}
-          </div>
+              {([0, 1] as const).map((slot) => {
+                const index = config.selected[slot],
+                  image = images[index];
+                const letter = slot === 0 ? 'A' : 'B';
+                if (phone) {
+                  return (
+                    <div className={`phone-image-slot selector-${slot}`} key={slot}>
+                      <PhoneChoiceMenu
+                        label={`Select image ${letter}`}
+                        menuLabel={`Image ${letter} screenshots`}
+                        value={
+                          <>
+                            <span className="phone-image-label">{image.label || image.name}</span>
+                            <span className="file-info">
+                              {image.width} × {image.height}
+                            </span>
+                          </>
+                        }
+                        badge={
+                          <span className={`slot-letter slot-${slot}`} aria-hidden="true">
+                            {letter}
+                          </span>
+                        }
+                        choices={imageChoices}
+                        selected={index}
+                        triggerClass="phone-image-trigger"
+                        menuClass="phone-image-choices"
+                        onSelect={(index) => select(slot, index)}
+                        onOpenChange={onPhonePopoverChange}
+                      />
+                    </div>
+                  );
+                }
+                return (
+                  <div className={`image-selector selector-${slot}`} key={slot}>
+                    <span className={`slot-letter slot-${slot}`}>{slot === 0 ? 'A' : 'B'}</span>
+                    <div className="image-selector-fields">
+                      <label className="select-image">
+                        <span className="sr-only">Image {slot === 0 ? 'A' : 'B'}</span>
+                        <select
+                          aria-label={`Select image ${slot === 0 ? 'A' : 'B'}`}
+                          value={index}
+                          onChange={(event) => select(slot, Number(event.target.value))}
+                        >
+                          {images.map((item, i) => (
+                            <option value={i} key={i}>
+                              {item.label || item.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown size={13} />
+                      </label>
+                      <span className="file-info">
+                        {image.width} × {image.height}
+                        <span>
+                          {' '}
+                          · {formatBytes(image.size)} · {image.type.split('/')[1].toUpperCase()}
+                        </span>
+                      </span>
+                    </div>
+                    {!readOnly && (
+                      <label className="rename-label" title="Customize screenshot label">
+                        <Pencil size={13} />
+                        {labelEditor(image, index, `Label for image ${slot === 0 ? 'A' : 'B'}`)}
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                className="swap-button icon-button"
+                aria-label="Swap images"
+                title="Swap A and B (X)"
+                onClick={() =>
+                  setConfig((previous) => ({
+                    ...previous,
+                    selected: [previous.selected[1], previous.selected[0]],
+                  }))
+                }
+              >
+                <ArrowLeftRight size={16} />
+                {phoneLandscape && <span>Swap images</span>}
+              </button>
+              {compactWeb && (localSharingTest || publishedNotice) && (
+                <div className="image-panel-publication">
+                  {shareControl}
+                  {publishedNotice}
+                </div>
+              )}
+            </div>
+          )}
           {!compactWeb && publishedNotice}
         </main>
       ) : !managing ? (

@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { chooseZoomPreset, renameSelectedImage } from '../shared/phone-controls';
+import {
+  chooseZoomPreset,
+  renameSelectedImage,
+  selectImage,
+  expectSelectedImageLabel,
+} from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 import { readFile } from 'node:fs/promises';
 import { cacheSnapshot, control, originalBytes, serve } from './helpers';
@@ -45,13 +50,13 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   await offline.getByTestId('file-input').setInputFiles([file, jpeg, webp]);
   await expect(offline.getByTestId('stage')).toBeVisible();
   expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
-  await offline.getByLabel('Select image A', { exact: true }).selectOption('2');
+  await selectImage(offline, 'A', 2);
   expect(await originalBytes(offline)).toEqual(Array.from(webp.buffer));
-  await offline.getByLabel('Select image B', { exact: true }).selectOption('0');
-  await offline.getByLabel('Select image A', { exact: true }).selectOption('1');
+  await selectImage(offline, 'B', 0);
+  await selectImage(offline, 'A', 1);
   expect(await originalBytes(offline)).toEqual(Array.from(jpeg.buffer));
-  await offline.getByLabel('Select image B', { exact: true }).selectOption('2');
-  await offline.getByLabel('Select image A', { exact: true }).selectOption('0');
+  await selectImage(offline, 'B', 2);
+  await selectImage(offline, 'A', 0);
   await renameSelectedImage(offline, 'A', file.name, 'Private label');
   await offline.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await offline.getByLabel('Game title').fill('Private game');
@@ -106,9 +111,7 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   await restarted.goto(baseURL!);
   await expect(restarted.getByTestId('stage')).toHaveCount(0);
   await restarted.getByTestId('file-input').setInputFiles([file, imageFile('Fresh B.png', 1)]);
-  await expect(restarted.getByLabel('Select image A').locator('option:checked')).toHaveText(
-    'Private Original',
-  );
+  await expectSelectedImageLabel(restarted, 'A', 'Private Original');
   await restarted.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await expect(restarted.getByLabel('Game title')).toHaveValue('');
 });

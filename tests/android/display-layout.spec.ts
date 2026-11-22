@@ -5,13 +5,18 @@ import { expectLocalComparisonUI } from '../shared/local-comparison';
 import {
   chooseZoomPreset,
   expectPhonePortraitHeader,
-  expectPhoneSelectFocus,
+  expectPhoneImageMenuKeyboard,
   expectPhoneZoomToolbar,
+  expectLandscapeImagePopover,
+  expectPortraitImagePanel,
   expectZoomMenuPlacement,
   helpDialog,
   manageImages,
   phoneZoomTrigger,
+  phoneImageTrigger,
+  imageChoices,
   zoomPresets,
+  selectImage,
 } from '../shared/phone-controls';
 import {
   expectCenteredBrand,
@@ -26,10 +31,10 @@ test('Android phone selects distinguish touch and keyboard focus through rotatio
   page,
 }) => {
   await open(page);
-  await expectPhoneSelectFocus(page);
+  await expectPhoneImageMenuKeyboard(page);
   await page.setViewportSize({ width: 844, height: 390 });
   await page.getByRole('button', { name: 'Image controls' }).tap();
-  await expectPhoneSelectFocus(page);
+  await expectPhoneImageMenuKeyboard(page);
 });
 
 test('Android dismisses the anchored zoom menu with Back and when the toolbar is removed', async ({
@@ -187,6 +192,7 @@ test('portrait phone controls respect cutouts and renamed originals survive WebV
       icons: width === 320 ? false : width === 430 ? true : undefined,
     });
     await expectPhoneZoomToolbar(page, { left: 26, right: 16, oneRow: width !== 320 });
+    await expectPortraitImagePanel(page, { left: 26, right: 16, bottom: 24 });
     const mode = await box(page, '.mode-controls');
     const actions = await box(page, '.header-actions');
     expect(mode.x).toBeGreaterThanOrEqual(26);
@@ -222,7 +228,7 @@ test('portrait phone controls respect cutouts and renamed originals survive WebV
     });
   await page.reload();
   await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Renamed A');
-  await page.getByLabel('Select image A').selectOption('2');
+  await selectImage(page, 'A', 2);
   await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Renamed unselected C');
 });
 
@@ -347,12 +353,18 @@ test('compact image controls keep selection and swapping with labels in Manage I
   const trigger = page.getByRole('button', { name: 'Image controls' });
   await trigger.click();
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expectLandscapeImagePopover(page, { left: 46, right: 12, bottom: 18 });
   await expectLocalComparisonUI(page);
   await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
-  await page.getByLabel('Select image A', { exact: true }).selectOption('2');
+  await selectImage(page, 'A', 2);
   await expect.poll(async () => (await config(page)).selected).toEqual([2, 1]);
   await page.getByRole('button', { name: 'Swap images' }).click();
   await expect.poll(async () => (await config(page)).selected).toEqual([1, 2]);
+  await phoneImageTrigger(page, 'B').tap();
+  await expect(imageChoices(page, 'B')).toHaveCount(3);
+  await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
+  await expect(imageChoices(page, 'B')).toHaveCount(0);
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   await page.evaluate(() => (window as any)['listener-backButton']({ canGoBack: false }));
   await expect(page.locator('.image-selection-bar')).toBeHidden();
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
