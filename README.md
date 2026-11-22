@@ -11,11 +11,11 @@ zoom and precise pixel inspection. Open two to four screenshots, choose your A/B
 pair, and inspect the originals locally.
 
 **[Open the web app](https://kuba25x.github.io/upscale-compare/) ·
-[Download Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.2/upscale-compare-debug.apk) ·
+[Download Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.3/upscale-compare-debug.apk) ·
 [Report an issue](https://github.com/Kuba25x/upscale-compare/issues)**
 
 > **Android Preview is available.**
-> [v0.1.0-android-preview.2](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
+> [v0.1.0-android-preview.2](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.3)
 > is an early preview distributed as a **debug APK**.
 > **Share Comparison is not publicly available** in the web app or Android APK.
 
