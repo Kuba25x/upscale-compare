@@ -639,7 +639,8 @@ public class DisplayIntegrationTest {
       assertPortraitZoomMenu();
       click(".fullscreen-button");
       bars(false, true);
-      assertEquals("true", js("!document.querySelector('.phone-image-controls')"));
+      eventually(
+          () -> assertEquals("true", js("!document.querySelector('.phone-image-controls')")));
       assertEdgeToEdgeAndSafeExit();
       screenshot("portrait-minimalist");
       for (int orientation :
