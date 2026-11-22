@@ -2,7 +2,12 @@ import { test, expect } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { imageFile, openComparison } from './fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
-import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
+import {
+  expectCenteredBrand,
+  expectCenteredDividerArrows,
+  expectSplitPosition,
+  expectSplitRange,
+} from '../shared/layout-alignment';
 test('landing follows the centered wireframe and keeps screenshots local', async ({ page }) => {
   const publications: string[] = [];
   page.on('request', (request) => {
@@ -64,19 +69,84 @@ test('divider drags, supports keyboard, and keeps corresponding coordinates', as
   const stage = await page.getByTestId('stage').boundingBox(),
     divider = page.getByRole('slider', { name: 'Comparison divider' });
   const chevron = (await divider.locator('.lucide-chevron-left path').boundingBox())!;
-  await page.mouse.move(chevron.x + chevron.width / 2, chevron.y + chevron.height / 4);
+  const grab = Math.round(chevron.x + chevron.width / 2);
+  const destination = Math.round(stage!.x + stage!.width * 0.7);
+  await page.mouse.move(grab, chevron.y + chevron.height / 4);
   await page.mouse.down();
-  await page.mouse.move(stage!.x + stage!.width * 0.7, stage!.y + stage!.height / 2, { steps: 10 });
+  await expectSplitPosition(page, 50);
+  await page.mouse.move(destination, stage!.y + stage!.height / 2, { steps: 10 });
   await page.mouse.up();
-  await expect(divider).toHaveAttribute('aria-valuenow', '70');
+  const right = stage!.x + stage!.width;
+  await expectSplitPosition(page, 100 - (50 * (right - destination)) / (right - grab));
   const a = await page.getByTestId('image-A').boundingBox(),
     b = await page.getByTestId('image-B').boundingBox();
   expect(a).toEqual(b);
-  await divider.focus();
-  await page.keyboard.press('Home');
-  await expect(divider).toHaveAttribute('aria-valuenow', '0');
-  await page.keyboard.press('End');
-  await expect(divider).toHaveAttribute('aria-valuenow', '100');
+  await expectSplitRange(page);
+});
+
+test('the clipped handle reaches both edges without exposing a strip of the other image', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const files = [
+    [255, 0, 0, 255],
+    [0, 0, 255, 255],
+  ].map((color, index) => {
+    const png = new PNG({ width: 512, height: 512 });
+    png.data.fill(Buffer.from(color));
+    return { name: `Solid ${index}.png`, mimeType: 'image/png', buffer: PNG.sync.write(png) };
+  });
+  await page.getByTestId('file-input').setInputFiles(files);
+  const stage = page.getByTestId('stage');
+  await expect(stage).toBeVisible();
+  await stage.press('4');
+  await expect(stage).toHaveAttribute('data-zoom', '4');
+  const slider = page.getByRole('slider', { name: 'Comparison divider' });
+  const box = (await stage.boundingBox())!;
+  const y = box.y + box.height / 2;
+  const [left, right] = [box.x, box.x + box.width];
+  await expect
+    .poll(() =>
+      stage.locator('img').evaluateAll((nodes) =>
+        nodes.every((node) => {
+          const img = node as HTMLImageElement;
+          return img.complete && img.naturalWidth > 0;
+        }),
+      ),
+    )
+    .toBe(true);
+  for (const [key, edge, grab, opposite, wrongChannel] of [
+    ['Home', 0, left + 6, right + 1, 0],
+    ['End', 100, right - 6, left - 1, 2],
+  ] as const) {
+    await slider.press(key);
+    await expectSplitPosition(page, edge);
+    const screenshot = PNG.sync.read(await stage.screenshot());
+    // Sample both halves above and below the handle, including the outermost pixels.
+    for (const fraction of [0.25, 0.75]) {
+      const start = Math.floor(screenshot.height * fraction) * screenshot.width * 4;
+      const row = screenshot.data.subarray(start, start + screenshot.width * 4);
+      expect(
+        row.some((value, i) => i % 4 === wrongChannel && value - row[i - wrongChannel + 1] > 20),
+      ).toBe(false);
+      const middle = Math.floor(screenshot.width / 2) * 4;
+      expect([...row.subarray(middle, middle + 4)]).toEqual(
+        edge === 0 ? [0, 0, 255, 255] : [255, 0, 0, 255],
+      );
+    }
+    await page.mouse.move(grab, y);
+    await page.mouse.down();
+    await expectSplitPosition(page, edge);
+    await page.mouse.move(opposite, y);
+    await expectSplitPosition(page, 100 - edge);
+    const middle = Math.round((left + right) / 2);
+    await page.mouse.move(middle, y);
+    await expectSplitPosition(
+      page,
+      100 * (edge === 0 ? (middle - grab) / (right - grab) : (middle - left) / (grab - left)),
+    );
+    await page.mouse.up();
+  }
 });
 test('100% pixel zoom reproduces original pixels at every display density', async ({ page }) => {
   await openComparison(page);

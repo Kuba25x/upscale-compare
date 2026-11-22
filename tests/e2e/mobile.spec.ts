@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { imageFile, openComparison } from './fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
-import { expectCenteredDividerArrows } from '../shared/layout-alignment';
+import {
+  expectCenteredDividerArrows,
+  expectSplitPosition,
+  expectSplitRange,
+} from '../shared/layout-alignment';
+import { installWebDisplay } from '../shared/web-display';
 test('mobile keeps all main controls accessible without horizontal scrolling', async ({ page }) => {
   await page.goto('/');
   await page.screenshot({ path: 'test-results/landing-mobile.png' });
@@ -62,6 +67,42 @@ test('touch divider and synchronized pinch navigation respond to touch input', a
   const a = await page.getByTestId('image-A').boundingBox(),
     b = await page.getByTestId('image-B').boundingBox();
   expect(a).toEqual(b);
+});
+
+test('touch can pull the clipped divider inward from either edge and recover after cancellation', async ({
+  page,
+}) => {
+  await installWebDisplay(page);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await openComparison(page);
+  await expectSplitRange(page);
+  const slider = page.getByRole('slider', { name: 'Comparison divider' });
+  const stage = (await page.getByTestId('stage').boundingBox())!;
+  const y = Math.round(stage.y + stage.height / 2);
+  const physicalPixel = await page.evaluate(() => 1 / devicePixelRatio);
+  const client = await page.context().newCDPSession(page);
+  for (const [key, edge, grip, target] of [
+    ['Home', 0, stage.x + 6, stage.x + stage.width - physicalPixel],
+    ['End', 100, stage.x + stage.width - 6, stage.x + physicalPixel],
+  ] as const) {
+    await slider.press(key);
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: grip, y, id: 1 }],
+    });
+    await expectSplitPosition(page, edge);
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: target, y, id: 1 }],
+    });
+    await expectSplitPosition(page, 100 - edge);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+    await expectSplitPosition(page, 100 - edge);
+  }
+  await client.detach();
+  await page.setViewportSize({ width: 500, height: 240 });
+  await expect(page.locator('.app')).toHaveClass(/comparison-phone-landscape/);
+  await expectSplitRange(page);
 });
 
 test('phone portrait zoom picker preserves physical-pixel presets and displays intermediate zoom', async ({

@@ -8,7 +8,12 @@ import {
   helpDialog,
   manageImages,
 } from '../shared/phone-controls';
-import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
+import {
+  expectCenteredBrand,
+  expectCenteredDividerArrows,
+  expectSplitPosition,
+  expectSplitRange,
+} from '../shared/layout-alignment';
 
 const files = [imageFile('A.png', 0), imageFile('B.png', 1), imageFile('C.png', 0)];
 async function openLanding(page: Page) {
@@ -239,11 +244,7 @@ test('all four display modes use inset-aware controls and an edge-to-edge image 
     expect(exit.x + exit.width).toBe(900 - 12 - (side === 'cutoutRight' ? 46 : 12));
     expect(exit.y + exit.height).toBe(412 - 18 - 12);
     await expect(page.locator('button:visible')).toHaveCount(1);
-    await page.getByRole('slider').focus();
-    await page.keyboard.press(side === 'cutoutLeft' ? 'Home' : 'End');
-    const handle = await box(page, '.divider-handle');
-    expect(handle.x).toBeGreaterThanOrEqual(side === 'cutoutLeft' ? 46 : 12);
-    expect(handle.x + handle.width).toBeLessThanOrEqual(900 - (side === 'cutoutRight' ? 46 : 12));
+    await expectSplitRange(page);
   }
   await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).click();
   await assertBars(page, false, false);
@@ -270,24 +271,24 @@ test('all four display modes use inset-aware controls and an edge-to-edge image 
   await page.getByRole('slider').focus();
   await page.keyboard.press('Home');
   await expectCenteredDividerArrows(page);
-  const safeHandle = await box(page, '.divider-handle');
-  await page.mouse.move(safeHandle.x + safeHandle.width / 2, safeHandle.y + safeHandle.height / 2);
+  const clippedHandle = await box(page, '.divider-handle');
+  const grip = stage.x + 6;
+  const y = clippedHandle.y + clippedHandle.height / 2;
+  await page.mouse.move(grip, y);
   await page.mouse.down();
-  await expect.poll(async () => (await config(page)).divider).toBe(0);
-  await page.mouse.move(
-    safeHandle.x + safeHandle.width / 2 + 30,
-    safeHandle.y + safeHandle.height / 2,
-  );
+  await expectSplitPosition(page, 0);
+  await page.mouse.move(grip + 30, y);
   await page.mouse.up();
-  await expect.poll(async () => (await config(page)).divider).toBeCloseTo(30 / 900, 4);
+  await expectSplitPosition(page, (30 / (stage.width - 6)) * 100);
   await page.screenshot({ path: 'test-results/android/compact-landscape-right-cutout.png' });
   await page.setViewportSize({ width: 500, height: 240 });
-  await insets(page, { cutoutLeft: 46, gestureRight: 12, gestureBottom: 12 });
+  await insets(page, { cutoutLeft: 46, cutoutRight: 46, gestureBottom: 12 });
+  await expectSplitRange(page);
   const logo = await box(page, '.app-header .brand-mark');
   expect(logo.x).toBeGreaterThanOrEqual(46);
   expect(
     (await box(page, '.header-actions')).x + (await box(page, '.header-actions')).width,
-  ).toBeLessThanOrEqual(500 - 12);
+  ).toBeLessThanOrEqual(500 - 46);
   expect(
     await page.evaluate(() => [
       document.documentElement.scrollWidth,

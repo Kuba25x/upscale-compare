@@ -335,6 +335,7 @@ public class DisplayIntegrationTest {
                         + " return s.x===0 && s.y===0 && Math.abs(s.width-innerWidth)<1 &&"
                         + " e.right<=innerWidth && e.bottom<=s.bottom && e.width>=48; })()")));
     assertDividerArtwork();
+    assertDividerEdges();
     eventually(
         () ->
             scenario.onActivity(
@@ -396,6 +397,52 @@ public class DisplayIntegrationTest {
                 && Math.abs(parseFloat(line.height) - stage.height) < 1;
             })()
             """));
+  }
+
+  private void assertDividerEdges() throws Exception {
+    for (int percent : new int[] {0, 100, 50}) {
+      String key = percent == 100 ? "End" : percent == 0 ? "Home" : "ArrowLeft";
+      assertEquals(
+          "true",
+          js(
+              """
+              (() => {
+                const slider = document.querySelector('.divider');
+                const key = %s;
+                for (let i = 0; i < (key === 'ArrowLeft' ? 5 : 1); i++)
+                  slider.dispatchEvent(new KeyboardEvent('keydown', {
+                    bubbles: true, cancelable: true, key, shiftKey: key === 'ArrowLeft'
+                  }));
+                return true;
+              })()
+              """.formatted(JSONObject.quote(key))));
+      eventually(
+          () ->
+              assertEquals(
+                  "true",
+                  js(
+                      """
+                      (() => {
+                        const stage = document.querySelector('.stage');
+                        const bounds = stage.getBoundingClientRect();
+                        const slider = stage.querySelector('.divider');
+                        const handle = slider.querySelector('.divider-handle').getBoundingClientRect();
+                        const line = getComputedStyle(slider, '::before');
+                        const clip = layer => {
+                          const [top, right = top, , left = right] = getComputedStyle(layer).clipPath
+                            .slice(6, -1).split(/\\s+/);
+                          const pixels = side => side.endsWith('%%')
+                            ? parseFloat(side) / 100 * bounds.width : parseFloat(side);
+                          return [bounds.left + pixels(left), bounds.right - pixels(right)];
+                        };
+                        const [a, b] = [...stage.querySelectorAll('.split-layer')].map(clip);
+                        const expected = bounds.left + bounds.width * %d / 100;
+                        return [a[1], b[0], handle.left + handle.width / 2,
+                          slider.getBoundingClientRect().left + parseFloat(line.left) + parseFloat(line.width) / 2
+                        ].every(x => Math.abs(x - expected) < 0.05);
+                      })()
+                      """.formatted(percent))));
+    }
   }
 
   private void assertLandingBrandCentered() throws Exception {

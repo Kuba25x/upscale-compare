@@ -369,6 +369,10 @@ input[type='checkbox'] {
   cursor: grab;
   isolation: isolate;
 }
+.stage:has(> .divider) {
+  /* Focusing the clipped slider at an edge must not scroll the stage. */
+  overflow: clip;
+}
 .stage.panning {
   cursor: grabbing;
 }
@@ -400,6 +404,7 @@ input[type='checkbox'] {
 }
 .divider {
   position: absolute;
+  left: var(--split-position);
   top: 0;
   bottom: 0;
   z-index: 2;
@@ -1387,16 +1392,6 @@ input[type='checkbox'] {
   padding-left: max(10px, var(--comparison-safe-left, 0px));
   padding-right: max(10px, var(--comparison-safe-right, 0px));
 }
-.comparison-edge-to-edge .divider-handle {
-  /* Move only the handle away from cutouts/edge gestures; the divider line stays aligned. */
-  left: clamp(
-    calc(var(--comparison-safe-left, 0px) + 24px - var(--comparison-divider-position) + 15px),
-    15px,
-    calc(
-      100cqw - var(--comparison-safe-right, 0px) - 24px - var(--comparison-divider-position) + 15px
-    )
-  );
-}
 .comparison-edge-to-edge .modal {
   max-width: calc(
     100vw - var(--comparison-safe-left, 0px) - var(--comparison-safe-right, 0px) - 32px
@@ -1688,12 +1683,6 @@ input[type='checkbox'] {
 .web-app:is(.comparison-compact, .comparison-minimalist) .divider-handle {
   width: 44px;
   height: 44px;
-  /* Keep the wider pointer target centered on the unchanged divider line. */
-  left: clamp(
-    calc(var(--comparison-safe-left) + 24px - var(--comparison-divider-position) + 22px),
-    22px,
-    calc(100cqw - var(--comparison-safe-right) - 24px - var(--comparison-divider-position) + 22px)
-  );
 }
 .web-app.comparison-compact .image-panel-publication {
   grid-column: 1 / -1;
@@ -1964,11 +1953,6 @@ input[type='checkbox'] {
 .web-app.installed-fullscreen .divider-handle {
   width: 44px;
   height: 44px;
-  left: clamp(
-    calc(var(--comparison-safe-left) + 24px - var(--comparison-divider-position) + 22px),
-    22px,
-    calc(100cqw - var(--comparison-safe-right) - 24px - var(--comparison-divider-position) + 22px)
-  );
 }
 .web-app.installed-fullscreen.comparison-minimalist .divider-handle {
   top: clamp(
