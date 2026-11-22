@@ -62,13 +62,15 @@ whether cutout or system-bar areas are available. Manifest fullscreen alone is n
 proof that a particular device grants cutout coverage.
 
 Installed-only CSS uses `env(safe-area-inset-*)` through the existing viewport
-adapter. Header/title, upload, image controls, toolbar, dialogs, notices and divider
-handle stay inside reported safe bounds. Horizontal control gutters use the larger
+adapter. Header/title, upload, image controls, toolbar, dialogs, and notices stay
+inside reported safe bounds. Horizontal control gutters use the larger
 side inset symmetrically, so left/right cutout rotations preserve alignment. Portrait
 reserves top/bottom insets; visual-viewport measurements also constrain keyboard
 dialogs. The image stage does not receive those horizontal gutters, and backgrounds
-and images can use the exposed cutout area. Only the divider handle moves inward;
-the divider line and source-pixel geometry remain unchanged.
+and images can use the exposed cutout area. The Split Screen boundary, line, and
+handle share one coordinate across the stage. The stage clips the handle at an
+edge. Physical cutouts and system edge gestures can limit where a drag can start.
+Use the exposed divider line above or below the cutout, or a physical keyboard.
 
 No camera dimensions or bar heights are guessed. Zero insets can mean no obstruction
 or missing browser information; there is no reliable general way to distinguish them.
@@ -113,7 +115,9 @@ approved deployment of the exact reviewed commit.
 6. Launch first in portrait, then cold-launch in each landscape rotation. Before
    touching any fullscreen control, verify the complete UI, actual status/navigation
    bars and cutout-side coverage. Check title/mark, uploads, image selectors/labels,
-   zoom toolbar, edge divider handle and every dialog against both cutout sides.
+   zoom toolbar and every dialog against both cutout sides. Verify that the
+   split boundary stays aligned when moving the handle to both edges and that
+   the exposed part of the divider can still be dragged inward.
 7. Test both layouts, exact pixel zoom, Fit, pan/pinch, replacement and picker cancel.
    Switch to Minimalist mode and Show controls, rotate, use Android Back, open/close
    the keyboard and dialogs, and sleep/resume. No comparison should reload or lose

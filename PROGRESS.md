@@ -342,3 +342,11 @@ formats. The in-memory preview cache follows original removal and clearing.
 
 The landing header centers the logo and title together within its safe padding.
 The Split Screen handle centers two SVG chevrons over the full-height divider.
+
+## Split Screen divider edges
+
+The image clips, divider line, and handle use the same position from 0% to 100%
+of the stage. A clipped handle can be dragged inward from its exposed half.
+Automated tests compare both clip edges with the handle and line and check
+rendered pixels at the endpoints. Physical-device checks cover cutouts and
+system gesture regions that can obscure or intercept an edge grab.

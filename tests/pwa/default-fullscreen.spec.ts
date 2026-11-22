@@ -10,7 +10,11 @@ import {
   expectPhoneZoomToolbar,
   helpDialog,
 } from '../shared/phone-controls';
-import { expectCenteredBrand, expectCenteredDividerArrows } from '../shared/layout-alignment';
+import {
+  expectCenteredBrand,
+  expectCenteredDividerArrows,
+  expectSplitRange,
+} from '../shared/layout-alignment';
 
 test.beforeEach(async ({ request }) => {
   // Other PWA suites deliberately leave the shared server on a faulty B release.
@@ -164,13 +168,8 @@ for (const sample of [
       await safe(page, page.getByLabel(name, { exact: true }), sample);
     if (sample.width > sample.height)
       await page.getByRole('button', { name: 'Image controls', exact: true }).click();
-    const slider = page.getByRole('slider');
-    await slider.focus();
-    for (const key of ['Home', 'End']) {
-      await page.keyboard.press(key);
-      await safe(page, page.locator('.divider-handle'), sample);
-      await expectCenteredDividerArrows(page);
-    }
+    await expectSplitRange(page);
+    await expectCenteredDividerArrows(page);
     await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
     await safe(page, page.getByRole('dialog'), sample);
     await page.getByLabel('Game title').fill('Safe installed fullscreen');
@@ -222,6 +221,8 @@ test('installed phone portrait fills the safe width and updates icons when inset
   await expectPhoneZoomToolbar(page, { left: 72, right: 62, oneRow: false });
   await insets(page, 48, 12, 24, 22);
   await expectPhonePortraitHeader(page, { icons: true });
+  await insets(page, 48, 22, 24, 22);
+  await expectSplitRange(page);
 });
 
 for (const mode of ['Split Screen', 'Side-by-Side'])

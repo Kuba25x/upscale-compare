@@ -69,7 +69,7 @@ export function Viewer({
   const wasComparisonFullscreen = useRef(false);
   const stage = useRef<HTMLDivElement>(null);
   const fullscreenTrigger = useRef<HTMLButtonElement>(null);
-  const dividerDrag = useRef<{ pointer: number; offset: number } | null>(null);
+  const dividerDrag = useRef<{ pointer: number; grab: number; split: number } | null>(null);
   const [size, setSize] = useState({ width: 1, height: 1, x: 0, y: 0 });
   const [dpr, setDpr] = useState(window.devicePixelRatio || 1);
   const [fullscreen, setFullscreen] = useState(false);
@@ -100,11 +100,7 @@ export function Viewer({
   const cancelPanning = useCallback(() => {
     const element = stage.current;
     const divider = element?.querySelector<HTMLElement>('[role="slider"]');
-    if (
-      presentation.edgeToEdge &&
-      dividerDrag.current &&
-      divider?.hasPointerCapture(dividerDrag.current.pointer)
-    )
+    if (dividerDrag.current && divider?.hasPointerCapture(dividerDrag.current.pointer))
       divider.releasePointerCapture(dividerDrag.current.pointer);
     dividerDrag.current = null;
     for (const pointerId of pointers.current.keys()) {
@@ -115,7 +111,7 @@ export function Viewer({
     pinchRightPanel.current = null;
     if (gestureDiagnostics?.recording) gestureDiagnostics.record('cancel-all', {});
     setPanning(false);
-  }, [presentation.edgeToEdge]);
+  }, []);
   useEffect(() => {
     const visibilityChange = () => {
       if (document.hidden) cancelPanning();
@@ -464,13 +460,13 @@ export function Viewer({
     window.addEventListener('keydown', keyboard);
     return () => window.removeEventListener('keydown', keyboard);
   }, [onChange, images.length, onHelp, onToggleFullscreen, comparisonFullscreen]);
-  const setDivider = (clientX: number) => {
+  const dividerPosition = (clientX: number, edgeTolerance = 0) => {
     const rect = stage.current!.getBoundingClientRect();
-    onChange((previous) => ({
-      ...previous,
-      divider: clamp((clientX - rect.left) / rect.width, 0, 1),
-    }));
+    if (clientX <= rect.left + edgeTolerance) return 0;
+    if (clientX >= rect.right - edgeTolerance) return 1;
+    return (clientX - rect.left) / rect.width;
   };
+  const setDivider = (divider: number) => onChange((previous) => ({ ...previous, divider }));
   const moveContacts = (
     before: Point[],
     after: Point[],
@@ -682,6 +678,11 @@ export function Viewer({
         data-testid="stage"
         data-scale={scale}
         data-zoom={config.view.zoom ?? 'fit'}
+        style={
+          config.mode === 'split'
+            ? ({ '--split-position': `${config.divider * 100}%` } as CSSProperties)
+            : undefined
+        }
         tabIndex={0}
         aria-label="Image comparison. Drag to pan, scroll to zoom."
         onDragStartCapture={(event) => event.preventDefault()}
@@ -792,13 +793,13 @@ export function Viewer({
           <>
             <div
               className="image-panel split-layer"
-              style={{ clipPath: `inset(0 ${(1 - config.divider) * 100}% 0 0)` }}
+              style={{ clipPath: 'inset(0 calc(100% - var(--split-position)) 0 0)' }}
             >
               {layer(a, 'A')}
             </div>
             <div
               className="image-panel split-layer"
-              style={{ clipPath: `inset(0 0 0 ${config.divider * 100}%)` }}
+              style={{ clipPath: 'inset(0 0 0 var(--split-position))' }}
             >
               {layer(b, 'B')}
             </div>
@@ -810,38 +811,31 @@ export function Viewer({
               aria-valuemax={100}
               aria-valuenow={Math.round(config.divider * 100)}
               tabIndex={0}
-              style={
-                {
-                  left: `clamp(18px, ${config.divider * 100}%, calc(100% - 18px))`,
-                  ...(presentation.edgeToEdge
-                    ? {
-                        '--comparison-divider-position': `clamp(18px, ${config.divider * 100}cqw, calc(100cqw - 18px))`,
-                      }
-                    : {}),
-                } as CSSProperties
-              }
               onPointerDown={(event) => {
                 if (event.pointerType === 'touch' && touchContacts.current.size > 0) {
                   event.preventDefault();
                   event.stopPropagation();
                   return;
                 }
-                if (event.button !== 0) return;
+                if (
+                  event.button !== 0 ||
+                  (dividerDrag.current &&
+                    event.currentTarget.hasPointerCapture(dividerDrag.current.pointer))
+                )
+                  return;
                 event.preventDefault();
                 event.stopPropagation();
                 // Keep pointer gestures in the viewer; Tab gives the slider keyboard focus.
                 stage.current?.focus({ preventScroll: true });
                 event.currentTarget.setPointerCapture(event.pointerId);
-                if (presentation.edgeToEdge) {
-                  const rect = stage.current!.getBoundingClientRect();
-                  dividerDrag.current = {
-                    pointer: event.pointerId,
-                    offset: (event.target as HTMLElement).closest('.divider-handle')
-                      ? event.clientX - rect.left - config.divider * rect.width
-                      : 0,
-                  };
-                }
-                setDivider(event.clientX - (dividerDrag.current?.offset ?? 0));
+                const grab = dividerPosition(event.clientX);
+                const onHandle = (event.target as Element).closest('.divider-handle');
+                dividerDrag.current = {
+                  pointer: event.pointerId,
+                  grab,
+                  split: onHandle ? config.divider : grab,
+                };
+                if (!onHandle) setDivider(grab);
               }}
               onPointerMove={(event) => {
                 if (event.pointerType === 'touch' && touchContacts.current.size > 0) return;
@@ -850,11 +844,27 @@ export function Viewer({
                     event.currentTarget.releasePointerCapture(event.pointerId);
                   return;
                 }
-                if (event.currentTarget.hasPointerCapture(event.pointerId))
-                  setDivider(event.clientX - (dividerDrag.current?.offset ?? 0));
+                const drag = dividerDrag.current;
+                if (
+                  drag?.pointer !== event.pointerId ||
+                  !event.currentTarget.hasPointerCapture(event.pointerId)
+                )
+                  return;
+                // Touch can reach the final physical pixel without reporting the outer edge.
+                const position = dividerPosition(
+                  event.clientX,
+                  event.pointerType === 'touch' ? 1 / dpr : 0,
+                );
+                // Interpolate from the grab point to either edge so an off-center grip
+                // preserves the initial split and can still reach both endpoints.
+                if (position === 0 || position === 1) setDivider(position);
+                else if (position < drag.grab) setDivider((position / drag.grab) * drag.split);
+                else if (position > drag.grab)
+                  setDivider(1 - ((1 - position) / (1 - drag.grab)) * (1 - drag.split));
+                else setDivider(drag.split);
               }}
-              onLostPointerCapture={() => {
-                dividerDrag.current = null;
+              onLostPointerCapture={(event) => {
+                if (dividerDrag.current?.pointer === event.pointerId) dividerDrag.current = null;
               }}
               onKeyDown={(event) => {
                 if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {

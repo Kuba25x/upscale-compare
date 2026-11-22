@@ -342,9 +342,12 @@ mutations run on the activity UI thread. It reports physical-pixel bar, cutout a
 gesture measurements and actual cutout rectangles; React converts them using the
 WebView's devicePixelRatio. Insets are observed at the window decor root before child
 views can transform or consume them. Only controls use cutout/gesture padding in landscape.
-The divider line remains aligned to the comparison; its handle can shift away from
-an unsafe edge. Dragging that handle retains its initial grab offset, and viewport
-changes cancel its capture so stale coordinates cannot move the comparison.
+The Split Screen boundary, divider line, and handle share the full stage width.
+At either edge the stage clips half the handle. The grab point maps continuously
+to both edges, and viewport changes cancel its capture. A physical cutout can
+obscure the handle and Android can reserve an edge gesture. Try the exposed
+divider line above or below the cutout, or use the slider's physical keyboard
+controls. Verify both edges by touch on the target phone.
 The minimalist exit button stays above gesture/navigation space.
 Dialogs respect asymmetric insets and the keyboard. Image layers remain mounted;
 the existing ResizeObserver/geometry adapts Fit without rewriting zoom or source center.
