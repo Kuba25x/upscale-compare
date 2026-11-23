@@ -57,8 +57,22 @@ export async function selectImage(page: Page, slot: 'A' | 'B', index: number) {
 export async function expectSelectedImageLabel(page: Page, slot: 'A' | 'B', label: string) {
   const { trigger, native, custom } = await imageControl(page, slot);
   await expect(
-    custom ? trigger.locator('.phone-image-label') : native.locator('option:checked'),
+    custom
+      ? trigger.locator('.phone-image-label, .desktop-image-label')
+      : native.locator('option:checked'),
   ).toHaveText(label);
+}
+
+export async function expectImageChoiceCount(page: Page, slot: 'A' | 'B', count: number) {
+  const { trigger, native, custom } = await imageControl(page, slot);
+  if (custom) {
+    await trigger.click();
+    await expect(imageChoices(page, slot)).toHaveCount(count);
+    await page.keyboard.press('Escape');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  } else {
+    await expect(native.locator('option')).toHaveCount(count);
+  }
 }
 
 export async function expectSelectedImageIndex(page: Page, slot: 'A' | 'B', index: number) {
@@ -98,6 +112,7 @@ export async function expectPortraitImagePanel(
 ) {
   const panel = page.locator('.phone-image-controls');
   await expect(panel).toBeVisible();
+  await expect(panel.getByRole('button', { name: /Edit label for image/ })).toHaveCount(0);
   await expect(panel.locator('select')).toHaveCount(0);
   await expect(panel).toHaveCSS('border-radius', '0px');
   await expect(panel).toHaveCSS('border-width', '0px');
@@ -280,7 +295,12 @@ export async function renameSelectedImage(
     exact: true,
   });
   await expect(page.getByTestId('stage')).toBeVisible();
-  if (await selectedEditor.isVisible()) {
+  const pencil = page.getByRole('button', { name: `Edit label for image ${slot}`, exact: true });
+  if (await pencil.isVisible()) {
+    await pencil.click();
+    await selectedEditor.fill(label);
+    await selectedEditor.press('Enter');
+  } else if (await selectedEditor.isVisible()) {
     await selectedEditor.fill(label);
   } else {
     await page.getByRole('button', { name: 'Manage Images', exact: true }).click();

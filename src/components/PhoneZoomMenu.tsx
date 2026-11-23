@@ -1,4 +1,4 @@
-import { PhoneChoiceMenu } from './PhoneChoiceMenu';
+import { ChoiceMenu } from './ChoiceMenu';
 import type { PopoverChange } from './useAnchoredPopover';
 
 const presets = [1, 2, 4, 6].map((value) => ({ value, label: `${value * 100}%` }));
@@ -13,7 +13,7 @@ export function PhoneZoomMenu({
   onOpenChange?: PopoverChange;
 }) {
   return (
-    <PhoneChoiceMenu
+    <ChoiceMenu
       label="Zoom preset"
       menuLabel="Zoom presets"
       value={zoom === null ? 'Fit' : `${Math.round(zoom * 100)}%`}

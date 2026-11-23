@@ -34,6 +34,8 @@ export async function installWebDisplay(
         if (query.startsWith('(resolution:')) win.testResolutionQueries.push(result);
         if ((finePointer || emulateTouchInput) && query.includes('pointer: coarse'))
           Object.defineProperty(result, 'matches', { get: () => !finePointer });
+        if ((finePointer || emulateTouchInput) && query.includes('pointer: fine'))
+          Object.defineProperty(result, 'matches', { get: () => finePointer });
         return result;
       };
       if (!mockVisualViewport) return;

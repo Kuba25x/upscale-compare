@@ -1,5 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { imageFile } from './fixtures';
+import {
+  expectImageChoiceCount,
+  expectSelectedImageIndex,
+  expectSelectedImageLabel,
+  renameSelectedImage,
+  selectImage,
+} from '../shared/phone-controls';
 
 const originals = ['A', 'B', 'C', 'D'].map((name, i) => imageFile(`${name}.png`, i % 2));
 
@@ -45,9 +52,9 @@ for (const count of [2, 3, 4]) {
       await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeFocused();
     } else {
       await expect(page.getByTestId('stage')).toBeVisible();
-      await expect(page.getByLabel('Select image A')).toHaveValue('1');
-      await expect(page.getByLabel('Select image B')).toHaveValue('0');
       await expect(page.getByRole('button', { name: 'Manage Images', exact: true })).toBeFocused();
+      await expectSelectedImageIndex(page, 'A', 1);
+      await expectSelectedImageIndex(page, 'B', 0);
     }
   });
 }
@@ -57,8 +64,8 @@ test('preserves a surviving selection, metadata and bytes when removing the curr
 }) => {
   await page.goto('/');
   await page.getByTestId('file-input').setInputFiles(originals);
-  await page.getByLabel('Select image A').selectOption('2');
-  await page.getByLabel('Label for image A').fill('Custom C');
+  await selectImage(page, 'A', 2);
+  await renameSelectedImage(page, 'A', 'C.png', 'Custom C');
   await page.getByRole('button', { name: 'Comparison details' }).click();
   await page.getByLabel('Game title').fill('Comparison metadata');
   await page.getByLabel('Upscaling technology').nth(2).fill('Original C settings');
@@ -72,9 +79,9 @@ test('preserves a surviving selection, metadata and bytes when removing the curr
   await expect(dialog.getByRole('button', { name: 'Add images' })).toBeEnabled();
   await dialog.getByRole('button', { name: 'Close dialog' }).click();
 
-  await expect(page.getByLabel('Select image A')).toHaveValue('1');
-  await expect(page.getByLabel('Select image B')).toHaveValue('0');
-  await expect(page.getByLabel('Label for image A')).toHaveValue('Custom C');
+  await expectSelectedImageIndex(page, 'A', 1);
+  await expectSelectedImageIndex(page, 'B', 0);
+  await expectSelectedImageLabel(page, 'A', 'Custom C');
   await expect(page.getByTestId('image-A')).toHaveAttribute('src', retainedSrc!);
   const bytes = await page
     .getByTestId('image-A')
@@ -122,7 +129,7 @@ test('continues to add and replace from single and empty drafts', async ({ page 
   await expect(dialog.getByRole('button', { name: /^Remove image / })).toHaveCount(4);
   await dialog.getByRole('button', { name: 'Close dialog' }).click();
   await expect(page.getByTestId('stage')).toBeVisible();
-  await expect(page.getByLabel('Select image A').locator('option')).toHaveCount(4);
+  await expectImageChoiceCount(page, 'A', 4);
 });
 
 test('clear resets settings and metadata and allows closing from an empty list', async ({

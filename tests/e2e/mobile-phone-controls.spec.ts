@@ -405,6 +405,7 @@ test('touch tablet keeps its controls even in a narrow portrait window', async (
   await expect(page.locator('.app-header .brand-mark')).toHaveCSS('position', 'absolute');
   await expect(page.locator('.app-header').getByText('MODE', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Label for image A')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit label for image A' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '200%', exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Zoom preset' })).toHaveCount(0);
   await expect(phoneZoomTrigger(page)).toHaveCount(0);

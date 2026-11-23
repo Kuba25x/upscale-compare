@@ -82,7 +82,11 @@ export function dividerFocusRegressionTests() {
     const divider = page.getByRole('slider', { name: 'Comparison divider' });
     for (let round = 0; round < 2; round++) {
       // Moving focus out of an input must also restore global shortcuts.
-      await page.getByLabel('Label for image A').fill(`Custom label ${round}`);
+      const pencil = page.getByRole('button', { name: 'Edit label for image A', exact: true });
+      if (await pencil.isVisible()) await pencil.click();
+      await page
+        .getByRole('textbox', { name: 'Label for image A', exact: true })
+        .fill(`Custom label ${round}`);
       await divider.click();
       await expectDividerFocus(page, divider, 'pointer');
       await page.keyboard.press('q');

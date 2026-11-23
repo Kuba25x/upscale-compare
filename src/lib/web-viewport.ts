@@ -38,6 +38,7 @@ export function useWebViewport() {
   const [viewportState, setViewportState] = useState({
     presentation: WEB_PRESENTATION,
     mobile: false,
+    desktop: false,
     installedLandscape: false,
     installedFullscreen: false,
   });
@@ -49,6 +50,7 @@ export function useWebViewport() {
     probe.setAttribute('aria-hidden', 'true');
     document.body.append(probe);
     const input = matchMedia('(pointer: coarse) and (hover: none)');
+    const desktopInput = matchMedia('(pointer: fine) and (hover: hover)');
     const standalone = matchMedia('(display-mode: standalone)');
     const fullscreen = matchMedia('(display-mode: fullscreen)');
     const browser = matchMedia('(display-mode: browser)');
@@ -121,6 +123,7 @@ export function useWebViewport() {
       const nextState = {
         presentation: next,
         mobile: mobileWebControls(input.matches, width),
+        desktop: desktopInput.matches && !input.matches,
         installedLandscape: installed && input.matches && landscape,
         installedFullscreen,
       };
@@ -140,6 +143,7 @@ export function useWebViewport() {
     window.addEventListener('orientationchange', schedule);
     orientation?.addEventListener('change', schedule);
     input.addEventListener('change', schedule);
+    desktopInput.addEventListener('change', schedule);
     standalone.addEventListener('change', schedule);
     fullscreen.addEventListener('change', schedule);
     browser.addEventListener('change', schedule);
@@ -154,6 +158,7 @@ export function useWebViewport() {
       window.removeEventListener('orientationchange', schedule);
       orientation?.removeEventListener('change', schedule);
       input.removeEventListener('change', schedule);
+      desktopInput.removeEventListener('change', schedule);
       standalone.removeEventListener('change', schedule);
       fullscreen.removeEventListener('change', schedule);
       browser.removeEventListener('change', schedule);

@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { chooseZoomPreset, openComparisonHelp, manageImages } from '../shared/phone-controls';
 import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
+import { expectImageChoiceCount, renameSelectedImage, selectImage } from '../shared/phone-controls';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 
 const unexpectedRequests = new WeakMap<Page, string[]>();
@@ -61,7 +62,7 @@ test('keeps labels, metadata, four-image selection, addition, and replacement', 
   page,
 }) => {
   await openDemo(page);
-  await page.getByLabel('Label for image A').fill('Custom DLSS');
+  await renameSelectedImage(page, 'A', 'DLSS Quality.png', 'Custom DLSS');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await page.getByLabel('Game title').fill('Demo game');
   await page.getByLabel('GPU / hardware').fill('Test GPU');
@@ -71,9 +72,9 @@ test('keeps labels, metadata, four-image selection, addition, and replacement', 
   await page.getByRole('button', { name: 'Add images', exact: true }).click();
   await (await add).setFiles([imageFile('Native.png'), imageFile('XeSS.png', 1)]);
   await page.getByRole('button', { name: 'Close dialog' }).click();
-  await expect(page.getByLabel('Select image A').locator('option')).toHaveCount(4);
-  await page.getByLabel('Select image A').selectOption('2');
-  await page.getByLabel('Label for image A').fill('Native Ultra');
+  await expectImageChoiceCount(page, 'A', 4);
+  await selectImage(page, 'A', 2);
+  await renameSelectedImage(page, 'A', 'Native.png', 'Native Ultra');
   await expect(page.locator('.badge-a')).toContainText('Native Ultra');
   await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   const replacement = page.waitForEvent('filechooser');

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { imageFile, openComparison } from './fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { renameSelectedImage, selectImage } from '../shared/phone-controls';
 import {
   expectCenteredBrand,
   expectCenteredDividerArrows,
@@ -30,11 +31,11 @@ test('landing follows the centered wireframe and keeps screenshots local', async
   await expect(actions.getByRole('button', { name: 'Manage Images' })).toBeEnabled();
   await expect(page.locator('.app-header').getByText('MODE', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts' })).toBeVisible();
-  await expect(page.getByLabel('Label for image A')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit label for image A' })).toBeVisible();
   const panel = await page.locator('.image-selection-bar').boundingBox();
   expect(panel!.y + panel!.height).toBeCloseTo(page.viewportSize()!.height - 8, 0);
   await page.screenshot({ path: 'test-results/viewer-desktop.png' });
-  const select = page.getByRole('combobox', { name: 'Select image A' });
+  const select = page.getByRole('button', { name: 'Select image A', exact: true });
   await select.focus();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
@@ -259,8 +260,8 @@ test('side-by-side keeps zoom and synchronizes panning', async ({ page }) => {
 });
 test('selects any of four images, renames labels, and saves metadata', async ({ page }) => {
   await openComparison(page, 4);
-  await page.getByLabel('Select image A').selectOption('2');
-  await page.getByLabel('Label for image A').fill('Native · Ultra');
+  await selectImage(page, 'A', 2);
+  await renameSelectedImage(page, 'A', 'Native.png', 'Native · Ultra');
   await expect(page.locator('.badge-a')).toContainText('Native · Ultra');
   await page.getByRole('button', { name: 'Comparison details' }).click();
   await page.getByLabel('Game title').fill('Cyberpunk 2077');
@@ -304,7 +305,7 @@ test.describe('local publication fixture', () => {
     page,
   }) => {
     await openComparison(page);
-    await page.getByLabel('Label for image A').fill('Custom DLSS');
+    await renameSelectedImage(page, 'A', 'DLSS Quality.png', 'Custom DLSS');
     await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
     await page.getByRole('button', { name: '200%', exact: true }).click();
     await page.getByRole('button', { name: 'Share Comparison' }).click();
@@ -323,7 +324,7 @@ test.describe('local publication fixture', () => {
       'true',
     );
     await expect(page.locator('.badge-a')).toContainText('Custom DLSS');
-    await expect(page.getByLabel('Label for image A')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Edit label for image A' })).toHaveCount(0);
     await page.reload();
     await expect(page.getByTestId('stage')).toBeVisible();
   });

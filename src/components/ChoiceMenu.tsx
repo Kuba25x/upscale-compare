@@ -4,7 +4,7 @@ import { useAnchoredPopover, type PopoverChange } from './useAnchoredPopover';
 
 type FocusTarget = 'first' | 'last' | 'selected';
 
-export function PhoneChoiceMenu({
+export function ChoiceMenu({
   label,
   menuLabel,
   value,
@@ -15,6 +15,7 @@ export function PhoneChoiceMenu({
   menuClass,
   onSelect,
   onOpenChange,
+  focusOnPointer = false,
 }: {
   label: string;
   menuLabel: string;
@@ -26,6 +27,7 @@ export function PhoneChoiceMenu({
   menuClass: string;
   onSelect: (value: number) => void;
   onOpenChange?: PopoverChange;
+  focusOnPointer?: boolean;
 }) {
   const { isOpen, dismiss, focusWhenOpen, triggerProps, popupProps } = useAnchoredPopover(
     'above',
@@ -43,7 +45,7 @@ export function PhoneChoiceMenu({
         aria-describedby={valueId}
         aria-haspopup="menu"
         onClick={(event) => {
-          if (event.detail === 0 && !isOpen())
+          if ((focusOnPointer || event.detail === 0) && !isOpen())
             focusWhenOpen((popup) => focusItem(popup, 'selected'));
         }}
         onKeyDown={(event) => {
@@ -55,14 +57,14 @@ export function PhoneChoiceMenu({
         }}
       >
         {badge}
-        <span id={valueId} className="phone-choice-value">
+        <span id={valueId} className="choice-menu-value">
           {value}
         </span>
         <ChevronDown size={14} aria-hidden="true" />
       </button>
       <div
         {...popupProps}
-        className={`phone-popover phone-choice-menu ${menuClass}`}
+        className={`anchored-popover choice-menu ${menuClass}`}
         role="menu"
         aria-label={menuLabel}
         onPointerDown={(event) => event.stopPropagation()}
@@ -89,7 +91,7 @@ export function PhoneChoiceMenu({
             aria-checked={selected === value}
             tabIndex={-1}
             onClick={(event) => {
-              dismiss(event.detail === 0);
+              dismiss(focusOnPointer || event.detail === 0);
               onSelect(value);
             }}
           >
