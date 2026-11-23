@@ -2,12 +2,12 @@
 
 Capture the installed PWA and the APK on the same Android phone, in portrait, with a comparison open and the keyboard and dialogs closed. Any two images can be used. Note the app build, Android and browser versions, and whether system navigation uses gestures or three buttons.
 
-Connect the phone over USB and open `chrome://inspect/#devices` in desktop Chrome. Select **Inspect** for the installed app window, run the script below once in its Console, and copy the returned JSON. Repeat with the APK WebView if it appears in DevTools. Use a local debug build for the APK if its release WebView is unavailable there.
+Connect the phone over USB and open `chrome://inspect/#devices` in desktop Chrome. Select **Inspect** for the installed app window, run the script below in its Console, and copy the returned JSON. Repeat with the APK WebView if it appears in DevTools. Use a local debug build for the APK if its release WebView is unavailable there. Capture one sample with system navigation hidden and another just after revealing it, and label the samples accordingly.
 
-The script works on the PR #48 build as well as the follow-up. It reads only viewport, safe-area, and element geometry. It sends no requests and uses no storage or persistent controls.
+The script reads only viewport, safe-area, display-state, and control geometry. It sends no network requests and uses no storage or persistent controls.
 
 ```js
-(() => {
+(async () => {
   const app = document.querySelector('.app.comparison-phone-portrait');
   const panel = app?.querySelector('.phone-image-controls');
   if (!app || !panel) return 'Open a normal comparison in phone portrait first.';
@@ -29,9 +29,10 @@ The script works on the PR #48 build as well as the follow-up. It reads only vie
       return value >= 0 ? value : null;
     };
     const rect = (element) => {
-      const { top, bottom, height } = element.getBoundingClientRect();
-      return { top, bottom, height };
+      const { left, right, top, bottom, width, height } = element.getBoundingClientRect();
+      return { left, right, top, bottom, width, height };
     };
+    const native = await window.Capacitor?.Plugins?.DisplayLayout?.getState?.().catch(() => null);
     const viewport = window.visualViewport;
     const visualBottom = viewport ? viewport.height + viewport.offsetTop : innerHeight;
     const appStyle = getComputedStyle(app);
@@ -39,7 +40,8 @@ The script works on the PR #48 build as well as the follow-up. It reads only vie
     const dynamicHeight = height('dvh');
     const largeHeight = height('lvh');
     const web = app.classList.contains('web-app');
-    const appliedSafeBottom = appStyle.getPropertyValue('--comparison-safe-bottom').trim();
+    const buttons = Array.from(panel.querySelectorAll('.phone-image-trigger, .swap-button'), rect);
+    const buttonBottom = Math.max(...buttons.map(({ bottom }) => bottom));
 
     return JSON.stringify(
       {
@@ -50,6 +52,7 @@ The script works on the PR #48 build as well as the follow-up. It reads only vie
           (mode) => matchMedia(`(display-mode: ${mode})`).matches,
         ),
         pixelRatio: devicePixelRatio,
+        screenHeight: screen.height,
         innerHeight,
         visualViewport: viewport
           ? { height: viewport.height, offsetTop: viewport.offsetTop, scale: viewport.scale }
@@ -59,18 +62,24 @@ The script works on the PR #48 build as well as the follow-up. It reads only vie
         safeAreaBottom: inset('safe-area-inset-bottom'),
         maxSafeAreaBottom: inset('safe-area-max-inset-bottom'),
         layoutBottom: appStyle.getPropertyValue('--comparison-layout-bottom').trim(),
-        appliedSafeBottom,
+        appliedSafeBottom: appStyle.getPropertyValue('--comparison-safe-bottom').trim(),
         appPaddingBottom: appStyle.paddingBottom,
-        panelMarginBottom: panelStyle.marginBottom,
-        panelBottomRadius: panelStyle.borderBottomLeftRadius,
+        panelPaddingBottom: panelStyle.paddingBottom,
+        native: native
+          ? {
+              navigationVisible: native.navigationVisible,
+              windowHeight: native.height,
+              panelSafeBottom: native.panelSafeBottom,
+              mandatoryGestureBottom: native.mandatoryGestureBottom,
+            }
+          : null,
         root: rect(document.documentElement),
         app: rect(app),
         comparison: rect(panel.parentElement),
         panel: rect(panel),
-        gapToVisualBottom: visualBottom - panel.getBoundingClientRect().bottom,
-        pr48WebCorrection: web
-          ? Math.max(0, dynamicHeight - visualBottom - (parseFloat(appliedSafeBottom) || 0))
-          : null,
+        buttons,
+        gapToAppBottom: app.getBoundingClientRect().bottom - buttonBottom,
+        gapToVisualBottom: visualBottom - buttonBottom,
       },
       null,
       2,
@@ -81,4 +90,6 @@ The script works on the PR #48 build as well as the follow-up. It reads only vie
 })();
 ```
 
-If the old web correction is zero, PR #48 added no margin to the existing 8 px. A positive maximum inset can expose space missed by the current inset and visual viewport. If both insets are zero and the app reaches the reported visual bottom, these web measurements cannot distinguish an unreported Android overlay from an unobstructed fullscreen viewport. Note whether the system navigation area is visible when taking the sample. See [Chromium’s safe-area inset flow](https://chromium.googlesource.com/chromium/src/+/main/docs/ui/android/display_cutout.md#safe-area-inset-flow).
+Native values are in physical pixels. Divide by `pixelRatio` before comparing them with the CSS geometry. The native panel bottom inset includes display cutouts and available rounded-corner measurements. Only the mandatory bottom gesture region constrains the controls beyond the navigation and display boundaries.
+
+The fullscreen PWA uses the greatest obstruction it can infer from the current and maximum safe-area insets and the visual viewport. Its 24 CSS pixel guard is a general lower bound for the large viewport. Reductions in the dynamic viewport and any inset reserved by the layout count toward that guard. If the browser reports no obstruction, these measurements cannot distinguish an unreported Android overlay or rounded corner from a fully usable screen. Compare both navigation modes on the physical device. [Chromium’s safe-area inset flow](https://chromium.googlesource.com/chromium/src/+/main/docs/ui/android/display_cutout.md#safe-area-inset-flow)

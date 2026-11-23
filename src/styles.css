@@ -1958,23 +1958,32 @@ input[type='checkbox'] {
   border: 0;
   border-radius: 0;
   background: var(--phone-panel-background);
-  /* Keep the button widths and bottom clearance when moving the former frame inside. */
-  padding-block: 4px calc(5px + var(--phone-panel-bottom-gap, 8px));
+  padding-block: 4px var(--phone-panel-bottom-gap, 13px);
   padding-inline: calc(var(--comparison-gutter) + 9px + var(--comparison-safe-left, 0px))
     calc(var(--comparison-gutter) + 9px + var(--comparison-safe-right, 0px));
 }
 .app.android-app.comparison-phone-portrait .phone-image-controls {
-  /* Root padding already reserves the navigation area. Clear any remaining inset. */
-  --phone-panel-bottom-gap: max(8px, var(--comparison-overlay-bottom));
+  /* Layout already reserves navigation and IME space, even during transient bars. */
+  --phone-panel-bottom-gap: calc(
+    max(
+        12px + max(var(--comparison-layout-bottom, 0px), var(--comparison-panel-safe-bottom, 0px)),
+        var(--comparison-mandatory-gesture-bottom, 0px)
+      ) -
+      var(--comparison-layout-bottom, 0px)
+  );
 }
 .app.web-app.installed-fullscreen.comparison-phone-portrait .phone-image-controls {
-  /* Chrome can report a maximum inset separately from the current visible viewport. */
-  --phone-panel-max-bottom: calc(env(safe-area-max-inset-bottom, 0px) - (100lvh - 100dvh));
+  --phone-panel-clearance: 12px;
+  /* Fullscreen overlays and rounded corners can be missing from browser measurements.
+     Keep a minimum edge guard, counting any space already excluded from the viewport. */
+  --phone-panel-max-bottom: calc(
+    max(24px, env(safe-area-max-inset-bottom, 0px)) - (100lvh - 100dvh)
+  );
 }
 .app.web-app.comparison-phone-portrait .phone-image-controls {
   /* The app already pads for the current inset. Add only the uncovered obstruction. */
   --phone-panel-bottom-gap: calc(
-    8px +
+    var(--phone-panel-clearance, 13px) +
       max(
         0px,
         100dvh - var(--web-visual-top, 0px) - var(--web-visual-height, 100dvh) -

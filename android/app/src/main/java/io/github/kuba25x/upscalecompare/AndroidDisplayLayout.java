@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import androidx.core.graphics.Insets;
+import androidx.core.view.RoundedCornerCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -120,6 +121,8 @@ final class AndroidDisplayLayout {
     boolean landscape = isLandscape();
     int top = !landscape && !minimalist ? Math.max(status.top, cutout.top) : 0;
     int bottom = Math.max(landscape ? 0 : navigation.bottom, ime.bottom);
+    int safeLeft = Math.max(cutout.left, Math.max(navigation.left, gestures.left));
+    int safeRight = Math.max(cutout.right, Math.max(navigation.right, gestures.right));
     JSArray bounds = new JSArray();
     if (insets.getDisplayCutout() != null) {
       for (android.graphics.Rect rect : insets.getDisplayCutout().getBoundingRects())
@@ -144,10 +147,38 @@ final class AndroidDisplayLayout {
         // tap controls would recreate the empty status-bar strip in landscape.
         // System edge swipes remain available; the app requests no gesture exclusions.
         .put("safeTop", Math.max(top, cutout.top))
-        .put("safeRight", Math.max(cutout.right, Math.max(navigation.right, gestures.right)))
+        .put("safeRight", safeRight)
         .put("safeBottom", Math.max(bottom, Math.max(cutout.bottom, gestures.bottom)))
-        .put("safeLeft", Math.max(cutout.left, Math.max(navigation.left, gestures.left)))
+        .put("safeLeft", safeLeft)
+        .put("panelSafeBottom", Math.max(cutout.bottom, roundedBottom(safeLeft, safeRight)))
+        .put(
+            "mandatoryGestureBottom",
+            Math.max(
+                mandatory.bottom,
+                insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.mandatorySystemGestures())
+                    .bottom))
         .put("cutouts", bounds);
+  }
+
+  private int roundedBottom(int safeLeft, int safeRight) {
+    // The portrait controls already sit inside the side insets. Use the circle at those
+    // edges instead of reserving the full height of the rounded corners across the panel.
+    return Math.max(
+        cornerBottom(
+            insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_LEFT), safeLeft, true),
+        cornerBottom(
+            insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_RIGHT),
+            windowView.getWidth() - safeRight,
+            false));
+  }
+
+  private int cornerBottom(RoundedCornerCompat corner, int x, boolean left) {
+    if (corner == null) return 0;
+    double distance = left ? corner.getCenterX() - x : x - corner.getCenterX();
+    if (distance <= 0) return 0;
+    double radius = corner.getRadius();
+    double arc = Math.sqrt(Math.max(0, radius * radius - distance * distance));
+    return Math.max(0, (int) Math.ceil(windowView.getHeight() - corner.getCenterY() - arc));
   }
 
   void publish() {

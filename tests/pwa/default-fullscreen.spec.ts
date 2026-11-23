@@ -165,7 +165,7 @@ for (const sample of [
     } else {
       const header = page.locator('.app-header');
       await expectPhonePortraitHeader(page);
-      await expectPortraitImagePanel(page, sample);
+      await expectPortraitImagePanel(page, { ...sample, gap: 12 });
       await safe(page, header.getByRole('group', { name: 'Comparison mode', exact: true }), sample);
     }
     await expect(page.locator('.image-selection-bar input')).toHaveCount(0);
@@ -233,12 +233,12 @@ test('installed phone portrait fills the safe width and updates icons when inset
       icons: width === 320 ? false : width === 430 ? true : undefined,
     });
     await expectPhoneZoomToolbar(page, { left: 22, right: 12, oneRow: width >= 390 });
-    await expectPortraitImagePanel(page, { left: 22, right: 12, bottom: 24 });
+    await expectPortraitImagePanel(page, { left: 22, right: 12, bottom: 24, gap: 12 });
   }
   await insets(page, 48, 62, 24, 72);
   await expectPhonePortraitHeader(page, { icons: false });
   await expectPhoneZoomToolbar(page, { left: 72, right: 62, oneRow: false });
-  await expectPortraitImagePanel(page, { left: 72, right: 62, bottom: 24 });
+  await expectPortraitImagePanel(page, { left: 72, right: 62, bottom: 24, gap: 12 });
   await insets(page, 48, 12, 24, 22);
   await expectPhonePortraitHeader(page, { icons: true });
   await insets(page, 48, 22, 24, 22);
@@ -258,24 +258,24 @@ test('installed portrait panel uses the usable bottom without adding overlapping
     [24, 24, 24],
     [24, 44, 44],
     [0, 48, 48],
-    [0, 0, 0],
+    [0, 0, 24],
   ]) {
     await insets(page, 0, 0, safeBottom, 0);
     await page.evaluate((visualBottom) => {
       (window as any).testVisualViewport = { height: innerHeight - visualBottom };
       visualViewport!.dispatchEvent(new Event('resize'));
     }, visualBottom);
-    await expectPortraitImagePanel(page, { bottom: boundary });
+    await expectPortraitImagePanel(page, { bottom: boundary, gap: 12 });
   }
   await page.setViewportSize({ width: 844, height: 390 });
   await expect(page.locator('.phone-image-controls')).toHaveCount(0);
   await page.getByRole('button', { name: 'Image controls', exact: true }).click();
   await expectLandscapeImagePopover(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await expectPortraitImagePanel(page);
+  await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
 });
 
-test('installed portrait panel honors Chromium’s maximum inset when live viewport metrics agree', async ({
+test('installed portrait controls use a stable guard both with and without a reported maximum inset', async ({
   page,
   browserName,
 }) => {
@@ -286,7 +286,7 @@ test('installed portrait panel honors Chromium’s maximum inset when live viewp
   await windowMode(page, 'fullscreen', false, 'success', false);
   await page.setViewportSize({ width: 390, height: 844 });
   const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 24 } });
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 0 } });
   await page.goto('./?pwa=fullscreen');
   const app = page.locator('.app');
   await expect(app).toHaveClass(/installed-fullscreen/);
@@ -301,13 +301,18 @@ test('installed portrait panel honors Chromium’s maximum inset when live viewp
         node.getBoundingClientRect().bottom - visualViewport!.height - visualViewport!.offsetTop,
     ),
   ).toBeCloseTo(0, 0);
-  await expectPortraitImagePanel(page, { bottom: 24 });
+  await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
+
+  // Revealing an overlay of the same size should not move the buttons.
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 24, bottomMax: 0 } });
+  await expect(app).toHaveCSS('padding-bottom', '24px');
+  await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
 
   // The current inset can already reserve some or all of the same area.
   for (const bottom of [12, 24]) {
     await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom, bottomMax: 24 } });
     await expect(app).toHaveCSS('padding-bottom', `${bottom}px`);
-    await expectPortraitImagePanel(page, { bottom: 24 });
+    await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
   }
 
   // Sample the rendered surface on both sides of the panel's boundary with the safe area.
@@ -319,8 +324,10 @@ test('installed portrait panel honors Chromium’s maximum inset when live viewp
   expect(edgeColor(screenshot.height - 25)).toEqual(edgeColor(2));
   expect(edgeColor(screenshot.height - 2)).toEqual(edgeColor(2));
 
-  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 0 } });
-  await expectPortraitImagePanel(page);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 44 } });
+  await expectPortraitImagePanel(page, { bottom: 44, gap: 12 });
+  await page.setViewportSize({ width: 390, height: 790 });
+  await expectPortraitImagePanel(page, { bottom: 44, gap: 12 });
 
   await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 24 } });
   await page.evaluate(() => (window as any).changeWindowMode('browser'));

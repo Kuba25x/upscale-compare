@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.WindowManager;
 import androidx.core.graphics.Insets;
 import androidx.core.view.DisplayCutoutCompat;
+import androidx.core.view.RoundedCornerCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -56,6 +57,44 @@ public class AndroidDisplayLayoutTest {
     assertFalse(
         WindowCompat.getInsetsController(activity.getWindow(), view).isAppearanceLightStatusBars());
     assertFalse(activity.getWindow().isNavigationBarContrastEnforced());
+    layout.destroy();
+    controller.pause().stop().destroy();
+  }
+
+  @Test
+  public void portraitPanelUsesRoundedEdgesAndStableNavigationAndGestureInsets() {
+    var controller = Robolectric.buildActivity(Activity.class).setup();
+    Activity activity = controller.get();
+    View view = new View(activity);
+    activity.setContentView(view);
+    View decor = activity.getWindow().getDecorView();
+    decor.layout(0, 0, 300, 600);
+    var layout = new AndroidDisplayLayout(activity, view, false, state -> {});
+    int navigation = WindowInsetsCompat.Type.navigationBars();
+    int mandatory = WindowInsetsCompat.Type.mandatorySystemGestures();
+    for (boolean visible : new boolean[] {false, true, false}) {
+      var insets =
+          new WindowInsetsCompat.Builder()
+              .setVisible(navigation, visible)
+              .setInsets(navigation, Insets.of(0, 0, 0, visible ? 24 : 0))
+              .setInsetsIgnoringVisibility(navigation, Insets.of(0, 0, 0, 24))
+              .setInsets(WindowInsetsCompat.Type.systemGestures(), Insets.of(20, 0, 25, 70))
+              .setInsets(mandatory, Insets.of(0, 0, 0, visible ? 30 : 0))
+              .setInsetsIgnoringVisibility(mandatory, Insets.of(0, 0, 0, 30))
+              .setRoundedCorner(
+                  RoundedCornerCompat.POSITION_BOTTOM_LEFT,
+                  new RoundedCornerCompat(RoundedCornerCompat.POSITION_BOTTOM_LEFT, 80, 80, 520))
+              .setRoundedCorner(
+                  RoundedCornerCompat.POSITION_BOTTOM_RIGHT,
+                  new RoundedCornerCompat(RoundedCornerCompat.POSITION_BOTTOM_RIGHT, 100, 200, 500))
+              .build();
+      ViewCompat.dispatchApplyWindowInsets(decor, insets);
+      JSObject state = layout.snapshot();
+      assertEquals(24, state.getInteger("layoutBottom").intValue());
+      assertEquals(70, state.getInteger("safeBottom").intValue());
+      assertEquals(30, state.getInteger("mandatoryGestureBottom").intValue());
+      assertEquals(34, state.getInteger("panelSafeBottom").intValue());
+    }
     layout.destroy();
     controller.pause().stop().destroy();
   }

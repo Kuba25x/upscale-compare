@@ -94,7 +94,7 @@ export async function expectPhoneImageMenuKeyboard(page: Page) {
 
 export async function expectPortraitImagePanel(
   page: Page,
-  { left = 0, right = 0, bottom = 0, gap = 8 } = {},
+  { left = 0, right = 0, bottom = 0, gap = 13 } = {},
 ) {
   const panel = page.locator('.phone-image-controls');
   await expect(panel).toBeVisible();
@@ -112,7 +112,7 @@ export async function expectPortraitImagePanel(
         return innerHeight - inset - lowestButton;
       }, bottom),
     )
-    .toBeCloseTo(gap + 5, 0);
+    .toBeCloseTo(gap, 0);
   const geometry = await panel.evaluate((node) => {
     const app = node.closest('.app')!;
     const header = app.querySelector('.app-header')!;

@@ -44,13 +44,15 @@ export async function installAndroidBridge(
           width: px(innerWidth),
           height: px(innerHeight),
           statusVisible: !landscape && !minimalist,
-          navigationVisible: !landscape,
+          navigationVisible: i.navigationVisible ?? !landscape,
           layoutTop: px(layoutTop),
           layoutBottom: px(layoutBottom),
           safeTop: px(Math.max(layoutTop, i.cutoutTop || 0)),
           safeRight: px(i.cutoutRight || i.gestureRight || 0),
           safeBottom: px(Math.max(layoutBottom, i.gestureBottom || 0)),
           safeLeft: px(i.cutoutLeft || i.gestureLeft || 0),
+          panelSafeBottom: px(Math.max(i.cutoutBottom || 0, i.roundedBottom || 0)),
+          mandatoryGestureBottom: px(i.mandatoryGestureBottom),
           cutouts: [],
         };
         win.barsHidden = landscape;
