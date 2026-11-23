@@ -342,11 +342,12 @@ input[type='checkbox'] {
   border: 0;
 }
 .comparison-layout {
+  --comparison-gutter: 8px;
   display: flex;
   flex: 1;
   min-height: 0;
   flex-direction: column;
-  padding: 8px 8px 0;
+  padding: var(--comparison-gutter) var(--comparison-gutter) 0;
   background: #0c0d10;
 }
 .viewer-content {
@@ -1131,7 +1132,7 @@ input[type='checkbox'] {
     left: 6px;
   }
   .comparison-layout {
-    padding: 4px 4px 0;
+    --comparison-gutter: 4px;
   }
   .image-selection-bar {
     grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
@@ -1931,19 +1932,40 @@ input[type='checkbox'] {
 .comparison-phone-portrait .header-controls[data-measuring] button {
   white-space: nowrap;
 }
+.app.comparison-phone-portrait.has-images:not(.comparison-minimalist) {
+  --phone-panel-background: #141519; /* Same surface as .app-header. */
+  background-image: linear-gradient(var(--phone-panel-background), var(--phone-panel-background));
+  background-position: bottom;
+  background-repeat: no-repeat;
+  background-size: 100% var(--phone-panel-reserved-bottom, var(--comparison-layout-bottom, 0px));
+}
+.app.web-app.comparison-phone-portrait {
+  --phone-panel-reserved-bottom: var(--comparison-safe-bottom, 0px);
+}
+.app.comparison-phone-portrait:not(.comparison-minimalist) .comparison-layout {
+  padding: 0;
+}
+.app.comparison-phone-portrait:not(.comparison-minimalist) .comparison-layout > .viewer-content {
+  border: 0;
+  border-radius: 0;
+}
 .app.comparison-phone-portrait .image-selection-bar.phone-image-controls {
   container-type: inline-size;
   grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
   min-height: 0;
   gap: 4px;
-  padding: 4px;
-  margin: 6px calc(4px + var(--comparison-safe-right, 0px)) 8px
-    calc(4px + var(--comparison-safe-left, 0px));
-  border-radius: 8px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--phone-panel-background);
+  /* Keep the button widths and bottom clearance when moving the former frame inside. */
+  padding-block: 4px calc(5px + var(--phone-panel-bottom-gap, 8px));
+  padding-inline: calc(var(--comparison-gutter) + 9px + var(--comparison-safe-left, 0px))
+    calc(var(--comparison-gutter) + 9px + var(--comparison-safe-right, 0px));
 }
 .app.android-app.comparison-phone-portrait .phone-image-controls {
   /* Root padding already reserves the navigation area. Clear any remaining inset. */
-  margin-bottom: max(8px, var(--comparison-overlay-bottom));
+  --phone-panel-bottom-gap: max(8px, var(--comparison-overlay-bottom));
 }
 .app.web-app.installed-fullscreen.comparison-phone-portrait .phone-image-controls {
   /* Chrome can report a maximum inset separately from the current visible viewport. */
@@ -1951,7 +1973,7 @@ input[type='checkbox'] {
 }
 .app.web-app.comparison-phone-portrait .phone-image-controls {
   /* The app already pads for the current inset. Add only the uncovered obstruction. */
-  margin-bottom: calc(
+  --phone-panel-bottom-gap: calc(
     8px +
       max(
         0px,
