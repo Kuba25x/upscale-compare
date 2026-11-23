@@ -22,6 +22,8 @@ export interface AndroidDisplayState {
   safeLeft: number;
   panelSafeBottom: number;
   mandatoryGestureBottom: number;
+  panelGuardBottom: number;
+  panelClearanceBottom: number;
   cutouts: Array<{ left: number; top: number; right: number; bottom: number }>;
 }
 const DisplayLayout = registerPlugin<{
@@ -66,8 +68,10 @@ export function useAndroidDisplay(onError: (message: string) => void) {
         safeRight: state.safeRight / dpr,
         safeBottom: state.safeBottom / dpr,
         safeLeft: state.safeLeft / dpr,
-        panelSafeBottom: (state.panelSafeBottom ?? 0) / dpr,
-        mandatoryGestureBottom: (state.mandatoryGestureBottom ?? 0) / dpr,
+        panelGuardBottom: (state.panelGuardBottom ?? state.mandatoryGestureBottom ?? 0) / dpr,
+        panelClearanceBottom:
+          (state.panelClearanceBottom ?? Math.max(state.layoutBottom, state.panelSafeBottom ?? 0)) /
+          dpr,
       },
     };
     // Publish the measured CSS variables before notifying React, as in the native layout path.

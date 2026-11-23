@@ -244,24 +244,33 @@ test('large side insets allow complete button labels to wrap within the same row
   await expect(manageImages(page).getByRole('textbox', { name: 'Label for A.png' })).toBeVisible();
 });
 
-test('portrait controls clear navigation, mandatory gestures and rounded display edges', async ({
+test('portrait controls clear both navigation modes, rounded edges and the keyboard', async ({
   page,
 }) => {
   await open(page);
   for (const navigationVisible of [false, true, false]) {
     await insets(page, {
       navigationBottom: 24,
+      visibleNavigationBottom: navigationVisible ? 24 : 0,
       gestureBottom: navigationVisible ? 60 : 24,
       mandatoryGestureBottom: 32,
+      panelClearanceBottom: 0,
       navigationVisible,
     });
-    await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
+    await expectPortraitImagePanel(page, { bottom: 32, gap: 0 });
   }
 
-  await insets(page, { navigationBottom: 48 });
-  await expectPortraitImagePanel(page, { bottom: 48, gap: 12 });
-  await insets(page, { navigationBottom: 24, mandatoryGestureBottom: 42 });
-  await expectPortraitImagePanel(page, { bottom: 42, gap: 0 });
+  for (const navigationVisible of [true, false, true]) {
+    await insets(page, { navigationBottom: 48, navigationVisible });
+    await expectPortraitImagePanel(page, { bottom: 48, gap: 12 });
+  }
+
+  await insets(page, { navigationBottom: 30, mandatoryGestureBottom: 20, panelClearanceBottom: 0 });
+  await expectPortraitImagePanel(page, { bottom: 30, gap: 0 });
+  await insets(page, { navigationBottom: 30, mandatoryGestureBottom: 20, imeBottom: 250 });
+  await expectPortraitImagePanel(page, { bottom: 250, gap: 12 });
+  await insets(page, { navigationBottom: 30, mandatoryGestureBottom: 20, panelClearanceBottom: 0 });
+  await expectPortraitImagePanel(page, { bottom: 30, gap: 0 });
 
   await page.setViewportSize({ width: 320, height: 640 });
   await insets(page, { navigationBottom: 24, roundedBottom: 48, cutoutBottom: 30 });

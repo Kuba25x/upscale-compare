@@ -642,14 +642,22 @@ public class DisplayIntegrationTest {
           assertTrue("Individual controls retain their borders", panel.getBoolean("buttonsBordered"));
           double dpr = panel.getDouble("dpr");
           double reserved = display.get().getInteger("layoutBottom") / dpr;
-          double safe = display.get().getInteger("panelSafeBottom") / dpr;
-          double touch = display.get().getInteger("mandatoryGestureBottom") / dpr;
+          double guard = display.get().getInteger("panelGuardBottom") / dpr;
+          double obstruction = display.get().getInteger("panelClearanceBottom") / dpr;
           double clearance = display.get().getInteger("height") / dpr - panel.getDouble("bottom");
           assertEquals(
               "Controls clear the native navigation area",
-              Math.max(Math.max(reserved, safe) + 12, touch),
+              Math.max(Math.max(reserved, guard), obstruction + 12),
               clearance,
               1);
+          System.out.println(
+              "Portrait panel geometry: "
+                  + display.get().getJSONObject("bottomInsets")
+                  + ", dpr=" + dpr
+                  + ", layout=" + reserved
+                  + ", guard=" + guard
+                  + ", obstruction=" + obstruction
+                  + ", clearance=" + clearance);
         });
   }
 
