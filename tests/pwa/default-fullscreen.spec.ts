@@ -481,7 +481,7 @@ test('a desktop installed window that honors manifest fullscreen keeps full cont
   await expect(page.locator('.app')).not.toHaveClass(/comparison-compact/);
   await expect(page.getByRole('button', { name: 'Manage Images', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Keyboard shortcuts', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Label for image A')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit label for image A' })).toBeVisible();
   await page.getByRole('button', { name: 'Minimalist mode', exact: true }).click();
   await expect(page.locator('.app')).toHaveClass(/comparison-minimalist/);
   await page.getByRole('button', { name: 'Show controls', exact: true }).click();

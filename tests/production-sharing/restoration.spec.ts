@@ -270,6 +270,7 @@ for (const scenario of scenarios) {
       ),
     ).toEqual(local);
     await expect(page.getByLabel('Label for image A', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Edit label for image A' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
     await expect(page.getByLabel('Game title', { exact: true })).toHaveValue(
       snapshot.metadata.game,

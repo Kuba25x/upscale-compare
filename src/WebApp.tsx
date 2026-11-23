@@ -6,11 +6,13 @@ import { cloneElement } from 'react';
 import { Minimize2 } from 'lucide-react';
 
 export default function WebApp() {
-  const { presentation, mobile, installedLandscape, installedFullscreen } = useWebViewport();
+  const { presentation, mobile, desktop, installedLandscape, installedFullscreen } =
+    useWebViewport();
   const { minimalist, setMinimalist, withControls, pending, error, enterWithControls, leave } =
     useMobileFullscreen(mobile || installedLandscape || installedFullscreen, installedLandscape);
   return (
     <App
+      desktopImageControls={desktop}
       className={installedFullscreen ? 'installed-fullscreen' : ''}
       minimalistExitLabel={installedFullscreen ? 'Show controls' : undefined}
       presentation={{

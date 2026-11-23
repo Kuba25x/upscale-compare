@@ -24,7 +24,8 @@ import { API_URL, fetchComparison, publicImageUrl } from './lib/api';
 import { ANDROID_MODE, DEMO_MODE, SHARING_UNAVAILABLE_MESSAGE } from './lib/config';
 import { formatBytes, loadImage } from './lib/images';
 import { Viewer, type FullscreenControl } from './components/Viewer';
-import { PhoneChoiceMenu } from './components/PhoneChoiceMenu';
+import { ChoiceMenu } from './components/ChoiceMenu';
+import { DesktopImageName } from './components/DesktopImageName';
 import { useAnchoredPopover } from './components/useAnchoredPopover';
 import { GestureDiagnostics } from './components/GestureDiagnostics';
 import { InstallationHelp } from './components/InstallationHelp';
@@ -103,6 +104,7 @@ interface AppProps {
   className?: string;
   minimalistExitLabel?: string;
   displayError?: { message: string };
+  desktopImageControls?: boolean;
 }
 export default function App({
   android,
@@ -112,6 +114,7 @@ export default function App({
   className = '',
   minimalistExitLabel,
   displayError,
+  desktopImageControls = false,
 }: AppProps = {}) {
   const [images, setImages] = useState<LocalImage[]>([]);
   const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
@@ -781,13 +784,13 @@ export default function App({
                 : { id: 'image-controls', ref: imagePanel })}
               className={`image-selection-bar${
                 phoneLandscape
-                  ? ' phone-popover phone-images-popover'
+                  ? ' anchored-popover phone-images-popover'
                   : phonePortrait
                     ? ' phone-image-controls'
                     : imagePanelOpen
                       ? ' image-panel-open'
                       : ''
-              }`}
+              }${desktopImageControls ? ' desktop-image-controls' : ''}`}
             >
               {([0, 1] as const).map((slot) => {
                 const index = config.selected[slot],
@@ -796,7 +799,7 @@ export default function App({
                 if (phone) {
                   return (
                     <div className={`phone-image-slot selector-${slot}`} key={slot}>
-                      <PhoneChoiceMenu
+                      <ChoiceMenu
                         label={`Select image ${letter}`}
                         menuLabel={`Image ${letter} screenshots`}
                         value={
@@ -826,21 +829,40 @@ export default function App({
                   <div className={`image-selector selector-${slot}`} key={slot}>
                     <span className={`slot-letter slot-${slot}`}>{slot === 0 ? 'A' : 'B'}</span>
                     <div className="image-selector-fields">
-                      <label className="select-image">
-                        <span className="sr-only">Image {slot === 0 ? 'A' : 'B'}</span>
-                        <select
-                          aria-label={`Select image ${slot === 0 ? 'A' : 'B'}`}
-                          value={index}
-                          onChange={(event) => select(slot, Number(event.target.value))}
-                        >
-                          {images.map((item, i) => (
-                            <option value={i} key={i}>
-                              {item.label || item.name}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown size={13} />
-                      </label>
+                      {desktopImageControls ? (
+                        <DesktopImageName
+                          slot={letter}
+                          imageUrl={image.url}
+                          label={image.label || image.name}
+                          choices={imageChoices}
+                          selected={index}
+                          onSelect={(value) => select(slot, value)}
+                          onRename={
+                            readOnly
+                              ? undefined
+                              : (draft) => {
+                                  const label = draft.trim() ? draft : defaultLabel(image);
+                                  if (label !== image.label) editLabel(index, label);
+                                }
+                          }
+                        />
+                      ) : (
+                        <label className="select-image">
+                          <span className="sr-only">Image {letter}</span>
+                          <select
+                            aria-label={`Select image ${letter}`}
+                            value={index}
+                            onChange={(event) => select(slot, Number(event.target.value))}
+                          >
+                            {images.map((item, i) => (
+                              <option value={i} key={i}>
+                                {item.label || item.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown size={13} />
+                        </label>
+                      )}
                       <span className="file-info">
                         {image.width} × {image.height}
                         <span>
@@ -849,7 +871,7 @@ export default function App({
                         </span>
                       </span>
                     </div>
-                    {!readOnly && (
+                    {!desktopImageControls && !readOnly && (
                       <label className="rename-label" title="Customize screenshot label">
                         <Pencil size={13} />
                         {labelEditor(image, index, `Label for image ${slot === 0 ? 'A' : 'B'}`)}

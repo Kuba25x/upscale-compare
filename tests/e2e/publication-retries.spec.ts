@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openComparison } from './fixtures';
+import { renameSelectedImage } from '../shared/phone-controls';
 
 test.use({ baseURL: 'http://localhost:5173' });
 
@@ -184,7 +185,7 @@ test('uses a new identity for changed comparison settings and preserves the unre
   await confirm(page);
   await expect(page.getByRole('alert')).toBeVisible();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.getByLabel('Label for image A').fill('Changed label');
+  await renameSelectedImage(page, 'A', 'DLSS Quality.png', 'Changed label');
   await confirm(page);
   await expect(page.getByLabel('Public comparison link')).toBeVisible();
   expect(keys).toHaveLength(2);

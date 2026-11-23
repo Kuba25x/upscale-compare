@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
+import { expectImageChoiceCount, renameSelectedImage, selectImage } from './phone-controls';
 
 async function openViewer(page: Page) {
   await page.goto('./');
@@ -46,7 +47,7 @@ export function panningRegressionTests() {
   }) => {
     test.setTimeout(60000);
     await openViewer(page);
-    await page.getByLabel('Label for image A').fill('Custom DLSS');
+    await renameSelectedImage(page, 'A', 'DLSS Quality.png', 'Custom DLSS');
     const initial = await page.getByTestId('stage').boundingBox();
     await pan(page, initial!.x + 120, initial!.y + 130);
     await page.keyboard.press('2');
@@ -192,9 +193,9 @@ export function panningRegressionTests() {
       },
       [...file.buffer],
     );
-    await expect(page.getByLabel('Select image A').locator('option')).toHaveCount(3);
+    await expectImageChoiceCount(page, 'A', 3);
     await expect(page.locator('.drop-overlay')).toHaveCount(0);
-    await page.getByLabel('Select image A').selectOption('2');
+    await selectImage(page, 'A', 2);
     await expect(page.locator('.badge-a')).toContainText('Dropped Native');
     const stage = await page.getByTestId('stage').boundingBox();
     await pan(page, stage!.x + 120, stage!.y + 130);
