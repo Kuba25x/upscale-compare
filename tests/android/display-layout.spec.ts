@@ -85,7 +85,7 @@ async function open(page: Page) {
   await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
   await expect(page.getByTestId('image-A')).toBeVisible();
 }
-async function insets(page: Page, values: Record<string, number>) {
+async function insets(page: Page, values: Record<string, number | boolean>) {
   await page.evaluate((values) => {
     (window as any).displayInsets = values;
     (window as any).emitDisplayState();
@@ -192,7 +192,7 @@ test('portrait phone controls respect cutouts and renamed originals survive WebV
       icons: width === 320 ? false : width === 430 ? true : undefined,
     });
     await expectPhoneZoomToolbar(page, { left: 26, right: 16, oneRow: width !== 320 });
-    await expectPortraitImagePanel(page, { left: 26, right: 16, bottom: 24 });
+    await expectPortraitImagePanel(page, { left: 26, right: 16, bottom: 24, gap: 12 });
     const mode = await box(page, '.mode-controls');
     const actions = await box(page, '.header-actions');
     expect(mode.x).toBeGreaterThanOrEqual(26);
@@ -244,23 +244,32 @@ test('large side insets allow complete button labels to wrap within the same row
   await expect(manageImages(page).getByRole('textbox', { name: 'Label for A.png' })).toBeVisible();
 });
 
-test('portrait panel uses the reserved navigation boundary and clears larger gesture insets', async ({
+test('portrait controls clear navigation, mandatory gestures and rounded display edges', async ({
   page,
 }) => {
   await open(page);
-  for (const [navigationBottom, gestureBottom, gap] of [
-    [24, 24, 8],
-    [24, 32, 8],
-    [48, 0, 8],
-    [24, 42, 18],
-  ]) {
-    await insets(page, { navigationBottom, gestureBottom });
-    await expectPortraitImagePanel(page, { bottom: navigationBottom, gap });
+  for (const navigationVisible of [false, true, false]) {
+    await insets(page, {
+      navigationBottom: 24,
+      gestureBottom: navigationVisible ? 60 : 24,
+      mandatoryGestureBottom: 32,
+      navigationVisible,
+    });
+    await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
   }
+
+  await insets(page, { navigationBottom: 48 });
+  await expectPortraitImagePanel(page, { bottom: 48, gap: 12 });
+  await insets(page, { navigationBottom: 24, mandatoryGestureBottom: 42 });
+  await expectPortraitImagePanel(page, { bottom: 42, gap: 0 });
+
+  await page.setViewportSize({ width: 320, height: 640 });
+  await insets(page, { navigationBottom: 24, roundedBottom: 48, cutoutBottom: 30 });
+  await expectPortraitImagePanel(page, { bottom: 48, gap: 12 });
   await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).tap();
   await expect(page.locator('.phone-image-controls')).toHaveCount(0);
   await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).tap();
-  await expectPortraitImagePanel(page, { bottom: 24, gap: 18 });
+  await expectPortraitImagePanel(page, { bottom: 48, gap: 12 });
 });
 
 test('Android tablet keeps the inline labels and keyboard button in both orientations', async ({
