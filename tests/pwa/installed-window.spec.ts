@@ -93,7 +93,8 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
     const offline = await launch(browser);
     await expect(offline.getByTestId('stage')).toHaveCount(0);
     await expectCenteredBrand(offline);
-    const file = imageFile('Fresh.png');
+    const fullLabel = 'W'.repeat(58);
+    const file = imageFile(`${fullLabel}.png`);
     const other = imageFile('Fresh B.png', 1);
     await offline.getByTestId('file-input').setInputFiles([file, other]);
     expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
@@ -102,21 +103,36 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
     const selector = offline.getByRole('button', { name: 'Select image A', exact: true });
     await selector.press('Enter');
     const choices = offline.getByRole('menu', { name: 'Image A screenshots' });
-    await expect(
-      choices.getByRole('menuitemradio', { name: 'Fresh', checked: true }),
-    ).toBeFocused();
+    const longest = choices.getByRole('menuitemradio', { name: fullLabel, checked: true });
+    await expect(longest).toBeFocused();
+    const naturalWidth = (await choices.boundingBox())!.width;
+    // Two menu borders, two menu paddings and the option's inline padding.
+    expect(naturalWidth - (await longest.locator('span').boundingBox())!.width).toBeCloseTo(28, 0);
     await offline.keyboard.press('ArrowDown');
     await offline.keyboard.press('Enter');
     await expect(choices).toBeHidden();
     await expect(selector).toBeFocused();
     await expect(selector).toHaveAccessibleDescription('Fresh B');
     await offline.getByRole('button', { name: 'Swap images' }).click();
-    await offline.getByRole('button', { name: 'Edit label for image A' }).click();
+    const filename = selector.locator('.choice-menu-value');
+    const displayedWidth = (await filename.boundingBox())!.width;
+    const pencil = offline.getByRole('button', { name: 'Edit label for image A' });
+    await pencil.click();
     const editor = offline.getByRole('textbox', { name: 'Label for image A', exact: true });
     await expect(editor).toBeFocused();
-    await editor.fill('Offline label');
+    expect((await editor.boundingBox())!.width).toBeCloseTo(displayedWidth, 0);
+    await editor.fill('Offline screenshot label');
+    expect((await editor.boundingBox())!.width).toBeCloseTo(displayedWidth, 0);
     await editor.press('Enter');
-    await expect(selector).toHaveAccessibleDescription('Offline label');
+    await expect(selector).toHaveAccessibleDescription('Offline screenshot label');
+    const renamedWidth = (await filename.boundingBox())!.width;
+    await pencil.click();
+    expect((await editor.boundingBox())!.width).toBeCloseTo(renamedWidth, 0);
+    await editor.press('Escape');
+    await selector.press('Enter');
+    await expect(choices.getByRole('menuitemradio', { checked: true })).toBeFocused();
+    expect((await choices.boundingBox())!.width).toBeLessThan(naturalWidth);
+    await offline.keyboard.press('Escape');
     expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
     await offline.getByRole('button', { name: 'Manage Images', exact: true }).click();
     const dialog = offline.getByRole('dialog', { name: 'Your images' });

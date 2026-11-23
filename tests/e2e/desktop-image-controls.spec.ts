@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { imageFile } from './fixtures';
 
 const longLabel = 'W'.repeat(120);
@@ -8,6 +8,41 @@ const pencil = (page: Page, slot: 'A' | 'B') =>
   page.getByRole('button', { name: `Edit label for image ${slot}`, exact: true });
 const choices = (page: Page, slot: 'A' | 'B') =>
   page.getByRole('menu', { name: `Image ${slot} screenshots`, exact: true });
+const visibleName = (page: Page, slot: 'A' | 'B') =>
+  trigger(page, slot).locator('.choice-menu-value');
+const edit = (page: Page, slot: 'A' | 'B') =>
+  page.getByRole('textbox', { name: `Label for image ${slot}`, exact: true });
+
+async function rename(page: Page, slot: 'A' | 'B', name: string) {
+  await pencil(page, slot).click();
+  await edit(page, slot).fill(name);
+  await edit(page, slot).press('Enter');
+}
+
+async function expectMenuWidth(menu: Locator, viewportWidth: number) {
+  await expect(menu).toBeInViewport({ ratio: 1 });
+  const { width, left, right, naturalWidth } = await menu.evaluate((element) => {
+    const edges = (node: Element) => {
+      const style = getComputedStyle(node);
+      return [style.paddingLeft, style.paddingRight, style.borderLeftWidth, style.borderRightWidth]
+        .map(parseFloat)
+        .reduce((sum, value) => sum + value, 0);
+    };
+    const widestOption = Math.max(
+      ...Array.from(element.querySelectorAll('button'), (option) => {
+        const text = document.createRange();
+        text.selectNodeContents(option.querySelector('span')!);
+        return text.getBoundingClientRect().width + edges(option);
+      }),
+    );
+    const { width, left, right } = element.getBoundingClientRect();
+    return { width, left, right, naturalWidth: widestOption + edges(element) };
+  });
+  expect(width).toBeCloseTo(Math.min(naturalWidth, viewportWidth - 12), 0);
+  expect(left).toBeGreaterThanOrEqual(6);
+  expect(right).toBeLessThanOrEqual(viewportWidth - 6);
+  return width;
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -46,14 +81,91 @@ test('keeps short names snug and long names separate from desktop controls', asy
 
   await trigger(page, 'B').click();
   const menu = choices(page, 'B');
-  await expect(menu).toBeInViewport({ ratio: 1 });
-  const box = (await menu.boundingBox())!;
-  expect(box.x).toBeGreaterThanOrEqual(6);
-  expect(box.x + box.width).toBeLessThanOrEqual(410 - 6);
+  await expectMenuWidth(menu, 410);
   await expect(menu.getByRole('menuitemradio', { name: longLabel, checked: true })).toBeVisible();
   expect(await menu.evaluate((node) => node.scrollWidth)).toBe(
     await menu.evaluate((node) => node.clientWidth),
   );
+});
+
+test('sizes the desktop menu to the widest current label regardless of selection', async ({
+  page,
+}) => {
+  const labelA = `${'W'.repeat(34)}1`;
+  const labelB = `${'W'.repeat(34)}2`;
+  await rename(page, 'A', labelA);
+  await rename(page, 'B', labelB);
+
+  const menu = choices(page, 'A');
+  async function measure() {
+    await trigger(page, 'A').click();
+    const width = await expectMenuWidth(menu, 1440);
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    return width;
+  }
+  const initialWidth = await measure();
+  await trigger(page, 'A').click();
+  await menu.getByRole('menuitemradio', { name: labelB, exact: true }).click();
+  await expect(menu).toBeHidden();
+  await expect(trigger(page, 'A')).toHaveAccessibleDescription(labelB);
+  expect(await measure()).toBeCloseTo(initialWidth, 0);
+
+  await rename(page, 'A', 'test 1');
+  expect(await measure()).toBeCloseTo(initialWidth, 0);
+  await rename(page, 'B', 'test 2');
+  expect(await measure()).toBeLessThan(initialWidth);
+
+  await page.getByRole('button', { name: 'Manage Images' }).click();
+  const manage = page.getByRole('dialog', { name: 'Your images' });
+  await manage.getByRole('button', { name: 'Remove image Native.png' }).click();
+  await manage.getByRole('button', { name: 'Close dialog' }).click();
+  await trigger(page, 'A').click();
+  await expect(menu.getByRole('menuitemradio')).toHaveCount(3);
+  await expectMenuWidth(menu, 1440);
+});
+
+test('captures the visible label width once per edit and respects narrow windows', async ({
+  page,
+}) => {
+  const editor = edit(page, 'B');
+  const shorterLabel = 'Wolf comparison detail';
+  const panel = page.locator('.desktop-image-controls');
+  for (const viewportWidth of [1440, 680, 410]) {
+    await page.setViewportSize({ width: viewportWidth, height: 700 });
+    const name = visibleName(page, 'B');
+    const displayed = (await name.boundingBox())!;
+    const original = await panel.boundingBox();
+    await pencil(page, 'B').press('Enter');
+    await expect(editor).toBeFocused();
+    const editing = (await editor.boundingBox())!;
+    expect(editing.width).toBeCloseTo(displayed.width, 0);
+    expect(await panel.boundingBox()).toEqual(original);
+    await editor.fill(shorterLabel);
+    expect((await editor.boundingBox())!.width).toBeCloseTo(editing.width, 0);
+    await editor.fill(longLabel);
+    expect((await editor.boundingBox())!.width).toBeCloseTo(editing.width, 0);
+    expect(editing.x).toBeGreaterThan(
+      await panel
+        .getByRole('button', { name: 'Swap images' })
+        .evaluate((node) => node.getBoundingClientRect().right),
+    );
+    expect(editing.x + editing.width).toBeLessThanOrEqual(viewportWidth);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewportWidth);
+    await editor.press('Escape');
+    await expect(pencil(page, 'B')).toBeFocused();
+    await expect(name).toHaveText(longLabel);
+  }
+
+  await page.setViewportSize({ width: 1440, height: 700 });
+  await rename(page, 'B', shorterLabel);
+  const newLabel = (await visibleName(page, 'B').boundingBox())!;
+  await pencil(page, 'B').click();
+  expect((await editor.boundingBox())!.width).toBeCloseTo(newLabel.width, 0);
+  await editor.press('Escape');
+  await pencil(page, 'A').click();
+  const shortEditor = edit(page, 'A');
+  expect((await shortEditor.boundingBox())!.width).toBeGreaterThanOrEqual(80);
 });
 
 test('edits in place, restores focus and commits only a validated label', async ({ page }) => {

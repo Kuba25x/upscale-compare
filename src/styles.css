@@ -1631,13 +1631,16 @@ input[type='checkbox'] {
   white-space: nowrap;
 }
 .desktop-label-editor {
-  width: min(100%, 240px);
   font-size: 12px;
 }
 .desktop-image-choices {
+  /* Each option contributes to one column's intrinsic width. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   width: max-content;
 }
 .desktop-image-choices button {
+  width: auto;
   min-height: 34px;
   text-align: left;
 }
