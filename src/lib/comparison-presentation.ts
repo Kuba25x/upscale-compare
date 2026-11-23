@@ -17,6 +17,7 @@ export interface ComparisonPresentation {
     safeLeft: number;
     panelGuardBottom?: number;
     panelClearanceBottom?: number;
+    panelViewportHeight?: number;
   };
 }
 

@@ -44,7 +44,7 @@ export async function installAndroidBridge(
           minimalist,
           landscape,
           width: px(innerWidth),
-          height: px(innerHeight),
+          height: px(i.windowHeight ?? innerHeight),
           statusVisible: !landscape && !minimalist,
           navigationVisible: i.navigationVisible ?? !landscape,
           layoutTop: px(layoutTop),

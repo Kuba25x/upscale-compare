@@ -2030,13 +2030,15 @@ input[type='checkbox'] {
 }
 .app.android-app.comparison-phone-portrait .phone-image-controls {
   /* Add only the clearance outside the space already reserved by the portrait layout. */
-  --phone-panel-bottom-gap: max(
-    0px,
+  --phone-panel-bottom-gap: calc(
     max(
-        var(--comparison-panel-guard-bottom, 0px),
-        12px + var(--comparison-panel-clearance-bottom, var(--comparison-layout-bottom, 0px))
-      ) -
-      var(--comparison-layout-bottom, 0px)
+        0px,
+        var(--comparison-panel-guard-bottom, 0px) - var(--comparison-layout-bottom, 0px),
+        12px + var(--comparison-panel-clearance-bottom, var(--comparison-layout-bottom, 0px)) -
+          var(--comparison-layout-bottom, 0px)
+      ) +
+      /* WebView can round 100dvh above the physical viewport height. */
+      max(0px, 100dvh - var(--comparison-panel-viewport-height, 100dvh))
   );
 }
 .app.web-app.installed-fullscreen.comparison-phone-portrait .phone-image-controls {

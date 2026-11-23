@@ -72,6 +72,7 @@ export function useAndroidDisplay(onError: (message: string) => void) {
         panelClearanceBottom:
           (state.panelClearanceBottom ?? Math.max(state.layoutBottom, state.panelSafeBottom ?? 0)) /
           dpr,
+        ...(state.height > 0 && { panelViewportHeight: state.height / dpr }),
       },
     };
     // Publish the measured CSS variables before notifying React, as in the native layout path.

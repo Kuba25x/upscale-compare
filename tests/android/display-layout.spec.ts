@@ -273,6 +273,14 @@ test('portrait controls clear both navigation modes, rounded edges and the keybo
   await expectPortraitImagePanel(page, { bottom: 30, gap: 0 });
 
   await page.setViewportSize({ width: 320, height: 640 });
+  // Simulate WebView rounding 100dvh above the measured native window height.
+  await insets(page, {
+    navigationBottom: 24,
+    mandatoryGestureBottom: 32,
+    panelClearanceBottom: 0,
+    windowHeight: 639,
+  });
+  await expectPortraitImagePanel(page, { bottom: 33, gap: 0 });
   await insets(page, { navigationBottom: 24, roundedBottom: 48, cutoutBottom: 30 });
   await expectPortraitImagePanel(page, { bottom: 48, gap: 12 });
   await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).tap();

@@ -623,6 +623,7 @@ public class DisplayIntegrationTest {
                         const close = (a, b) => Math.abs(a - b) < 1;
                         return {
                           bottom: Math.max(...buttons.map(button => button.getBoundingClientRect().bottom)),
+                          appBottom: appBox.bottom,
                           dpr: devicePixelRatio,
                           connected: close(stage.top, header.getBoundingClientRect().bottom)
                             && close(stage.bottom, panelBox.top)
@@ -650,6 +651,7 @@ public class DisplayIntegrationTest {
               Math.max(Math.max(reserved, guard), obstruction + 12),
               clearance,
               1);
+          assertTrue("Controls stay outside the navigation guard", (clearance - guard) * dpr >= -0.25);
           System.out.println(
               "Portrait panel geometry: "
                   + display.get().getJSONObject("bottomInsets")
@@ -657,6 +659,7 @@ public class DisplayIntegrationTest {
                   + ", layout=" + reserved
                   + ", guard=" + guard
                   + ", obstruction=" + obstruction
+                  + ", appBottom=" + panel.getDouble("appBottom")
                   + ", clearance=" + clearance);
         });
   }
