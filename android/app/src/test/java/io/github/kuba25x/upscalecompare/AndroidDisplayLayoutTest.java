@@ -113,7 +113,7 @@ public class AndroidDisplayLayoutTest {
     int tappable = WindowInsetsCompat.Type.tappableElement();
     int mandatory = WindowInsetsCompat.Type.mandatorySystemGestures();
     int ime = WindowInsetsCompat.Type.ime();
-    for (int buttonInset : new int[] {0, 60}) {
+    for (int buttonInset : new int[] {0, 44, 60}) {
       for (boolean visible : new boolean[] {true, false, true}) {
         var builder =
             new WindowInsetsCompat.Builder()

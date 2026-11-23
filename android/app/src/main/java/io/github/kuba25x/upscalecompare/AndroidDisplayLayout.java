@@ -138,8 +138,10 @@ final class AndroidDisplayLayout {
     int navigationGuard = Math.max(navigation.bottom, visibleNavigation);
     // A gesture-only bar needs clearance for the handle and mandatory swipes. The extra visual
     // gap belongs above obstructions, including button navigation, the IME and display edges.
-    boolean gestureOnly = Build.VERSION.SDK_INT >= 30 && tappableBottom == 0 && mandatoryBottom > 0;
-    int navigationObstruction = gestureOnly ? 0 : Math.max(navigationGuard, tappableBottom);
+    boolean reportsControlInsets =
+        Build.VERSION.SDK_INT >= 30 && (tappableBottom > 0 || mandatoryBottom > 0);
+    int navigationObstruction =
+        reportsControlInsets ? tappableBottom : Math.max(navigationGuard, tappableBottom);
     JSArray bounds = new JSArray();
     if (insets.getDisplayCutout() != null) {
       for (android.graphics.Rect rect : insets.getDisplayCutout().getBoundingRects())
