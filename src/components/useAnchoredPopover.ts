@@ -73,6 +73,7 @@ export function useAnchoredPopover(
         anchor.left,
         anchor.top,
         anchor.bottom,
+        element.getBoundingClientRect().width,
         height,
       ].join(':');
       if (bounds !== lastBounds) {

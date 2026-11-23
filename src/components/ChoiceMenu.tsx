@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useAnchoredPopover, type PopoverChange } from './useAnchoredPopover';
 
@@ -8,6 +8,7 @@ export function ChoiceMenu({
   label,
   menuLabel,
   value,
+  valueRef,
   badge,
   choices,
   selected,
@@ -20,6 +21,7 @@ export function ChoiceMenu({
   label: string;
   menuLabel: string;
   value: ReactNode;
+  valueRef?: Ref<HTMLSpanElement>;
   badge?: ReactNode;
   choices: { value: number; label: string }[];
   selected: number | null;
@@ -57,7 +59,7 @@ export function ChoiceMenu({
         }}
       >
         {badge}
-        <span id={valueId} className="choice-menu-value">
+        <span ref={valueRef} id={valueId} className="choice-menu-value">
           {value}
         </span>
         <ChevronDown size={14} aria-hidden="true" />
