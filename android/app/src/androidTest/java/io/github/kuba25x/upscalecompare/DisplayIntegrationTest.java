@@ -733,29 +733,64 @@ public class DisplayIntegrationTest {
         y < height - display.get().getInteger("panelGuardBottom"));
 
     // Synchronize input transactions between consecutive real touchscreen taps.
-    var automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
     long downTime = SystemClock.uptimeMillis();
+    float x = origin[0] + Math.round(point.getDouble("x"));
+    injectTouch(downTime, MotionEvent.ACTION_DOWN, x, origin[1] + y);
+    injectTouch(downTime, MotionEvent.ACTION_UP, x, origin[1] + y);
+  }
+
+  private void injectTouch(long downTime, int action, float x, float y) {
     var finger = new MotionEvent.PointerProperties();
     finger.id = 0;
     finger.toolType = MotionEvent.TOOL_TYPE_FINGER;
     var position = new MotionEvent.PointerCoords();
-    position.x = origin[0] + Math.round(point.getDouble("x"));
-    position.y = origin[1] + y;
+    position.x = x;
+    position.y = y;
     position.size = 1;
-    for (int action : new int[] {MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP}) {
-      position.pressure = action == MotionEvent.ACTION_DOWN ? 1 : 0;
-      MotionEvent touch =
-          MotionEvent.obtain(
-              downTime, SystemClock.uptimeMillis(), action, 1,
-              new MotionEvent.PointerProperties[] {finger}, new MotionEvent.PointerCoords[] {position},
-              0, 0, 1, 1, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
-      try {
-        assertTrue(
-            "Touch injection failed for " + label + " (action " + action + ")",
-            automation.injectInputEvent(touch, true));
-      } finally {
-        touch.recycle();
+    position.pressure =
+        action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ? 0 : 1;
+    MotionEvent touch =
+        MotionEvent.obtain(
+            downTime, SystemClock.uptimeMillis(), action, 1,
+            new MotionEvent.PointerProperties[] {finger}, new MotionEvent.PointerCoords[] {position},
+            0, 0, 1, 1, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
+    try {
+      var automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+      assertTrue(
+          "Touch injection failed (action " + action + ")", automation.injectInputEvent(touch, true));
+    } finally {
+      touch.recycle();
+    }
+  }
+
+  private void swipeBack(int endX, int y) throws Exception {
+    int edgeX = 2;
+    long downTime = SystemClock.uptimeMillis();
+    injectTouch(downTime, MotionEvent.ACTION_DOWN, edgeX, y);
+    float x = edgeX;
+    boolean captured = false;
+    try {
+      int steps = 8;
+      for (int step = 1; step <= steps; step++) {
+        SystemClock.sleep(32);
+        x = edgeX + (endX - edgeX) * step / (float) steps;
+        injectTouch(downTime, MotionEvent.ACTION_MOVE, x, y);
       }
+      // Keep the pointer down until Android's edge-swipe monitor takes over pointer ID 0.
+      // Releasing earlier can give WebView the entire swipe and close the popover by light dismiss.
+      eventually(
+          () ->
+              assertTrue(
+                  "The edge-swipe monitor did not take over the active touch",
+                  shell("dumpsys input")
+                      .lines()
+                      .anyMatch(
+                          line ->
+                              line.contains("edge-swipe")
+                                  && line.matches(".*pilferingPointerIds=0*1\\].*"))));
+      captured = true;
+    } finally {
+      injectTouch(downTime, captured ? MotionEvent.ACTION_UP : MotionEvent.ACTION_CANCEL, x, y);
     }
   }
 
@@ -790,7 +825,7 @@ public class DisplayIntegrationTest {
                 });
           });
       awaitVisualFrame();
-      shell("input swipe %d %d %d %d 300".formatted(2, backY, backEndX, backY));
+      swipeBack(backEndX, backY);
       eventually(() -> assertEquals("\"false\"", js(expanded)));
     }
     String imageA = "document.querySelector('[data-testid=\"image-A\"]').alt";
