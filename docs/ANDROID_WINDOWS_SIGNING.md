@@ -147,7 +147,7 @@ The APK is not recompressed by the verifier; screenshot imports are unchanged.
 Independent checks using native tools:
 
 ```powershell
-$UCAPK = Join-Path $UCOutput 'upscale-compare-0.1.0-android-preview.3.apk'
+$UCAPK = Join-Path $UCOutput 'upscale-compare-1.0.0.apk'
 & "$env:JAVA_HOME\bin\java.exe" -jar "$env:ANDROID_HOME\build-tools\35.0.0\lib\apksigner.jar" verify --verbose --print-certs $UCAPK
 if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
 Get-FileHash -LiteralPath $UCAPK -Algorithm SHA256

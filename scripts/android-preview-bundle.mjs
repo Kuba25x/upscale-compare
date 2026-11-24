@@ -24,6 +24,12 @@ export function validateTag(tag, { versionName }) {
   }
 }
 
+export function validateBundleTag(tag, version, event) {
+  // PRs exercise the entire debug distribution without reserving a public tag.
+  if (event === 'pull_request' && tag === '') return;
+  validateTag(tag, version);
+}
+
 function payloadNames(commit) {
   return [
     apkName,
@@ -63,7 +69,7 @@ export function verifyPreviewFiles(directory, commit, expectedChecksumDigest) {
 
 function prepare(directory, tag, commit) {
   const version = readVersion(readFileSync(versionFile, 'utf8'));
-  validateTag(tag, version);
+  validateBundleTag(tag, version, process.env.GITHUB_EVENT_NAME);
   requireCommit(commit);
   const git = (args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
   if (git(['rev-parse', 'HEAD']) !== commit || git(['status', '--porcelain', '-uno'])) {
@@ -117,14 +123,15 @@ function prepare(directory, tag, commit) {
   );
   const digest = hash(checksum);
   verifyPreviewFiles(directory, commit, digest);
-  console.log(`Verified ${tag} from ${commit}. Debug certificate SHA-256: ${certificate}`);
+  console.log(
+    `Verified ${tag || version.versionName} from ${commit}. Debug certificate SHA-256: ${certificate}`,
+  );
   return digest;
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   const [directory, tag, commit] = process.argv.slice(2);
-  const version = readVersion(readFileSync(versionFile, 'utf8'));
-  const digest = prepare(resolve(directory), tag || `v${version.versionName}`, commit);
+  const digest = prepare(resolve(directory), tag, commit);
   if (process.env.GITHUB_OUTPUT) {
     writeFileSync(process.env.GITHUB_OUTPUT, `checksum_digest=${digest}\n`, { flag: 'a' });
   }

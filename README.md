@@ -11,12 +11,10 @@ zoom and precise pixel inspection. Open two to four screenshots, choose your A/B
 pair, and inspect the originals locally.
 
 **[Open the web app](https://kuba25x.github.io/upscale-compare/) ·
-[Download Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.3/upscale-compare-debug.apk) ·
+[Android downloads](https://github.com/Kuba25x/upscale-compare/releases) ·
 [Report an issue](https://github.com/Kuba25x/upscale-compare/issues)**
 
-> **Android Preview is available.**
-> [v0.1.0-android-preview.2](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.3)
-> is an early preview distributed as a **debug APK**.
+> For Android v1.0.0, choose the stable release and its owner-signed APK.
 > **Share Comparison is not publicly available** in the web app or Android APK.
 
 ## Made for close inspection
@@ -48,7 +46,7 @@ or UI mockups. [Capture instructions and provenance](docs/SCREENSHOTS.md).
 
 ## Web or Android?
 
-|                         | Web / PWA                                              | Android Preview APK                                   |
+|                         | Web / PWA                                              | Android APK                                           |
 | ----------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
 | Start                   | Open the link in a modern browser                      | Install the APK from Releases                         |
 | Local comparison        | Yes; no image upload                                   | Yes; bundled app works offline                        |
@@ -103,16 +101,19 @@ is available in **Manage Images** and on the phone landing screen.
 Requires **Android 7.0 or later** and an up-to-date Android System WebView.
 No computer or developer tools are needed.
 
-1. [Download the Android Preview APK](https://github.com/Kuba25x/upscale-compare/releases/download/v0.1.0-android-preview.2/upscale-compare-debug.apk)
-   on your Android device.
+1. Open [GitHub Releases](https://github.com/Kuba25x/upscale-compare/releases) and select **Upscale Compare v1.0.0** when available.
+   Download `upscale-compare-1.0.0.apk` under **Assets**.
 2. Open the downloaded file. If prompted, allow **Install unknown apps** for
    your browser or file manager, then return to the installer.
 3. Tap **Install**, open Upscale Compare and select two to four screenshots.
 
-See the [release page](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
-for notes, checksums and source files. This preview is distributed through GitHub
-Releases, not Google Play. Xiaomi 15T with Android 16 is the primary target;
-physical-device qualification is still pending, including on older Android versions.
+**Moving from a debug Preview:** keep your original screenshots outside the app and
+record any labels or alignment settings you need. Uninstall the Preview before
+installing v1.0.0. Android rejects in-place updates across these signing keys.
+Uninstalling clears private copies and the saved comparison. Reimport the originals
+after installation. Keep the stable app installed for future owner-signed updates.
+
+The same release page provides checksums, the signing fingerprint and corresponding source.
 
 Originals are streamed into private app storage with SHA-256 verification. Your
 source files are not edited or deleted. A completed session can be restored
@@ -122,7 +123,7 @@ Copies use real device space: up to 1 GiB per committed comparison, with a bound
 replacement allowance and a free-space reserve. See [storage and limits](docs/ANDROID.md#storage-and-lifecycle).
 
 [Android guide and device checklist](docs/ANDROID.md) ·
-[Owner release/signing runbook](docs/ANDROID_RELEASE.md)
+[Owner release/signing runbook](docs/RELEASE_1_0_GUIDE.md)
 
 ## Quick start for contributors
 

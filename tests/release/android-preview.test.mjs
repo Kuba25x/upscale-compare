@@ -8,6 +8,7 @@ import {
   apkName,
   repository,
   validateTag,
+  validateBundleTag,
   verifyPreviewFiles,
 } from '../../scripts/android-preview-bundle.mjs';
 import {
@@ -104,6 +105,15 @@ test('publication requires fresh manual dispatch for the exact protected main co
   ]) {
     assert.throws(() => requirePublicationContext({ ...env, ...change }));
   }
+});
+
+test('stable debug bundle rehearsal is tagless only on pull requests', () => {
+  const stable = { versionName: '1.0.0', versionCode: 5 };
+  validateBundleTag('', stable, 'pull_request');
+  assert.throws(() => validateBundleTag('', stable, 'workflow_dispatch'));
+  assert.throws(() => validateBundleTag('v1.0.0', stable, 'pull_request'));
+  assert.throws(() => validateBundleTag('v1.0.0', stable, 'workflow_dispatch'));
+  validateBundleTag(tag, version, 'workflow_dispatch');
 });
 
 test('tag must exactly match a valid preview version and debug badging is opt-in', () => {
