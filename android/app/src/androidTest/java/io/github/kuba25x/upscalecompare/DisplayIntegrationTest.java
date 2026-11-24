@@ -749,8 +749,7 @@ public class DisplayIntegrationTest {
     position.x = x;
     position.y = y;
     position.size = 1;
-    position.pressure =
-        action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ? 0 : 1;
+    position.pressure = action == MotionEvent.ACTION_UP ? 0 : 1;
     MotionEvent touch =
         MotionEvent.obtain(
             downTime, SystemClock.uptimeMillis(), action, 1,
@@ -782,31 +781,16 @@ public class DisplayIntegrationTest {
             }
           });
         });
-    int edgeX = 2;
     try {
-      long downTime = SystemClock.uptimeMillis();
-      injectTouch(downTime, MotionEvent.ACTION_DOWN, edgeX, y);
-      float x = edgeX;
-      boolean captured = false;
-      try {
-        int steps = 8;
-        for (int step = 1; step <= steps; step++) {
-          SystemClock.sleep(32);
-          x = edgeX + (endX - edgeX) * step / (float) steps;
-          injectTouch(downTime, MotionEvent.ACTION_MOVE, x, y);
-        }
-        // Android cancels the app's input stream when it takes over an edge swipe. Keep the
-        // pointer down until this happens so the WebView cannot complete a light dismiss.
-        captured = cancelled.await(5, TimeUnit.SECONDS);
-        if (!captured) {
-          String input = shell("dumpsys input");
-          System.err.println("Edge-swipe input routing: "
-              + input.lines().filter(line -> line.contains("edge-swipe")
-                  || line.contains("pilferingPointerIds")).limit(20).toList());
-          fail("Android did not cancel the comparison window's touch stream");
-        }
-      } finally {
-        injectTouch(downTime, captured ? MotionEvent.ACTION_UP : MotionEvent.ACTION_CANCEL, x, y);
+      // Allow System UI to take over the touch before release on a busy emulator. A longer
+      // horizontal path still crosses Android's initial motion threshold promptly.
+      shell("input swipe %d %d %d %d 1200".formatted(2, y, endX, y));
+      if (!cancelled.await(5, TimeUnit.SECONDS)) {
+        String systemUi = shell("dumpsys activity service com.android.systemui/.SystemUIService");
+        System.err.println("System UI edge gesture diagnostics: "
+            + systemUi.lines().filter(line -> line.contains("Gesture [")
+                || line.contains("Cancel back") || line.contains("mTouchSlop")).limit(30).toList());
+        fail("Android did not cancel the comparison window's touch stream");
       }
     } finally {
       InstrumentationRegistry.getInstrumentation()
@@ -826,7 +810,7 @@ public class DisplayIntegrationTest {
           assertTrue(a.getWindow().getDecorView().getSystemGestureExclusionRects().isEmpty());
         });
     int backY = origin[1] + display.get().getInteger("height") / 2;
-    int backEndX = display.get().getInteger("width") / 4;
+    int backEndX = display.get().getInteger("width") / 2;
     for (String label : new String[] {"Select image A", "Select image B"}) {
       tapPortraitControl(label);
       String expanded = "document.querySelector('[aria-label=\"%s\"]').getAttribute('aria-expanded')"
