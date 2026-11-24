@@ -94,7 +94,7 @@ public class AndroidDisplayLayoutTest {
       assertEquals(70, state.getInteger("safeBottom").intValue());
       assertEquals(30, state.getInteger("mandatoryGestureBottom").intValue());
       assertEquals(34, state.getInteger("panelSafeBottom").intValue());
-      assertEquals(30, state.getInteger("panelGuardBottom").intValue());
+      assertEquals(24, state.getInteger("panelGuardBottom").intValue());
       assertEquals(34, state.getInteger("panelClearanceBottom").intValue());
       assertEquals(0, state.getInteger("panelObstructionBottom").intValue());
       int[] origin = new int[2];
@@ -114,7 +114,7 @@ public class AndroidDisplayLayoutTest {
   }
 
   @Test
-  public void portraitPanelKeepsTheNavigationGuardAndUsesTappableInsetsForTheVisualGap() {
+  public void portraitPanelAdaptsToTheReportedNavigationModeAndIme() {
     var controller = Robolectric.buildActivity(Activity.class).setup();
     Activity activity = controller.get();
     View view = new View(activity);
@@ -125,7 +125,7 @@ public class AndroidDisplayLayoutTest {
     int tappable = WindowInsetsCompat.Type.tappableElement();
     int mandatory = WindowInsetsCompat.Type.mandatorySystemGestures();
     int ime = WindowInsetsCompat.Type.ime();
-    for (int buttonInset : new int[] {0, 44, 60}) {
+    for (int buttonInset : new int[] {0, 60, 0}) {
       for (boolean visible : new boolean[] {true, false, true}) {
         var builder =
             new WindowInsetsCompat.Builder()
@@ -134,12 +134,12 @@ public class AndroidDisplayLayoutTest {
                 .setInsetsIgnoringVisibility(navigation, Insets.of(0, 0, 0, 60))
                 .setInsets(tappable, Insets.of(0, 0, 0, visible ? buttonInset : 0))
                 .setInsetsIgnoringVisibility(tappable, Insets.of(0, 0, 0, buttonInset))
-                .setInsetsIgnoringVisibility(mandatory, Insets.of(0, 0, 0, 30));
+                .setInsetsIgnoringVisibility(mandatory, Insets.of(0, 0, 0, 90));
         var withoutIme = builder.build();
         ViewCompat.dispatchApplyWindowInsets(decor, withoutIme);
         JSObject state = layout.snapshot();
         assertEquals(60, state.getInteger("layoutBottom").intValue());
-        assertEquals(60, state.getInteger("panelGuardBottom").intValue());
+        assertEquals(buttonInset == 0 ? 60 : 90, state.getInteger("panelGuardBottom").intValue());
         assertEquals(buttonInset, state.getInteger("panelClearanceBottom").intValue());
         assertEquals(buttonInset, state.getInteger("panelObstructionBottom").intValue());
 
@@ -151,6 +151,35 @@ public class AndroidDisplayLayoutTest {
         assertEquals(buttonInset, layout.snapshot().getInteger("panelClearanceBottom").intValue());
       }
     }
+    layout.destroy();
+    controller.pause().stop().destroy();
+  }
+
+  @Test
+  public void portraitPanelKeepsTheConservativeGuardWhenNavigationInsetsAreUnreliable() {
+    var controller = Robolectric.buildActivity(Activity.class).setup();
+    Activity activity = controller.get();
+    View view = new View(activity);
+    activity.setContentView(view);
+    View decor = activity.getWindow().getDecorView();
+    var layout = new AndroidDisplayLayout(activity, view, false, state -> {});
+    int navigation = WindowInsetsCompat.Type.navigationBars();
+    int mandatory = WindowInsetsCompat.Type.mandatorySystemGestures();
+    var insets =
+        new WindowInsetsCompat.Builder()
+            .setVisible(navigation, true)
+            .setInsetsIgnoringVisibility(mandatory, Insets.of(0, 0, 0, 90));
+    ViewCompat.dispatchApplyWindowInsets(decor, insets.build());
+    assertEquals(90, layout.snapshot().getInteger("panelGuardBottom").intValue());
+    ViewCompat.dispatchApplyWindowInsets(
+        decor, insets.setInsetsIgnoringVisibility(navigation, Insets.of(0, 0, 0, 60)).build());
+    assertEquals(90, layout.snapshot().getInteger("panelGuardBottom").intValue());
+    ViewCompat.dispatchApplyWindowInsets(
+        decor,
+        insets.setInsets(navigation, Insets.of(0, 0, 0, 60))
+            .setInsetsIgnoringVisibility(mandatory, Insets.NONE)
+            .build());
+    assertEquals(60, layout.snapshot().getInteger("panelClearanceBottom").intValue());
     layout.destroy();
     controller.pause().stop().destroy();
   }

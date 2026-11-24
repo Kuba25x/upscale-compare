@@ -236,6 +236,7 @@ public class DisplayIntegrationTest {
                   .getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars())
                   .top);
         });
+    int panelGapX = name.equals("portrait-normal") ? portraitControlGapX() : 0;
     // Native visibility/DOM callbacks can precede presentation. The synthetic fixture
     // leaves a known background at these sample points, independently of layout flags.
     eventually(
@@ -268,11 +269,12 @@ public class DisplayIntegrationTest {
               int x = frame.getWidth() / 4;
               assertTrue("Status bar background changed", colorNear(frame.getPixel(x, 2), 16, 17, 20));
               int panelBottom = frame.getHeight() - state.get().getInteger("layoutBottom");
-              for (int y : new int[] {panelBottom - 2, frame.getHeight() - 3}) {
-                assertTrue(
-                    "Panel surface does not continue through the bottom inset at y=" + y,
-                    colorNear(frame.getPixel(x, y), 20, 21, 25));
-              }
+              assertTrue(
+                  "The gap between controls shows the panel surface",
+                  colorNear(frame.getPixel(panelGapX, panelBottom - 2), 20, 21, 25));
+              assertTrue(
+                  "Panel surface continues through the bottom inset",
+                  colorNear(frame.getPixel(x, frame.getHeight() - 3), 20, 21, 25));
             }
           } finally {
             frame.recycle();
@@ -669,6 +671,79 @@ public class DisplayIntegrationTest {
         });
   }
 
+  private int portraitControlGapX() throws Exception {
+    return (int) Math.round(Double.parseDouble(js("""
+        (() => {
+          const panel = document.querySelector('.phone-image-controls');
+          const a = panel.querySelector('.phone-image-trigger').getBoundingClientRect();
+          const swap = panel.querySelector('.swap-button').getBoundingClientRect();
+          return (a.right + swap.left) * devicePixelRatio / 2;
+        })()
+        """)));
+  }
+
+  private void tapPortraitControl(String label, int[] origin, JSObject display) throws Exception {
+    JSONObject point =
+        new JSONObject(js("""
+            (() => {
+              const button = document.querySelector('.phone-image-controls [aria-label="%s"]');
+              const box = button.getBoundingClientRect();
+              return { x: (box.left + box.right) * devicePixelRatio / 2,
+                       bottom: box.bottom * devicePixelRatio };
+            })()
+            """.formatted(label)));
+    int y = (int) Math.floor(point.getDouble("bottom")) - 2;
+    int height = display.getInteger("height");
+    assertTrue("Tap is inside the mandatory gesture area",
+        y >= height - display.getInteger("mandatoryGestureBottom"));
+    assertTrue("Tap is above the navigation bar",
+        y < height - display.getInteger("panelGuardBottom"));
+    shell("input tap " + (origin[0] + Math.round(point.getDouble("x"))) + " " + (origin[1] + y));
+  }
+
+  private void exercisePortraitGestures() throws Exception {
+    AtomicReference<String> component = new AtomicReference<>();
+    AtomicReference<JSObject> display = new AtomicReference<>();
+    int[] origin = new int[2];
+    scenario.onActivity(
+        a -> {
+          component.set(a.getComponentName().flattenToShortString());
+          display.set(a.displayLayout.snapshot());
+          var webView = a.getBridge().getWebView();
+          webView.getLocationOnScreen(origin);
+          assertTrue(webView.getSystemGestureExclusionRects().isEmpty());
+          assertTrue(a.getWindow().getDecorView().getSystemGestureExclusionRects().isEmpty());
+        });
+    for (String label : new String[] {"Select image A", "Select image B"}) {
+      tapPortraitControl(label, origin, display.get());
+      String expanded = "document.querySelector('[aria-label=\"%s\"]').getAttribute('aria-expanded')"
+          .formatted(label);
+      eventually(() -> assertEquals("\"true\"", js(expanded)));
+      shell("input keyevent KEYCODE_BACK");
+      eventually(() -> assertEquals("\"false\"", js(expanded)));
+    }
+    String imageA = "document.querySelector('[data-testid=\"image-A\"]').alt";
+    String imageB = "document.querySelector('[data-testid=\"image-B\"]').alt";
+    String originalA = js(imageA);
+    String originalB = js(imageB);
+    tapPortraitControl("Swap images", origin, display.get());
+    eventually(() -> assertEquals(originalA, js(imageB)));
+    tapPortraitControl("Swap images", origin, display.get());
+    eventually(() -> assertEquals(originalA, js(imageA)));
+
+    int width = display.get().getInteger("width");
+    int height = display.get().getInteger("height");
+    int x = origin[0] + width / 2;
+    shell("input swipe %d %d %d %d 180".formatted(
+        x, origin[1] + height - 2, x, origin[1] + height / 2));
+    eventually(() -> assertNotEquals(Lifecycle.State.RESUMED, scenario.getState()));
+    shell("am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "
+        + component.get());
+    eventually(() -> assertEquals(originalB, js(imageB)));
+    bars(true, true);
+    assertPortraitComparisonLayout();
+  }
+
   @Test
   public void realWindowBarsCutoutsPickerResumeBackAndRecreation() throws Exception {
     seedIsolatedSession();
@@ -679,6 +754,7 @@ public class DisplayIntegrationTest {
       bars(true, true);
       assertPortraitComparisonLayout();
       screenshot("portrait-normal");
+      exercisePortraitGestures();
       editPortraitLabel();
       assertPortraitZoomMenu();
       click(".fullscreen-button");

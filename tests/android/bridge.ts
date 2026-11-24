@@ -56,11 +56,12 @@ export async function installAndroidBridge(
           panelSafeBottom: px(panelSafeBottom),
           mandatoryGestureBottom: px(i.mandatoryGestureBottom),
           panelGuardBottom: px(
-            Math.max(
-              navigationBottom,
-              i.visibleNavigationBottom || 0,
-              i.mandatoryGestureBottom || 0,
-            ),
+            i.panelGuardBottom ??
+              Math.max(
+                navigationBottom,
+                i.visibleNavigationBottom || 0,
+                i.mandatoryGestureBottom || 0,
+              ),
           ),
           panelClearanceBottom: px(
             i.panelClearanceBottom ?? Math.max(layoutBottom, panelSafeBottom),
