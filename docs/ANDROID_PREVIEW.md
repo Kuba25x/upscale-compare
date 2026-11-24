@@ -1,4 +1,6 @@
-# Publish an Android Preview
+# Historical Android debug Preview publication
+
+For v1.0.0 use the [stable Android release guide](RELEASE_1_0_GUIDE.md).
 
 The [Publish Android Preview workflow](https://github.com/Kuba25x/upscale-compare/actions/workflows/android-preview.yml) distributes the tested debug APK as a GitHub pre-release. It uses Gradle's disposable debug key on a fresh GitHub runner. No signing secret, custom token, or production key is required.
 

@@ -1,9 +1,7 @@
 # Android offline app
 
-Status: implemented offline preview with automated browser/JVM/API 36 instrumentation
-coverage. [v0.1.0-android-preview.2](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
-is publicly available as a debug APK. See [installation](../README.md#download-and-install-android)
-for the user guide. Xiaomi 15T / Android 16 physical-device qualification is pending.
+See [installation](../README.md#download-and-install-android) for stable APK downloads and Preview migration.
+Xiaomi 15T / Android 16 is the primary physical test target.
 The 256 MiB file ceiling is provisional, not a guarantee that WebView can decode
 or display every accepted file. Do not describe this build as device-certified.
 
@@ -113,11 +111,8 @@ repository metadata or signing keys.
 
 ## GitHub Actions and APK downloads
 
-[The public Android Preview](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
-provides the debug APK, SHA256SUMS, COMMIT, corresponding source and dependency
-notices. Users can install it directly without GitHub Actions or build tools.
-Maintainers can follow the [Android Preview publishing guide](ANDROID_PREVIEW.md)
-to build and approve a new debug pre-release from `main`.
+The [stable release guide](RELEASE_1_0_GUIDE.md) covers the signed APK, checksums,
+corresponding source and notices distributed together on GitHub Releases.
 
 The separate **Android debug APK** workflow runs on relevant PR/branch changes
 and workflow_dispatch. It has read-only repository permission, no backend secrets
@@ -207,11 +202,10 @@ No physical-device performance, memory, HDR/color precision or OEM system-UI
 certification is claimed. Automatic results must be tied to a successful run and
 exact source SHA; compilation alone is not an instrumentation pass.
 
-## Future owner-signed release preparation
+## Owner-signed release preparation
 
-The next Android Preview candidate uses 0.1.0-android-preview.3 (versionCode 4),
-declared in [android/release.properties](../android/release.properties).
-The published debug preview uses 0.1.0-android-preview.2 (versionCode 3).
+Version 1.0.0 (versionCode 5) follows debug Preview 3 (versionCode 4).
+See [android/release.properties](../android/release.properties).
 A separate read-only release workflow produces an unsigned candidate, source/dependency
 archive, notices, manifest and SHA-256 checksums. It neither tags nor publishes.
 The owner must generate/retain the permanent key on a trusted computer, sign

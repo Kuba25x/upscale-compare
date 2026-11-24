@@ -1,12 +1,7 @@
-# Android Preview release runbook
+# Android release preparation
 
-The public [v0.1.0-android-preview.2](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.2)
-is distributed as a **debug APK**, not an output of the owner-signing process below.
-This runbook covers future owner-signed releases; the tools do not create public
-tags or GitHub Releases. Device qualification remains limited; publication is not
-a stability or color-accuracy certification.
-For publishing a debug APK with GitHub Actions, see the
-[Android Preview publishing guide](ANDROID_PREVIEW.md).
+For v1.0.0 follow the complete [Windows owner guide](RELEASE_1_0_GUIDE.md).
+The debug [Preview workflow](ANDROID_PREVIEW.md) is for historical pre-releases.
 
 ## Trust and signing model
 
@@ -31,10 +26,10 @@ disposable **test-only** key to exercise the signing script; that key and the AP
 
 The next candidate takes its version from [android/release.properties](../android/release.properties).
 
-- versionName: 0.1.0-android-preview.3
-- versionCode: 4
-- planned debug-preview tag: v0.1.0-android-preview.3
-- published debug-preview tag: v0.1.0-android-preview.2 (versionCode 3)
+- versionName: 1.0.0
+- versionCode: 5
+- stable tag: v1.0.0
+- previous public version: v0.1.0-android-preview.3 (versionCode 4)
 - package: io.github.kuba25x.upscalecompare
 - minimum API 24; target/compile API 36
 
@@ -205,7 +200,7 @@ Independent final checks:
 
 ```sh
 "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify \
-  --verbose --print-certs /path/to/new-signed-output/upscale-compare-0.1.0-android-preview.3.apk
+  --verbose --print-certs /path/to/new-signed-output/upscale-compare-1.0.0.apk
 cd /path/to/new-signed-output
 sha256sum -c SHA256SUMS
 ```
@@ -213,39 +208,10 @@ sha256sum -c SHA256SUMS
 On macOS use shasum -a 256 -c SHA256SUMS. Compare the certificate against the
 independent owner record, not just the fingerprint inside the downloaded bundle.
 
-## Device and publication gate — manual, not executed here
+## Device and publication gate
 
-Before publication the owner must:
-
-1. Test the **signed release** on Xiaomi 15T / Android 16 using the checklist in
-   ANDROID.md. Debug/emulator/browser success is separate evidence. Record the
-   signed APK SHA-256, source SHA, WebView/HyperOS version, memory/gesture findings
-   and outstanding preview limitations.
-2. Install one candidate and then an APK with a higher versionCode signed by
-   the same key. Confirm in-place update and session retention. Do not use the
-   disposable CI key. Existing debug installations generally require uninstalling
-   because their signer differs; uninstalling deletes private originals/session.
-   Keep source screenshots elsewhere before removing a test installation.
-3. Review the license/source bundle and notices. Keep the complete source archive
-   downloadable from the same release page as the APK, at no charge, including
-   the scripts/lockfiles and upstream runtime sources. Check archive extraction
-   and build instructions. Preserve upstream copyright and NOTICE files.
-4. Approve the exact commit, tag/version/code, certificate fingerprint and signed
-   checksums. Only then manually create a tag pointing at that commit and a
-   GitHub Release marked **Pre-release**. No workflow in this change creates
-   either of them.
-5. Upload **only** the verified signed distribution files, including source,
-   notices, COMMIT, manifest and SHA256SUMS. Do not upload the unsigned APK,
-   disposable-key output, keystore, passwords or an unreviewed build. Include the
-   full source SHA, certificate SHA-256, installation instructions, known device
-   limits and the disabled public Share Comparison status in the release notes.
-6. Check downloads from a separate device/account and retain a controlled copy
-   of the final signed files. Future releases must use the same key and a larger
-   versionCode. Record every distributed code in release history.
-
-The first debug-preview tag already exists. Choose a new version and tag for the
-next distribution. There is no Release publish/token permission, tag trigger or
-automatic merge in the preparation workflow.
+Follow the [v1.0.0 guide](RELEASE_1_0_GUIDE.md) to test the owner-signed APK,
+verify its source, tag the tested commit and publish the stable release with all eight assets.
 
 ## License and dependency distribution
 
