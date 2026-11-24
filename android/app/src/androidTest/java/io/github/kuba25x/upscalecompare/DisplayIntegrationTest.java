@@ -8,6 +8,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.ParcelFileDescriptor;
+import android.os.SystemClock;
+import android.view.InputDevice;
+import android.view.MotionEvent;
 import android.view.Surface;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -702,7 +705,17 @@ public class DisplayIntegrationTest {
         """)));
   }
 
-  private void tapPortraitControl(String label, int[] origin, JSObject display) throws Exception {
+  private void tapPortraitControl(String label) throws Exception {
+    awaitVisualFrame();
+    AtomicReference<JSObject> display = new AtomicReference<>();
+    int[] origin = new int[2];
+    scenario.onActivity(
+        a -> {
+          assertTrue(
+              "The comparison window must have focus before tapping " + label, a.hasWindowFocus());
+          display.set(a.displayLayout.snapshot());
+          a.getBridge().getWebView().getLocationOnScreen(origin);
+        });
     JSONObject point =
         new JSONObject(js("""
             (() => {
@@ -713,12 +726,37 @@ public class DisplayIntegrationTest {
             })()
             """.formatted(label)));
     int y = (int) Math.floor(point.getDouble("bottom")) - 2;
-    int height = display.getInteger("height");
+    int height = display.get().getInteger("height");
     assertTrue("Tap is inside the mandatory gesture area",
-        y >= height - display.getInteger("mandatoryGestureBottom"));
+        y >= height - display.get().getInteger("mandatoryGestureBottom"));
     assertTrue("Tap is above the navigation bar",
-        y < height - display.getInteger("panelGuardBottom"));
-    shell("input tap " + (origin[0] + Math.round(point.getDouble("x"))) + " " + (origin[1] + y));
+        y < height - display.get().getInteger("panelGuardBottom"));
+
+    // Synchronize input transactions between consecutive real touchscreen taps.
+    var automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+    long downTime = SystemClock.uptimeMillis();
+    var finger = new MotionEvent.PointerProperties();
+    finger.id = 0;
+    finger.toolType = MotionEvent.TOOL_TYPE_FINGER;
+    var position = new MotionEvent.PointerCoords();
+    position.x = origin[0] + Math.round(point.getDouble("x"));
+    position.y = origin[1] + y;
+    position.size = 1;
+    for (int action : new int[] {MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP}) {
+      position.pressure = action == MotionEvent.ACTION_DOWN ? 1 : 0;
+      MotionEvent touch =
+          MotionEvent.obtain(
+              downTime, SystemClock.uptimeMillis(), action, 1,
+              new MotionEvent.PointerProperties[] {finger}, new MotionEvent.PointerCoords[] {position},
+              0, 0, 1, 1, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
+      try {
+        assertTrue(
+            "Touch injection failed for " + label + " (action " + action + ")",
+            automation.injectInputEvent(touch, true));
+      } finally {
+        touch.recycle();
+      }
+    }
   }
 
   private void exercisePortraitGestures() throws Exception {
@@ -735,19 +773,32 @@ public class DisplayIntegrationTest {
     int backY = origin[1] + display.get().getInteger("height") / 2;
     int backEndX = display.get().getInteger("width") / 4;
     for (String label : new String[] {"Select image A", "Select image B"}) {
-      tapPortraitControl(label, origin, display.get());
+      tapPortraitControl(label);
       String expanded = "document.querySelector('[aria-label=\"%s\"]').getAttribute('aria-expanded')"
           .formatted(label);
-      eventually(() -> assertEquals("\"true\"", js(expanded)));
+      eventually(
+          () -> {
+            assertEquals("\"true\"", js(expanded));
+            // WebView updates aria-expanded before Capacitor enables the native back callback.
+            scenario.onActivity(
+                a -> {
+                  assertTrue(
+                      "The comparison window must have focus before swiping Back", a.hasWindowFocus());
+                  assertTrue(
+                      "The native Back callback must be enabled for " + label,
+                      a.getOnBackPressedDispatcher().hasEnabledCallbacks());
+                });
+          });
+      awaitVisualFrame();
       shell("input swipe %d %d %d %d 300".formatted(2, backY, backEndX, backY));
       eventually(() -> assertEquals("\"false\"", js(expanded)));
     }
     String imageA = "document.querySelector('[data-testid=\"image-A\"]').alt";
     String imageB = "document.querySelector('[data-testid=\"image-B\"]').alt";
     String originalA = js(imageA);
-    tapPortraitControl("Swap images", origin, display.get());
+    tapPortraitControl("Swap images");
     eventually(() -> assertEquals(originalA, js(imageB)));
-    tapPortraitControl("Swap images", origin, display.get());
+    tapPortraitControl("Swap images");
     eventually(() -> assertEquals(originalA, js(imageA)));
     bars(true, true);
     assertPortraitComparisonLayout();
