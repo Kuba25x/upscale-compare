@@ -574,7 +574,7 @@ export default function App({
     });
   const ready = images.length >= 2;
   const portraitPanelEdges =
-    phonePortrait && ready && !minimalist && (ANDROID_MODE || installedAndroidFullscreen);
+    phonePortrait && !minimalist && (ANDROID_MODE || installedAndroidFullscreen);
   useLayoutEffect(() => {
     if (!portraitPanelEdges || !installedAndroidFullscreen) return;
     const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');

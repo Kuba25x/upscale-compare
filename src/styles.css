@@ -2005,9 +2005,15 @@ input[type='checkbox'] {
   background-repeat: no-repeat;
   background-size: 100% var(--phone-panel-reserved-bottom, var(--comparison-layout-bottom, 0px));
 }
-:root:has(.portrait-panel-edges),
-.app.portrait-panel-edges {
+:root:has(.portrait-panel-edges.has-images),
+.app.portrait-panel-edges.has-images {
   background-color: var(--panel-background);
+}
+.app.portrait-panel-edges:not(.has-images) {
+  background-image: linear-gradient(var(--panel-background), var(--panel-background));
+  background-position: top;
+  background-repeat: no-repeat;
+  background-size: 100% max(var(--comparison-layout-top, 0px), var(--comparison-safe-top, 0px));
 }
 .app.web-app.comparison-phone-portrait {
   --phone-panel-reserved-bottom: var(--comparison-safe-bottom, 0px);
