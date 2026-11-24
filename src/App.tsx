@@ -732,9 +732,6 @@ export default function App({
     imageB &&
     (imageA.width !== imageB.width || imageA.height !== imageB.height),
   );
-  useEffect(() => {
-    if (shouldAskAlignment && !loading && !modal && !minimalist) setModal('alignment');
-  }, [loading, modal, shouldAskAlignment, minimalist]);
   const setAlignment = (mode: AlignmentMode) => {
     if (!pair || choice?.mode === mode) return;
     setConfig((previous) => changeAlignment(previous, imageA, imageB, alignment, mode));
@@ -770,6 +767,13 @@ export default function App({
     onPhonePopoverChange,
     phoneLandscape && ready && !minimalist,
   );
+  const openAlignment = useEffectEvent(() => {
+    if (phonePanel.isOpen()) phonePanel.dismiss(true);
+    setModal('alignment');
+  });
+  useEffect(() => {
+    if (shouldAskAlignment && !loading && !modal && !minimalist) openAlignment();
+  }, [loading, modal, shouldAskAlignment, minimalist]);
   const imageChoices = images.map((image, value) => ({ value, label: image.label || image.name }));
   useLayoutEffect(() => {
     const row = headerControls.current;

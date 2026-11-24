@@ -48,7 +48,9 @@ export async function selectImage(page: Page, slot: 'A' | 'B', index: number) {
   if (custom) {
     await trigger.click();
     await imageChoices(page, slot).nth(index).click();
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(
+      page.getByRole('button', { name: `Select image ${slot}`, exact: true, includeHidden: true }),
+    ).toHaveAttribute('aria-expanded', 'false');
   } else {
     await native.selectOption(String(index));
   }

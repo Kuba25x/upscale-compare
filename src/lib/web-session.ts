@@ -40,6 +40,7 @@ const sessionSchema = z
   );
 type StoredSession = z.infer<typeof sessionSchema>;
 type Record = { revision: number; session?: StoredSession };
+type StoredOriginal = { bytes: ArrayBuffer; lastModified: number };
 export type LocalSession = {
   images: LocalImage[];
   config: Config;
@@ -73,6 +74,7 @@ export function createWebSessionStore() {
   const name = `upscale-compare:session:${new URL(import.meta.env.BASE_URL, location.href).pathname}`;
   let connection: Promise<IDBDatabase> | undefined;
   let revision = 0;
+  let storedIds = new Set<IDBValidKey>();
   let writes = Promise.resolve();
 
   function open() {
@@ -103,15 +105,22 @@ export function createWebSessionStore() {
     const [record, keys, files] = await Promise.all([
       read<Record | undefined>(transaction.objectStore('state').get('current')),
       read(originals.getAllKeys()),
-      read<File[]>(originals.getAll()),
+      read<(StoredOriginal | File)[]>(originals.getAll()),
     ]);
     revision = record?.revision ?? 0;
+    storedIds = new Set(keys);
     if (!record?.session) return null;
     const session = sessionSchema.parse(record.session);
     const byId = new Map(keys.map((id, index) => [id, files[index]]));
     const selectedFiles = session.images.map(({ id, size, name, type }) => {
-      const file = byId.get(id);
-      if (!(file instanceof File) || file.size !== size || file.name !== name || file.type !== type)
+      const original = byId.get(id);
+      const file =
+        original instanceof File
+          ? original
+          : original?.bytes instanceof ArrayBuffer
+            ? new File([original.bytes], name, { type, lastModified: original.lastModified })
+            : undefined;
+      if (!file || file.size !== size || file.name !== name || file.type !== type)
         throw new Error('A saved original is unavailable. Import the images again.');
       return file;
     });
@@ -142,6 +151,17 @@ export function createWebSessionStore() {
               ...config,
               images: images.map(({ url: _url, file: _file, ...image }) => image),
             });
+      const currentIds = new Set<IDBValidKey>(files.map(({ id }) => id));
+      // Store encoded bytes directly. Some WebKit environments cannot persist File objects.
+      const addedFiles = await Promise.all(
+        files
+          .filter(({ id }) => !storedIds.has(id))
+          .map(async ({ id, file }) => ({
+            id,
+            bytes: await file.arrayBuffer(),
+            lastModified: file.lastModified,
+          })),
+      );
 
       await new Promise<void>((resolve, reject) => {
         const transaction = database.transaction(['state', 'originals'], 'readwrite');
@@ -156,6 +176,7 @@ export function createWebSessionStore() {
         transaction.onabort = () => reject(failure ?? transaction.error);
         transaction.oncomplete = () => {
           revision = nextRevision;
+          storedIds = currentIds;
           resolve();
         };
         current.onsuccess = () => {
@@ -169,10 +190,8 @@ export function createWebSessionStore() {
             nextRevision = currentRevision + 1;
             if (!session) originals.clear();
             else {
-              const previousIds = new Set(record?.session?.images.map(({ id }) => id));
-              const currentIds = new Set(files.map(({ id }) => id));
-              for (const id of previousIds) if (!currentIds.has(id)) originals.delete(id);
-              for (const { id, file } of files) if (!previousIds.has(id)) originals.put(file, id);
+              for (const id of storedIds) if (!currentIds.has(id)) originals.delete(id);
+              for (const { id, ...original } of addedFiles) originals.put(original, id);
             }
             state.put(
               session ? { revision: nextRevision, session } : { revision: nextRevision },
