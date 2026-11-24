@@ -764,6 +764,32 @@ public class DisplayIntegrationTest {
   }
 
   @Test
+  public void alignmentLabelsSuppressWebViewTapHighlightInBothDialogs() throws Exception {
+    seedIsolatedSession(true);
+    File session = new File(InstrumentationRegistry.getInstrumentation().getTargetContext()
+        .getNoBackupFilesDir(), "comparison.json");
+    JSONObject unchosen = new JSONObject(new String(Files.readAllBytes(session.toPath()), StandardCharsets.UTF_8))
+        .put("alignmentChoices", new JSONArray());
+    Files.write(session.toPath(), unchosen.toString().getBytes(StandardCharsets.UTF_8));
+    String transparentLabels = """
+        (() => {
+          const labels = [...document.querySelectorAll('dialog[open] .alignment-options label')];
+          return labels.length === 3 && labels.every(label =>
+            getComputedStyle(label).webkitTapHighlightColor === 'rgba(0, 0, 0, 0)');
+        })()
+        """;
+    try (ActivityScenario<MainActivity> active = ActivityScenario.launch(MainActivity.class)) {
+      scenario = active;
+      rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, false);
+      eventually(() -> assertEquals("true", js(transparentLabels)));
+      click("dialog button[type=submit]");
+      eventually(() -> assertEquals("false", js("!!document.querySelector('dialog[open]')")));
+      click("button[aria-label=\"Manage Images\"]");
+      eventually(() -> assertEquals("true", js(transparentLabels)));
+    }
+  }
+
+  @Test
   public void alignmentAndOriginalsSurviveActivityRecreation() throws Exception {
     seedIsolatedSession(true);
     File directory = InstrumentationRegistry.getInstrumentation().getTargetContext().getNoBackupFilesDir();

@@ -37,7 +37,8 @@ button,
 a,
 input,
 select,
-textarea {
+textarea,
+.alignment-options label {
   -webkit-tap-highlight-color: transparent;
 }
 button {

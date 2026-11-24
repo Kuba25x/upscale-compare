@@ -3,6 +3,34 @@ import { imageFile } from './fixtures';
 import { expectAligned, geometry, mismatch } from '../shared/image-alignment';
 import { chooseZoomPreset } from '../shared/phone-controls';
 
+test('alignment labels accept taps without a native highlight and retain keyboard focus', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page
+    .getByTestId('file-input')
+    .setInputFiles([imageFile(), imageFile('B.png', 1, 480, 200)]);
+  async function checkOptions() {
+    const dialog = page.getByRole('dialog');
+    for (const name of ['Match Width', 'Match Height', 'Original Size']) {
+      const radio = dialog.getByRole('radio', { name });
+      const label = dialog.locator('label').filter({ has: page.getByRole('radio', { name }) });
+      await expect(label).toHaveCSS('-webkit-tap-highlight-color', 'rgba(0, 0, 0, 0)');
+      await label.locator('span').first().tap();
+      await expect(radio).toBeChecked();
+    }
+    await page.keyboard.press('ArrowRight');
+    const next = dialog.getByRole('radio', { name: 'Match Width' });
+    await expect(next).toBeChecked();
+    await expect(next).toBeFocused();
+    await expect(next).toHaveCSS('outline-style', 'solid');
+  }
+  await checkOptions();
+  await mismatch(page).getByRole('button', { name: 'Apply' }).tap();
+  await page.getByRole('button', { name: 'Manage Images' }).tap();
+  await checkOptions();
+});
+
 test('keeps touch alignment in portrait, landscape, and a pinch across the two panels', async ({
   page,
   context,
