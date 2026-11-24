@@ -32,17 +32,20 @@ pair, and inspect the originals locally.
 
 ## Screenshots
 
-Actual screenshots of the running web app, captured with the repository's
-synthetic test images. These are not game footage, Android device photographs
-or UI mockups. [Capture instructions and provenance](docs/SCREENSHOTS.md).
+Compare bilinear and Lanczos upscaling on a photograph of the Galactic Center.
+[Image credit and capture details](docs/SCREENSHOTS.md).
 
-**Desktop — Split Screen**
+**Desktop**
 
-![Upscale Compare desktop Split Screen with synthetic test images](docs/images/desktop-split.jpg)
+![Desktop Split Screen comparing two upscales of the Galactic Center](docs/images/desktop-split.jpg)
 
-**Mobile web — Side-by-Side**
+**Mobile portrait**
 
-<img src="docs/images/mobile-side-by-side.jpg" width="360" alt="Upscale Compare mobile web Side-by-Side with synthetic test images">
+<img src="docs/images/mobile-portrait-split.jpg" width="360" alt="Portrait Split Screen with the zoom controls below the Galactic Center detail">
+
+**Mobile landscape**
+
+![Landscape Split Screen with a compact toolbar above the Galactic Center panorama](docs/images/mobile-landscape-split.jpg)
 
 ## Web or Android?
 
