@@ -2029,13 +2029,23 @@ input[type='checkbox'] {
     calc(var(--comparison-gutter) + 9px + var(--comparison-safe-right, 0px));
 }
 .app.android-app.comparison-phone-portrait .phone-image-controls {
-  /* Layout already reserves navigation and IME space, even during transient bars. */
+  /* Add only the clearance outside the space already reserved by the portrait layout. */
   --phone-panel-bottom-gap: calc(
     max(
-        12px + max(var(--comparison-layout-bottom, 0px), var(--comparison-panel-safe-bottom, 0px)),
-        var(--comparison-mandatory-gesture-bottom, 0px)
-      ) -
-      var(--comparison-layout-bottom, 0px)
+        0px,
+        var(--comparison-panel-guard-bottom, 0px) - var(--comparison-layout-bottom, 0px),
+        12px +
+          max(
+            var(--comparison-panel-obstruction-bottom, 0px),
+            var(
+              --phone-panel-rounded-bottom,
+              var(--comparison-panel-clearance-bottom, var(--comparison-layout-bottom, 0px))
+            )
+          ) -
+          var(--comparison-layout-bottom, 0px)
+      ) +
+      /* WebView can round 100dvh above the physical viewport height. */
+      max(0px, 100dvh - var(--comparison-panel-viewport-height, 100dvh))
   );
 }
 .app.web-app.installed-fullscreen.comparison-phone-portrait .phone-image-controls {

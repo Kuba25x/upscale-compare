@@ -36,13 +36,15 @@ export async function installAndroidBridge(
         const px = (n: number = 0) => n * devicePixelRatio;
         const layoutTop =
           !landscape && !minimalist ? Math.max(i.statusTop || 0, i.cutoutTop || 0) : 0;
-        const layoutBottom = landscape ? 0 : i.navigationBottom || 0;
+        const navigationBottom = landscape ? 0 : i.navigationBottom || 0;
+        const layoutBottom = Math.max(navigationBottom, i.imeBottom || 0);
+        const panelSafeBottom = Math.max(i.cutoutBottom || 0, i.roundedBottom || 0);
         win.displayState = {
           revision: ++revision,
           minimalist,
           landscape,
-          width: px(innerWidth),
-          height: px(innerHeight),
+          width: px(i.windowWidth ?? innerWidth),
+          height: px(i.windowHeight ?? innerHeight),
           statusVisible: !landscape && !minimalist,
           navigationVisible: i.navigationVisible ?? !landscape,
           layoutTop: px(layoutTop),
@@ -51,8 +53,20 @@ export async function installAndroidBridge(
           safeRight: px(i.cutoutRight || i.gestureRight || 0),
           safeBottom: px(Math.max(layoutBottom, i.gestureBottom || 0)),
           safeLeft: px(i.cutoutLeft || i.gestureLeft || 0),
-          panelSafeBottom: px(Math.max(i.cutoutBottom || 0, i.roundedBottom || 0)),
+          panelSafeBottom: px(panelSafeBottom),
           mandatoryGestureBottom: px(i.mandatoryGestureBottom),
+          panelGuardBottom: px(
+            Math.max(
+              navigationBottom,
+              i.visibleNavigationBottom || 0,
+              i.mandatoryGestureBottom || 0,
+            ),
+          ),
+          panelClearanceBottom: px(
+            i.panelClearanceBottom ?? Math.max(layoutBottom, panelSafeBottom),
+          ),
+          panelObstructionBottom: px(i.panelObstructionBottom),
+          panelRoundedCorners: i.panelRoundedCorners,
           cutouts: [],
         };
         win.barsHidden = landscape;

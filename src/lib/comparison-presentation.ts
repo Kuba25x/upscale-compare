@@ -15,8 +15,10 @@ export interface ComparisonPresentation {
     safeRight: number;
     safeBottom: number;
     safeLeft: number;
-    panelSafeBottom?: number;
-    mandatoryGestureBottom?: number;
+    panelGuardBottom?: number;
+    panelClearanceBottom?: number;
+    panelObstructionBottom?: number;
+    panelViewportHeight?: number;
   };
 }
 

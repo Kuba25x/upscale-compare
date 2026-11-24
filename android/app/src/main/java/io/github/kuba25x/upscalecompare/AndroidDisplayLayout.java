@@ -115,14 +115,41 @@ final class AndroidDisplayLayout {
         insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars());
     Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
     Insets mandatory = insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures());
-    Insets gestures =
-        Insets.max(insets.getInsets(WindowInsetsCompat.Type.systemGestures()), mandatory);
+    Insets systemGestures = insets.getInsets(WindowInsetsCompat.Type.systemGestures());
+    Insets gestures = Insets.max(systemGestures, mandatory);
     Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
     boolean landscape = isLandscape();
     int top = !landscape && !minimalist ? Math.max(status.top, cutout.top) : 0;
     int bottom = Math.max(landscape ? 0 : navigation.bottom, ime.bottom);
     int safeLeft = Math.max(cutout.left, Math.max(navigation.left, gestures.left));
     int safeRight = Math.max(cutout.right, Math.max(navigation.right, gestures.right));
+    int visibleNavigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+    int mandatoryBottom =
+        Math.max(
+            mandatory.bottom,
+            insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.mandatorySystemGestures())
+                .bottom);
+    int tappable = WindowInsetsCompat.Type.tappableElement();
+    int visibleTappable = insets.getInsets(tappable).bottom;
+    int stableTappable = insets.getInsetsIgnoringVisibility(tappable).bottom;
+    int tappableBottom = Math.max(visibleTappable, stableTappable);
+    RoundedCornerCompat leftCorner =
+        insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_LEFT);
+    RoundedCornerCompat rightCorner =
+        insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_RIGHT);
+    int roundedBottom =
+        Math.max(
+            cornerBottom(leftCorner, safeLeft, true),
+            cornerBottom(rightCorner, windowView.getWidth() - safeRight, false));
+    int panelSafeBottom = Math.max(cutout.bottom, roundedBottom);
+    int navigationGuard = Math.max(navigation.bottom, visibleNavigation);
+    // A gesture-only bar needs clearance for the handle and mandatory swipes. The extra visual
+    // gap belongs above obstructions, including button navigation, the IME and display edges.
+    boolean reportsControlInsets =
+        Build.VERSION.SDK_INT >= 30 && (tappableBottom > 0 || mandatoryBottom > 0);
+    int navigationObstruction =
+        reportsControlInsets ? tappableBottom : Math.max(navigationGuard, tappableBottom);
+    int panelObstructionBottom = Math.max(navigationObstruction, Math.max(ime.bottom, cutout.bottom));
     JSArray bounds = new JSArray();
     if (insets.getDisplayCutout() != null) {
       for (android.graphics.Rect rect : insets.getDisplayCutout().getBoundingRects())
@@ -150,28 +177,45 @@ final class AndroidDisplayLayout {
         .put("safeRight", safeRight)
         .put("safeBottom", Math.max(bottom, Math.max(cutout.bottom, gestures.bottom)))
         .put("safeLeft", safeLeft)
-        .put("panelSafeBottom", Math.max(cutout.bottom, roundedBottom(safeLeft, safeRight)))
+        .put("panelSafeBottom", panelSafeBottom)
+        .put("mandatoryGestureBottom", mandatoryBottom)
+        .put("panelGuardBottom", Math.max(navigationGuard, mandatoryBottom))
+        .put("panelClearanceBottom", Math.max(panelObstructionBottom, panelSafeBottom))
+        .put("panelObstructionBottom", panelObstructionBottom)
+        .put("panelRoundedCorners", panelRoundedCorners(leftCorner, rightCorner))
         .put(
-            "mandatoryGestureBottom",
-            Math.max(
-                mandatory.bottom,
-                insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.mandatorySystemGestures())
-                    .bottom))
+            "bottomInsets",
+            new JSObject()
+                .put("navigation", visibleNavigation)
+                .put("stableNavigation", navigation.bottom)
+                .put("tappable", visibleTappable)
+                .put("stableTappable", stableTappable)
+                .put("systemGestures", systemGestures.bottom)
+                .put("mandatoryGestures", mandatoryBottom)
+                .put("ime", ime.bottom)
+                .put("cutout", cutout.bottom)
+                .put("roundedCorners", roundedBottom))
         .put("cutouts", bounds);
   }
 
-  private int roundedBottom(int safeLeft, int safeRight) {
-    // The portrait controls already sit inside the side insets. Use the circle at those
-    // edges instead of reserving the full height of the rounded corners across the panel.
-    return Math.max(
-        cornerBottom(
-            insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_LEFT), safeLeft, true),
-        cornerBottom(
-            insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_RIGHT),
-            windowView.getWidth() - safeRight,
-            false));
+  private JSObject panelRoundedCorners(RoundedCornerCompat left, RoundedCornerCompat right) {
+    JSObject corners = new JSObject();
+    if (left == null && right == null) return corners;
+    int[] viewOrigin = new int[2];
+    view.getLocationInWindow(viewOrigin);
+    if (left != null) corners.put("left", viewCorner(left, viewOrigin));
+    if (right != null) corners.put("right", viewCorner(right, viewOrigin));
+    return corners;
   }
 
+  private JSObject viewCorner(RoundedCornerCompat corner, int[] viewOrigin) {
+    return new JSObject()
+        .put("x", corner.getCenterX() - viewOrigin[0])
+        .put("y", corner.getCenterY() - viewOrigin[1])
+        .put("radius", corner.getRadius());
+  }
+
+  // Keep the side-inset estimate until the WebView can measure the actual controls.
   private int cornerBottom(RoundedCornerCompat corner, int x, boolean left) {
     if (corner == null) return 0;
     double distance = left ? corner.getCenterX() - x : x - corner.getCenterX();

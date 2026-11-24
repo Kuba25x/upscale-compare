@@ -105,6 +105,7 @@ interface AppProps {
   minimalistExitLabel?: string;
   displayError?: { message: string };
   desktopImageControls?: boolean;
+  observePortraitImagePanel?: (panel: HTMLDivElement) => (() => void) | undefined;
 }
 export default function App({
   android,
@@ -115,6 +116,7 @@ export default function App({
   minimalistExitLabel,
   displayError,
   desktopImageControls = false,
+  observePortraitImagePanel,
 }: AppProps = {}) {
   const [images, setImages] = useState<LocalImage[]>([]);
   const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
@@ -569,6 +571,10 @@ export default function App({
       return withSelection(previous, images, selected);
     });
   const ready = images.length >= 2;
+  useLayoutEffect(() => {
+    if (phonePortrait && ready && !minimalist && imagePanel.current)
+      return observePortraitImagePanel?.(imagePanel.current);
+  }, [phonePortrait, ready, minimalist, observePortraitImagePanel]);
   const phonePanel = useAnchoredPopover(
     'below',
     onPhonePopoverChange,

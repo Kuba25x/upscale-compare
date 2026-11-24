@@ -623,7 +623,9 @@ public class DisplayIntegrationTest {
                         const close = (a, b) => Math.abs(a - b) < 1;
                         return {
                           bottom: Math.max(...buttons.map(button => button.getBoundingClientRect().bottom)),
+                          appBottom: appBox.bottom,
                           dpr: devicePixelRatio,
+                          roundedBottom: parseFloat(style.getPropertyValue('--phone-panel-rounded-bottom')),
                           connected: close(stage.top, header.getBoundingClientRect().bottom)
                             && close(stage.bottom, panelBox.top)
                             && [stage, panelBox].every(box => close(box.left, appBox.left) && close(box.right, appBox.right))
@@ -642,14 +644,28 @@ public class DisplayIntegrationTest {
           assertTrue("Individual controls retain their borders", panel.getBoolean("buttonsBordered"));
           double dpr = panel.getDouble("dpr");
           double reserved = display.get().getInteger("layoutBottom") / dpr;
-          double safe = display.get().getInteger("panelSafeBottom") / dpr;
-          double touch = display.get().getInteger("mandatoryGestureBottom") / dpr;
+          double guard = display.get().getInteger("panelGuardBottom") / dpr;
+          double obstruction =
+              Math.max(
+                  display.get().getInteger("panelObstructionBottom") / dpr,
+                  panel.optDouble(
+                      "roundedBottom", display.get().getInteger("panelClearanceBottom") / dpr));
           double clearance = display.get().getInteger("height") / dpr - panel.getDouble("bottom");
           assertEquals(
               "Controls clear the native navigation area",
-              Math.max(Math.max(reserved, safe) + 12, touch),
+              Math.max(Math.max(reserved, guard), obstruction + 12),
               clearance,
               1);
+          assertTrue("Controls stay outside the navigation guard", (clearance - guard) * dpr >= -0.25);
+          System.out.println(
+              "Portrait panel geometry: "
+                  + display.get().getJSONObject("bottomInsets")
+                  + ", dpr=" + dpr
+                  + ", layout=" + reserved
+                  + ", guard=" + guard
+                  + ", obstruction=" + obstruction
+                  + ", appBottom=" + panel.getDouble("appBottom")
+                  + ", clearance=" + clearance);
         });
   }
 
