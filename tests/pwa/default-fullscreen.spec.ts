@@ -495,9 +495,10 @@ test('the portrait label editor stays within the reported visual and safe viewpo
   await expect(label).toBeFocused();
 });
 
-test('the marked launch URL reopens offline without persisting local images or metadata', async ({
+test('the marked launch URL restores private images and metadata outside Cache Storage', async ({
   page,
   context,
+  baseURL,
 }) => {
   await windowMode(page, 'fullscreen');
   await page.setViewportSize({ width: 412, height: 900 });
@@ -507,20 +508,19 @@ test('the marked launch URL reopens offline without persisting local images or m
     .getByTestId('file-input')
     .setInputFiles([imageFile('Private.png'), imageFile('B.png', 1)]);
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
-  await page.getByLabel('Game title').fill('Private metadata must not survive');
+  await page.getByLabel('Game title').fill('Private metadata');
   await page.getByRole('button', { name: 'Save details', exact: true }).click();
+  await expect
+    .poll(async () => (await storedComparison(page, baseURL)).session?.metadata.game)
+    .toBe('Private metadata');
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
-  await expect(page.getByTestId('stage')).toHaveCount(0);
-  await page
-    .getByTestId('file-input')
-    .setInputFiles([imageFile('Fresh.png'), imageFile('Fresh B.png', 1)]);
-  await expect(page.getByTestId('stage')).toBeVisible();
+  await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Private');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
-  await expect(page.getByLabel('Game title')).toHaveValue('');
+  await expect(page.getByLabel('Game title')).toHaveValue('Private metadata');
   expect(JSON.stringify(await cacheSnapshot(page))).not.toMatch(
-    /Private\.png|Fresh\.png|Private metadata|blob:|pwa=fullscreen/,
+    /Private\.png|Private metadata|blob:|pwa=fullscreen/,
   );
 });
 
