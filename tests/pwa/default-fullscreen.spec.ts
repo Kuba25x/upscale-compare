@@ -290,15 +290,39 @@ test('installed portrait controls use a stable guard both with and without a rep
   await page.setViewportSize({ width: 390, height: 844 });
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setSafeAreaInsetsOverride', {
-    insets: { top: 48, bottom: 0, bottomMax: 0 },
+    insets: { top: 48, bottom: 24, bottomMax: 0 },
   });
   await page.goto('./?pwa=fullscreen');
   const app = page.locator('.app');
   const canvas = page.locator('html');
   const theme = page.locator('meta[name="theme-color"]');
+  const edgeColors = async (...rows: number[]) => {
+    const frame = PNG.sync.read(await page.screenshot({ scale: 'css' }));
+    return rows.map((y) => {
+      const offset = ((y < 0 ? frame.height + y : y) * frame.width + 1) * 4;
+      return [...frame.data.subarray(offset, offset + 4)];
+    });
+  };
+  const panelColor = [20, 21, 25, 255];
+  const landingColor = [16, 17, 20, 255];
+  const expectLandingColors = async () => {
+    await expect(page.locator('.landing')).toBeVisible();
+    await expect(theme).toHaveAttribute('content', '#141519');
+    await expect(canvas).toHaveCSS('background-color', 'rgb(16, 17, 20)');
+    await expect(app).toHaveCSS('padding-top', '48px');
+    await expect(app).toHaveCSS('padding-bottom', '24px');
+    expect(await edgeColors(2, 50, -25, -2)).toEqual([
+      panelColor,
+      panelColor,
+      landingColor,
+      landingColor,
+    ]);
+  };
   await expect(app).toHaveClass(/installed-fullscreen/);
-  await expect(theme).toHaveAttribute('content', '#101114');
-  await expect(canvas).toHaveCSS('background-color', 'rgb(16, 17, 20)');
+  await expectLandingColors();
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+    insets: { top: 48, bottom: 0, bottomMax: 0 },
+  });
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('B.png', 1)]);
   await expect(theme).toHaveAttribute('content', '#141519');
   await expect(canvas).toHaveCSS('background-color', 'rgb(20, 21, 25)');
@@ -333,13 +357,7 @@ test('installed portrait controls use a stable guard both with and without a rep
   }
 
   // Sample both safe areas and their neighboring surfaces at the viewport edge.
-  const screenshot = PNG.sync.read(await page.screenshot({ scale: 'css' }));
-  const edgeColor = (y: number) => {
-    const offset = (y * screenshot.width + 1) * 4;
-    return screenshot.data.subarray(offset, offset + 4);
-  };
-  for (const y of [2, 58, screenshot.height - 25, screenshot.height - 2])
-    expect(edgeColor(y)).toEqual(Buffer.from([20, 21, 25, 255]));
+  expect(await edgeColors(2, 58, -25, -2)).toEqual(Array(4).fill(panelColor));
 
   await page.getByRole('button', { name: 'Minimalist mode' }).click();
   await expect(theme).toHaveAttribute('content', '#101114');
@@ -363,6 +381,16 @@ test('installed portrait controls use a stable guard both with and without a rep
   await expect(theme).toHaveAttribute('content', '#101114');
   await expect(canvas).toHaveCSS('background-color', 'rgb(16, 17, 20)');
   await expectPortraitImagePanel(page);
+
+  await page.evaluate(() => (window as any).changeWindowMode('fullscreen'));
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+    insets: { top: 48, bottom: 24, bottomMax: 0 },
+  });
+  await page.getByRole('button', { name: 'Manage Images' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Your images' });
+  await dialog.getByRole('button', { name: 'Clear comparison' }).click();
+  await dialog.getByRole('button', { name: 'Close dialog' }).click();
+  await expectLandingColors();
   await cdp.detach();
 });
 

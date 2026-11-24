@@ -237,6 +237,7 @@ public class DisplayIntegrationTest {
                   .top);
         });
     boolean portraitControls = name.equals("portrait-normal") || name.equals("portrait-three-button");
+    boolean portraitLanding = name.startsWith("portrait-landing");
     int panelGapX = portraitControls ? portraitControlGapX() : 0;
     // Native visibility/DOM callbacks can precede presentation. The synthetic fixture
     // leaves a known background at these sample points, independently of layout flags.
@@ -266,9 +267,12 @@ public class DisplayIntegrationTest {
                       + y,
                   minimalist ? colorNear(pixel, 23, 25, 30) : colorNear(pixel, 20, 21, 25));
             }
-            if (portraitControls) {
+            if (portraitControls || portraitLanding) {
               int x = frame.getWidth() / 4;
               assertTrue("Status bar matches the portrait header", colorNear(frame.getPixel(x, 2), 20, 21, 25));
+            }
+            if (portraitControls) {
+              int x = frame.getWidth() / 4;
               int panelBottom = frame.getHeight() - state.get().getInteger("layoutBottom");
               assertTrue(
                   "The gap between controls shows the panel surface",
@@ -276,6 +280,14 @@ public class DisplayIntegrationTest {
               assertTrue(
                   "Panel surface continues through the bottom inset",
                   colorNear(frame.getPixel(x, frame.getHeight() - 3), 20, 21, 25));
+            }
+            if (portraitLanding) {
+              int x = frame.getWidth() / 4;
+              int landingBottom = frame.getHeight() - state.get().getInteger("layoutBottom");
+              assertTrue("Landing surface meets the navigation area",
+                  colorNear(frame.getPixel(x, landingBottom - 2), 16, 17, 20));
+              assertTrue("Navigation area matches the landing surface",
+                  colorNear(frame.getPixel(x, frame.getHeight() - 3), 16, 17, 20));
             }
           } finally {
             frame.recycle();
@@ -741,15 +753,20 @@ public class DisplayIntegrationTest {
     return result.get();
   }
 
-  private void assertPortraitThreeButtonSurface() throws Exception {
+  private void assertPortraitThreeButtonSurface(boolean landing) throws Exception {
     assertEquals(0, tappableBottom());
     String enable = "cmd overlay enable-exclusive --user 0 --category com.android.internal.systemui.navbar.";
     try {
       shell(enable + "threebutton");
       eventually(() -> assertTrue(tappableBottom() > 0));
       bars(true, true);
-      assertPortraitComparisonLayout();
-      screenshot("portrait-three-button");
+      if (landing) {
+        assertLandingBrandCentered();
+        screenshot("portrait-landing-three-button");
+      } else {
+        assertPortraitComparisonLayout();
+        screenshot("portrait-three-button");
+      }
     } finally {
       shell(enable + "gestural");
     }
@@ -767,7 +784,7 @@ public class DisplayIntegrationTest {
       assertPortraitComparisonLayout();
       screenshot("portrait-normal");
       exercisePortraitGestures();
-      assertPortraitThreeButtonSurface();
+      assertPortraitThreeButtonSurface(false);
       editPortraitLabel();
       assertPortraitZoomMenu();
       click(".fullscreen-button");
@@ -971,6 +988,9 @@ public class DisplayIntegrationTest {
                           + "button[aria-label=\"Close dialog\"]:enabled')")));
       click("dialog[open] button[aria-label=\"Close dialog\"]");
       assertLandingBrandCentered();
+      bars(true, true);
+      screenshot("portrait-landing");
+      assertPortraitThreeButtonSurface(true);
       rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, true);
       bars(false, false);
       assertLandingBrandCentered();
