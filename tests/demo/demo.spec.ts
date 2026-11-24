@@ -158,7 +158,11 @@ test('keeps privacy information, pixel controls, keyboard shortcuts, and fullscr
   await help.getByRole('button', { name: 'Privacy', exact: true }).click();
   const privacy = page.getByRole('dialog', { name: 'Your images, your choice' });
   await expect(privacy).toContainText(
-    'Original images, labels, and comparison details stay in your browser and are never uploaded automatically.',
+    'Original images, labels, and comparison details are saved in this browser to reopen the last comparison.',
+  );
+  await expect(privacy).toContainText('They are never uploaded automatically.');
+  await expect(privacy).toContainText(
+    'Use Clear comparison to remove the saved files and session.',
   );
   await expect(privacy).not.toContainText(/Demo|sharing is (?:not |un)available/i);
   await privacy.getByRole('button', { name: 'Close', exact: true }).click();

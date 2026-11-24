@@ -1173,7 +1173,7 @@ export default function App({
         </div>
       )}
       {storageError && !managing && !error && (
-        <div className="toast" role="alert">
+        <div className="toast storage-toast" role="alert">
           <span>{storageError}</span>
           <button
             className="icon-button"

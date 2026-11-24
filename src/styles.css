@@ -1013,6 +1013,12 @@ input[type='checkbox'] {
   line-height: 1.7;
   margin: 16px 0 0;
 }
+.storage-toast {
+  pointer-events: none;
+}
+.storage-toast button {
+  pointer-events: auto;
+}
 .toast {
   position: fixed;
   bottom: 96px;

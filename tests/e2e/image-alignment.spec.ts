@@ -221,6 +221,8 @@ test('handles denied persistent storage and quota errors, and clears originals a
   expect(await storedComparison(page)).toEqual({ session: undefined, originals: 0 });
   await changeAlignment(stale, 'Match Width');
   await expect(stale.getByRole('alert')).toContainText('another tab');
+  await stale.getByRole('button', { name: '100%', exact: true }).click();
+  await expect(stale.getByTestId('stage')).toHaveAttribute('data-zoom', '1');
   expect(await storedComparison(stale)).toEqual({ session: undefined, originals: 0 });
   await page.reload();
   await expect(page.getByRole('button', { name: 'Upload Images', exact: true })).toBeEnabled();
