@@ -16,6 +16,8 @@ import {
 import {
   MAX_IMAGES,
   emptyMetadata,
+  type AlignmentChoices,
+  type AlignmentMode,
   type Config,
   type LocalImage,
   type Metadata,
@@ -34,6 +36,20 @@ import { MetadataEditor } from './components/MetadataEditor';
 import { readDeletionKey, ShareDialog, type Published } from './components/ShareDialog';
 import { PublicationRecoveryDialog } from './components/PublicationRecoveryDialog';
 import { JOURNAL_CHANGED, pendingPublications } from './lib/publication-journal';
+import {
+  changeAlignment,
+  choiceFor,
+  imagePair,
+  retainChoices,
+  selectImages,
+} from './lib/alignment';
+import { AlignmentOptions, AlignmentDialog } from './components/ImageAlignment';
+import {
+  createWebSessionStore,
+  requestPersistentStorage,
+  webSessionError,
+  type LocalSession,
+} from './lib/web-session';
 
 import type { AndroidImage, AndroidImageSource } from './lib/android';
 import type { AndroidServices } from './lib/android-services';
@@ -61,18 +77,7 @@ type UploadAction = { kind: 'all' | 'add' } | { kind: 'one'; index: number };
 const defaultLabel = (image: LocalImage) =>
   image.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Screenshot';
 
-function withSelection(config: Config, images: LocalImage[], selected: Config['selected']): Config {
-  if (config.view.zoom !== null || images.length < 2) return { ...config, selected };
-  const [a, b] = selected.map((i) => images[i]);
-  return {
-    ...config,
-    selected,
-    view: {
-      zoom: null,
-      center: { x: Math.max(a.width, b.width) / 2, y: Math.max(a.height, b.height) / 2 },
-    },
-  };
-}
+const noChoices: AlignmentChoices = [];
 
 function AndroidThumbnail({
   id,
@@ -123,6 +128,11 @@ export default function App({
   const [images, setImages] = useState<LocalImage[]>([]);
   const [metadata, setMetadata] = useState<Metadata>(emptyMetadata);
   const [config, setConfig] = useState<Config>(initialConfig);
+  const [alignmentChoices, setAlignmentChoices] = useState<AlignmentChoices>(noChoices);
+  const [webSession] = useState(() => (ANDROID_MODE ? undefined : createWebSessionStore()));
+  const [storageError, setStorageError] = useState('');
+  const requestedPersistence = useRef(false);
+  const lastSaved = useRef<LocalSession | null>(null);
   const [modal, setModal] = useState<
     | 'upload'
     | 'upload-help'
@@ -132,6 +142,7 @@ export default function App({
     | 'help'
     | 'privacy'
     | 'recovery'
+    | 'alignment'
     | null
   >(null);
   const phone = presentation.phone;
@@ -150,7 +161,7 @@ export default function App({
   const closePrivacy = () => setModal(manageHelpOpen ? 'upload-help' : null);
   const [error, setError] = useState('');
   const [androidImageSource, setAndroidImageSource] = useState<AndroidImageSource>('photos');
-  const [loading, setLoading] = useState(ANDROID_MODE);
+  const [loading, setLoading] = useState(true);
   const currentImages = useRef(images);
   currentImages.current = images;
   const savingImages = useRef(false);
@@ -212,7 +223,7 @@ export default function App({
   useEffect(() => {
     if (displayError) setError(displayError.message);
   }, [displayError]);
-  const [restored, setRestored] = useState(!ANDROID_MODE);
+  const [restored, setRestored] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [route, setRoute] = useState(location.hash);
   const [published, setPublished] = useState<Published>();
@@ -249,51 +260,108 @@ export default function App({
     };
   }, [android]);
   useEffect(() => {
-    if (!android) return;
     let active = true;
-    android
-      .restoreAndroidSession()
+    const restore = android ? android.restoreAndroidSession() : webSession!.restore();
+    void restore
       .then((session) => {
-        if (!active) return;
-        setRestored(true);
+        if (!active || (!android && !DEMO_MODE && location.hash.startsWith('#c/'))) {
+          session?.images.forEach((image) => {
+            if ('file' in image) URL.revokeObjectURL(image.url);
+          });
+          return;
+        }
         if (!session) return;
+        const pair = imagePair(session.images, session.config.selected);
+        const choices =
+          session.alignmentChoices ?? (pair ? [{ pair, mode: 'original' as const }] : noChoices);
+        lastSaved.current = { ...session, alignmentChoices: choices };
         setImages(session.images);
         setMetadata(session.metadata);
         setConfig(session.config);
+        setAlignmentChoices(choices);
       })
       .catch((reason) => {
         if (active) setError(`Could not restore the local session: ${reason.message}`);
       })
       .finally(() => {
         if (active) {
+          setRestored(true);
           setLoading(false);
         }
       });
     return () => {
       active = false;
     };
-  }, [android]);
+  }, [android, webSession]);
+  const snapshot: LocalSession = { images, metadata, config, alignmentChoices };
+  const latestSession = useRef(snapshot);
+  latestSession.current = snapshot;
   useEffect(() => {
-    if (!android || !restored || loading || images.length === 1) return;
+    if (!restored || loading || route || readOnly || images.length < 2) return;
     const save = () => {
-      // A picker/background event can arrive before React removes the previous listener.
-      if (savingImages.current || currentImages.current !== images) return;
-      return android
-        .saveAndroidSession({ images, metadata, config })
+      const current = latestSession.current;
+      if (
+        savingImages.current ||
+        current.images !== images ||
+        current.config !== config ||
+        current.metadata !== metadata ||
+        current.alignmentChoices !== alignmentChoices
+      )
+        return;
+      const saved = lastSaved.current;
+      if (
+        saved?.images === images &&
+        saved.config === config &&
+        saved.metadata === metadata &&
+        saved.alignmentChoices === alignmentChoices
+      )
+        return;
+      lastSaved.current = current;
+      const persisted = android ? android.saveAndroidSession(current) : webSession!.save(current);
+      return persisted
         .then((result) => {
-          if (result.warning) setError(result.warning);
+          if (result?.warning) setError(result.warning);
+          if (!android) setStorageError('');
         })
-        .catch((reason) => setError(`Could not save the local session: ${reason.message}`));
+        .catch((reason) => {
+          if (lastSaved.current === current) lastSaved.current = saved;
+          if (android) setError(`Could not save the local session: ${reason.message}`);
+          else setStorageError(webSessionError(reason));
+        });
     };
-    const timer = window.setTimeout(() => void save(), 250);
-    const listener = android.app.addListener('appStateChange', ({ isActive }) => {
+    const previous = lastSaved.current;
+    const immediate =
+      previous?.alignmentChoices !== alignmentChoices ||
+      previous?.images !== images ||
+      previous?.metadata !== metadata ||
+      previous?.config.selected !== config.selected ||
+      previous?.config.mode !== config.mode;
+    if (immediate) void save();
+    const timer = immediate ? undefined : window.setTimeout(() => void save(), 250);
+    const listener = android?.app.addListener('appStateChange', ({ isActive }) => {
       if (!isActive) void save();
     });
+    const onVisibility = () => {
+      if (document.hidden) void save();
+    };
+    if (!android) document.addEventListener('visibilitychange', onVisibility);
     return () => {
       clearTimeout(timer);
-      void listener.then((handle) => handle.remove());
+      void listener?.then((handle) => handle.remove());
+      if (!android) document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [android, images, metadata, config, restored, loading]);
+  }, [
+    android,
+    webSession,
+    images,
+    metadata,
+    config,
+    alignmentChoices,
+    restored,
+    loading,
+    route,
+    readOnly,
+  ]);
   useEffect(() => {
     if (restored && !loading && minimalist && images.length < 2) void onSetMinimalist?.(false);
   }, [images.length, restored, loading, minimalist, onSetMinimalist]);
@@ -313,7 +381,7 @@ export default function App({
   }, []);
   useEffect(() => {
     let active = true;
-    if (!route) return;
+    if (!route || !restored) return;
     setModal(null);
     if (DEMO_MODE) {
       setError(SHARING_UNAVAILABLE_MESSAGE);
@@ -334,7 +402,7 @@ export default function App({
               bitmap = new Image();
             bitmap.src = url;
             await bitmap.decode();
-            return { ...image, url };
+            return { ...image, url, id: `shared-${index}` };
           }),
         );
         if (!active) return;
@@ -343,7 +411,10 @@ export default function App({
         });
         setImages(loaded);
         setMetadata(comparison.metadata);
-        setConfig(comparison.config);
+        const { alignment, ...viewConfig } = comparison.config;
+        const pair = imagePair(loaded, viewConfig.selected);
+        setConfig(viewConfig);
+        setAlignmentChoices(pair && alignment ? [{ pair, mode: alignment }] : noChoices);
         setReadOnly(true);
         setPublished({
           id: comparison.id,
@@ -361,27 +432,49 @@ export default function App({
     return () => {
       active = false;
     };
-  }, [route]);
+  }, [route, restored]);
   const commitImages = async (
     nextImages: LocalImage[],
     nextConfig: Config,
     nextMetadata = metadata,
+    nextChoices = retainChoices(alignmentChoices, nextImages),
+    clear = false,
   ) => {
-    if (android) {
-      savingImages.current = true;
-      try {
+    const nextSession = {
+      images: nextImages,
+      config: nextConfig,
+      metadata: nextMetadata,
+      alignmentChoices: nextChoices,
+    };
+    savingImages.current = true;
+    try {
+      if (android) {
         const draft = nextImages.length === 1 ? nextImages[0] : undefined;
         const result = await android.saveAndroidSession(
           draft
-            ? { images: [], config: initialConfig, metadata: emptyMetadata() }
-            : { images: nextImages, config: nextConfig, metadata: nextMetadata },
+            ? {
+                images: [],
+                config: initialConfig,
+                metadata: emptyMetadata(),
+                alignmentChoices: noChoices,
+              }
+            : nextSession,
           draft,
         );
         if (result.warning) setError(result.warning);
         setRestored(true);
-      } finally {
-        savingImages.current = false;
+      } else {
+        try {
+          await webSession!.save(nextSession, clear);
+          setStorageError('');
+        } catch (reason) {
+          if (clear) throw new Error(webSessionError(reason));
+          setStorageError(webSessionError(reason));
+        }
       }
+      lastSaved.current = nextSession;
+    } finally {
+      savingImages.current = false;
     }
     const keptUrls = new Set(nextImages.map((image) => image.url));
     for (const image of images) {
@@ -391,11 +484,13 @@ export default function App({
     setImages(nextImages);
     setConfig(nextConfig);
     setMetadata(nextMetadata);
+    setAlignmentChoices(nextChoices);
     setPublished(undefined);
   };
   const removeImages = async (index?: number, restoreFocus = true) => {
     if (loading) return false;
     const nextImages = index === undefined ? [] : images.filter((_, i) => i !== index);
+    const nextChoices = retainChoices(alignmentChoices, nextImages);
     let nextConfig = initialConfig;
     if (nextImages.length === 1) {
       // Keep the other comparison settings while the user fills the draft.
@@ -403,16 +498,26 @@ export default function App({
     } else if (nextImages.length >= 2) {
       const [a, b] = config.selected.map((i) => nextImages.indexOf(images[i]));
       // Keep any surviving selection in its slot; fill a vacant slot with the first free image.
-      nextConfig = withSelection(config, nextImages, [
-        a < 0 ? (b === 0 ? 1 : 0) : a,
-        b < 0 ? (a === 0 ? 1 : 0) : b,
-      ]);
+      nextConfig = selectImages(
+        config,
+        nextImages,
+        [a < 0 ? (b === 0 ? 1 : 0) : a, b < 0 ? (a === 0 ? 1 : 0) : b],
+        nextChoices,
+        true,
+        false,
+      );
     }
     setLoading(true);
     setError('');
     if (restoreFocus) focusAfterRemoval.current = index ?? 0;
     try {
-      await commitImages(nextImages, nextConfig, nextImages.length ? metadata : emptyMetadata());
+      await commitImages(
+        nextImages,
+        nextConfig,
+        nextImages.length ? metadata : emptyMetadata(),
+        nextChoices,
+        index === undefined && restoreFocus,
+      );
       return true;
     } catch (reason) {
       focusAfterRemoval.current = null;
@@ -429,6 +534,7 @@ export default function App({
   };
   const closeAndroidModal = useEffectEvent(() => {
     if (modal === 'upload') void closeManageImages();
+    else if (modal === 'alignment') closeAlignment();
     else if (modal === 'help' || modal === 'upload-help') closeHelp();
     else if (modal === 'upload-privacy') closePrivacy();
     else setModal(null);
@@ -510,6 +616,10 @@ export default function App({
       return;
     }
 
+    if (webSession && !requestedPersistence.current) {
+      requestedPersistence.current = true;
+      void requestPersistentStorage();
+    }
     setLoading(true);
     const loaded: LocalImage[] = [];
     try {
@@ -525,12 +635,20 @@ export default function App({
         : action.kind === 'one'
           ? images.map((image, i) => (i === action.index ? loaded[0] : image))
           : [...images, ...loaded];
+      const nextChoices = replacingAll ? noChoices : retainChoices(alignmentChoices, nextImages);
       const nextConfig = replacingAll
-        ? withSelection(initialConfig, nextImages, initialConfig.selected)
+        ? selectImages(initialConfig, nextImages, initialConfig.selected, nextChoices, true)
         : images.length < 2
-          ? withSelection(config, nextImages, initialConfig.selected)
-          : config;
-      await commitImages(nextImages, nextConfig, replacingAll ? emptyMetadata() : metadata);
+          ? selectImages(config, nextImages, initialConfig.selected, nextChoices, true)
+          : action.kind === 'one' && config.selected.includes(action.index)
+            ? selectImages(config, nextImages, config.selected, nextChoices, true)
+            : config;
+      await commitImages(
+        nextImages,
+        nextConfig,
+        replacingAll ? emptyMetadata() : metadata,
+        nextChoices,
+      );
       if (replacingAll) {
         setReadOnly(false);
         history.replaceState(null, '', `${location.pathname}${location.search}`);
@@ -565,14 +683,67 @@ export default function App({
       }}
     />
   );
-  const select = (slot: 0 | 1, index: number) =>
-    setConfig((previous) => {
-      const selected: [number, number] = [...previous.selected];
-      if (selected[1 - slot] === index) selected[1 - slot] = selected[slot];
-      selected[slot] = index;
-      return withSelection(previous, images, selected);
-    });
+  const select = useCallback(
+    (slot: 0 | 1, index: number | 'next' | 'previous') =>
+      setConfig((previous) => {
+        const nextIndex =
+          typeof index === 'number'
+            ? index
+            : (previous.selected[slot] + (index === 'next' ? 1 : -1) + images.length) %
+              images.length;
+        if (nextIndex === previous.selected[slot]) return previous;
+        const selected: [number, number] = [...previous.selected];
+        if (selected[1 - slot] === nextIndex) selected[1 - slot] = selected[slot];
+        selected[slot] = nextIndex;
+        return selectImages(
+          previous,
+          images,
+          selected,
+          alignmentChoices,
+          typeof index === 'number',
+        );
+      }),
+    [images, alignmentChoices],
+  );
+  const swap = useCallback(
+    () =>
+      setConfig((previous) =>
+        selectImages(
+          previous,
+          images,
+          [previous.selected[1], previous.selected[0]],
+          alignmentChoices,
+          false,
+        ),
+      ),
+    [images, alignmentChoices],
+  );
   const ready = images.length >= 2;
+  const pair = imagePair(images, config.selected);
+  const [imageA, imageB] = config.selected.map((index) => images[index]);
+  const choice = choiceFor(alignmentChoices, pair);
+  const alignment = choice?.mode ?? 'original';
+  const shouldAskAlignment = Boolean(
+    pair &&
+    !choice &&
+    !readOnly &&
+    !route &&
+    imageA &&
+    imageB &&
+    (imageA.width !== imageB.width || imageA.height !== imageB.height),
+  );
+  const setAlignment = (mode: AlignmentMode) => {
+    if (!pair || choice?.mode === mode) return;
+    setConfig((previous) => changeAlignment(previous, imageA, imageB, alignment, mode));
+    setAlignmentChoices((previous) => [
+      ...previous.filter((entry) => entry !== choiceFor(previous, pair)),
+      { pair, mode },
+    ]);
+  };
+  const closeAlignment = (mode = alignment) => {
+    setAlignment(mode);
+    setModal(null);
+  };
   const portraitPanelEdges =
     phonePortrait && !minimalist && (ANDROID_MODE || installedAndroidFullscreen);
   useLayoutEffect(() => {
@@ -596,6 +767,13 @@ export default function App({
     onPhonePopoverChange,
     phoneLandscape && ready && !minimalist,
   );
+  const openAlignment = useEffectEvent(() => {
+    if (phonePanel.isOpen()) phonePanel.dismiss(true);
+    setModal('alignment');
+  });
+  useEffect(() => {
+    if (shouldAskAlignment && !loading && !modal && !minimalist) openAlignment();
+  }, [loading, modal, shouldAskAlignment, minimalist]);
   const imageChoices = images.map((image, value) => ({ value, label: image.label || image.name }));
   useLayoutEffect(() => {
     const row = headerControls.current;
@@ -621,7 +799,7 @@ export default function App({
   const manifest = {
     images: images.map((image) => ({ label: image.label, metadata: image.metadata })),
     metadata,
-    config,
+    config: alignment === 'original' ? config : { ...config, alignment },
   };
   const shareControl = localSharingTest && (
     <button
@@ -793,7 +971,10 @@ export default function App({
             }
             images={images}
             config={config}
+            alignment={alignment}
             onChange={updateConfig}
+            onSwap={swap}
+            onCycleImage={(direction) => select(0, direction)}
             onMetadata={details}
             onHelp={help}
             onPhonePopoverChange={onPhonePopoverChange}
@@ -906,12 +1087,7 @@ export default function App({
                 className="swap-button icon-button"
                 aria-label="Swap images"
                 title="Swap A and B (X)"
-                onClick={() =>
-                  setConfig((previous) => ({
-                    ...previous,
-                    selected: [previous.selected[1], previous.selected[0]],
-                  }))
-                }
+                onClick={swap}
               >
                 <ArrowLeftRight size={16} />
                 {phoneLandscape && <span>Swap images</span>}
@@ -1000,6 +1176,18 @@ export default function App({
           </button>
         </div>
       )}
+      {storageError && !managing && !error && (
+        <div className="toast storage-toast" role="alert">
+          <span>{storageError}</span>
+          <button
+            className="icon-button"
+            aria-label="Dismiss error"
+            onClick={() => setStorageError('')}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
       {dragging && (
         <div className="drop-overlay">
           <Upload size={35} />
@@ -1036,6 +1224,7 @@ export default function App({
               </button>
             )}
           </div>
+          {pair && <AlignmentOptions mode={alignment} onSelect={setAlignment} disabled={loading} />}
           {ANDROID_MODE && (
             <label>
               Image source
@@ -1105,6 +1294,11 @@ export default function App({
               {error}
             </p>
           )}
+          {storageError && !error && (
+            <p className="error" role="alert">
+              {storageError}
+            </p>
+          )}
           <div className="modal-actions">
             {!readOnly && (
               <button disabled={loading || images.length === 0} onClick={() => void removeImages()}>
@@ -1131,6 +1325,16 @@ export default function App({
             )}
           </div>
         </Modal>
+      )}
+      {modal === 'alignment' && pair && (
+        <AlignmentDialog
+          key={pair.join(':')}
+          a={imageA}
+          b={imageB}
+          mode={alignment}
+          onApply={closeAlignment}
+          onClose={() => closeAlignment()}
+        />
       )}
       {modal === 'metadata' && (
         <MetadataEditor
@@ -1191,10 +1395,10 @@ export default function App({
             <dd>Show this guide</dd>
           </dl>
           <p className="muted small">
-            100% (1:1) maps one source pixel to one physical display pixel, including on
-            high-density displays. Fit adapts to your window. Different image sizes share one scale
-            and the same top-left origin; they are never stretched to match. Browser color
-            management may affect displayed colors; HDR inspection is not supported.
+            At 100%, one source pixel of image A maps to one physical display pixel. In Original
+            Size this also applies to B. Match Width and Match Height scale B proportionally and
+            keep the same top-left origin. Fit adapts to your window. Browser color management may
+            affect displayed colors; HDR inspection is not supported.
           </p>
           {__WEB_PWA__ && <InstallationHelp />}
           {phone && !__WEB_PWA__ && <p className="muted small">Build {__APP_RELEASE__}</p>}
@@ -1228,7 +1432,7 @@ export default function App({
             <p>
               {ANDROID_MODE
                 ? 'Original images are copied without recompression into private device storage. The current comparison is restored after restarting. Clear comparison removes its stored originals. App data is excluded from Android backup.'
-                : 'Original images, labels, and comparison details stay in your browser and are never uploaded automatically. Closing or refreshing the page clears your local comparison.'}
+                : 'Original images, labels, and comparison details are saved in this browser to reopen the last comparison. They are never uploaded automatically. Use Clear comparison to remove the saved files and session. Your browser may clear this storage.'}
             </p>
             {ANDROID_MODE ? (
               <p>Files available only in cloud storage cannot be imported offline.</p>

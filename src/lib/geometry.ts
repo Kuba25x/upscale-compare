@@ -1,4 +1,4 @@
-import type { View } from '../../shared/model';
+import type { AlignmentMode, View } from '../../shared/model';
 
 export interface Size {
   width: number;
@@ -8,6 +8,23 @@ export interface Point {
   x: number;
   y: number;
 }
+export function comparisonGeometry(a: Size, b: Size, mode: AlignmentMode) {
+  const relativeScale =
+    mode === 'width' ? a.width / b.width : mode === 'height' ? a.height / b.height : 1;
+  const alignedB = {
+    width: mode === 'width' ? a.width : b.width * relativeScale,
+    height: mode === 'height' ? a.height : b.height * relativeScale,
+  };
+  return {
+    relativeScale,
+    alignedB,
+    bounds: {
+      width: Math.max(a.width, alignedB.width),
+      height: Math.max(a.height, alignedB.height),
+    },
+  };
+}
+export const centerOf = (bounds: Size): Point => ({ x: bounds.width / 2, y: bounds.height / 2 });
 export const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 export function scaleFor(view: View, panel: Size, image: Size, dpr: number): number {

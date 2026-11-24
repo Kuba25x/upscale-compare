@@ -3,6 +3,7 @@ import { PNG } from 'pngjs';
 import type { Config, Manifest, PublicComparison } from '../../shared/model';
 import { browserFile, original, type Original } from '../fixtures/fidelity';
 import { imageFile } from '../e2e/fixtures';
+import { applyAlignment } from '../shared/image-alignment';
 import {
   chooseZoomPreset,
   renameSelectedImage,
@@ -168,6 +169,22 @@ for (const scenario of scenarios) {
     await page.goto('./');
     await page.getByTestId('file-input').setInputFiles(files.map(browserFile));
     await expect(page.getByTestId('stage')).toBeVisible();
+    const checkedPairs = new Set<string>();
+    const selectedIndices = [0, 1];
+    const keepOriginalSize = async () => {
+      const pair = [...selectedIndices].sort().join(':');
+      if (checkedPairs.has(pair)) return;
+      const [a, b] = selectedIndices.map((index) => files[index]);
+      if (a.width !== b.width || a.height !== b.height) await applyAlignment(page, 'Original Size');
+      checkedPairs.add(pair);
+    };
+    const choose = async (slot: 0 | 1, index: number) => {
+      await selectImage(page, slot === 0 ? 'A' : 'B', index);
+      if (selectedIndices[1 - slot] === index) selectedIndices[1 - slot] = selectedIndices[slot];
+      selectedIndices[slot] = index;
+      await keepOriginalSize();
+    };
+    await keepOriginalSize();
     const local = await fingerprints(page);
     local.forEach((result, i) => {
       expect(result.bytes).toBe(files[i].sha256);
@@ -175,7 +192,7 @@ for (const scenario of scenarios) {
       expect(result.height).toBe(files[i].height);
     });
     for (let i = 0; i < files.length; i++) {
-      await selectImage(page, 'A', i);
+      await choose(0, i);
       await renameSelectedImage(page, 'A', scenario.names[i], `Source ${i + 1} — żółć 🎮`);
     }
     await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
@@ -196,8 +213,8 @@ for (const scenario of scenarios) {
         .fill(`${files[i].width} × ${files[i].height}`);
     }
     await page.getByRole('button', { name: 'Save details', exact: true }).click();
-    await selectImage(page, 'A', files.length - 1);
-    await selectImage(page, 'B', 0);
+    await choose(0, files.length - 1);
+    await choose(1, 0);
     const divider = page.getByRole('slider');
     await divider.focus();
     await page.keyboard.press('Home');

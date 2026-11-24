@@ -7,6 +7,7 @@ import {
 } from '../shared/phone-controls';
 import { imageFile } from '../e2e/fixtures';
 import { cacheSnapshot, control, originalBytes, serve, update } from './helpers';
+import { storedComparison } from '../shared/image-alignment';
 
 test.beforeEach(async ({ request }) => serve(request));
 
@@ -27,6 +28,12 @@ for (const { count, from, to } of [
     const scriptA = await page.locator('script[type="module"][src]').getAttribute('src');
     const before = await cacheSnapshot(page);
     const file = imageFile('Original A.png');
+    await page.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1)]);
+    await renameSelectedImage(page, 'A', file.name, 'Keep my comparison');
+    await chooseZoomPreset(page, 2);
+    await expect
+      .poll(async () => (await storedComparison(page, baseURL)).session?.config.view.zoom)
+      .toBe(2);
     const pages = [page];
     if (count === 2) {
       const second = await context.newPage();
@@ -34,9 +41,7 @@ for (const { count, from, to } of [
       pages.push(second);
     }
     for (const view of pages) {
-      await view.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1)]);
-      await renameSelectedImage(view, 'A', file.name, 'Keep my comparison');
-      await chooseZoomPreset(view, 2);
+      await expectSelectedImageLabel(view, 'A', 'Keep my comparison');
       await view.evaluate(() => {
         (window as any).__originalLayers = [...document.querySelectorAll('.comparison-image')];
       });
@@ -100,7 +105,9 @@ for (const { count, from, to } of [
       })
       .toBe(true);
     await expect(fresh.locator('script[type="module"][src]')).not.toHaveAttribute('src', scriptA!);
-    await expect(fresh.getByTestId('stage')).toHaveCount(0);
+    await expectSelectedImageLabel(fresh, 'A', 'Keep my comparison');
+    await expect(fresh.getByTestId('stage')).toHaveAttribute('data-zoom', '2');
+    expect(await originalBytes(fresh)).toEqual(Array.from(file.buffer));
     expect(
       await fresh.evaluate(
         async ({ foreign }) => ({

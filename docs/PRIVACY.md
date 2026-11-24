@@ -4,11 +4,11 @@ This repository is software, not a hosted upload service. Each deployment operat
 
 ## Frontend-only demo
 
-The demo build does not connect to the sharing API, load Turnstile, or upload images or comparison metadata. Local file inspection remains available, but publication and remote comparison viewing are disabled with a visible explanation. Refreshing or closing the page clears local images, labels, and metadata. GitHub Pages still receives ordinary requests for public application files and may process hosting access logs; this is separate from screenshot handling.
+The demo build does not connect to the sharing API, load Turnstile, or upload images or comparison metadata. Local file inspection remains available, but publication and remote comparison viewing are disabled with a visible explanation. GitHub Pages receives ordinary requests for public application files and may process hosting access logs.
 
 ## Local comparisons
 
-Screenshots selected on your device are read into browser memory and displayed using object URLs. The application does not upload them during selection, comparison, renaming, metadata editing, zooming, or panning. There is no advertising, analytics SDK, tracking cookie, remote font, or automatic image sync. Reloading or closing the page loses unpublished images.
+The web app saves the last local comparison and its original files in the browser's IndexedDB so it can restore them on reopening. **Clear comparison** removes unpublished originals, labels, metadata and view settings for that app scope. The browser may grant persistent storage, clear data or refuse writes when space is low. Local comparison, alignment and restoration send no image or session data to a server. The PWA service worker caches app resources only.
 
 ## Explicit publication
 
@@ -26,7 +26,7 @@ Anyone with the public link can access or download published screenshots without
 - Hosting providers may independently retain access/security logs. This code does not log screenshot contents or deletion credentials.
 - Aggregate daily cost-control counts/byte reservations and the operator policy generation/update time. The aggregate rows contain UTC dates and totals, with no IPs, filenames, credentials or image metadata. Rows older than 35 days are purged in batches of at most 100 per hourly run; backlog/outages can extend retention. These counters survive image deletion until their independent retention cleanup.
 
-Before upload, the browser saves an API-scoped private recovery record with publication/deletion credentials, creation time and a request fingerprint. It contains no images, filenames or plaintext metadata. **Recover publication** can check an interrupted attempt for 24 hours, including after refresh, without sending images again. Once the result is known, the deletion key is saved under the API/comparison ID before removing the recovery record. Unresolved recovery records are retained locally until explicitly removed; expiry does not automatically erase private keys. Private key backups can be downloaded. No screenshot persistence is enabled. See [recoverable retries](PUBLICATION_RETRIES.md).
+Before upload, the browser saves an API-scoped private recovery record with publication/deletion credentials, creation time and a request fingerprint. It contains no images, filenames or plaintext metadata. **Recover publication** can check an interrupted attempt for 24 hours, including after refresh, without sending images again. Once the result is known, the deletion key is saved under the API/comparison ID before removing the recovery record. Unresolved recovery records are retained locally until explicitly removed. Private key backups can be downloaded. See [recoverable retries](PUBLICATION_RETRIES.md).
 
 Server retry metadata expires 24 hours after the identifier timestamp and is removed in batches of up to 100 per hourly run; provider outages or backlog can extend retention. Temporary comparison columns used to create the marker are cleared in the same transaction. Normal active-comparison deletion still removes the images and manifest immediately when storage succeeds, while its small private retry tombstone remains until expiry cleanup. Hosting logs/backups follow operator/provider policies.
 
