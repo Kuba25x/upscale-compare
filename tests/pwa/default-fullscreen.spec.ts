@@ -283,14 +283,26 @@ test('installed portrait controls use a stable guard both with and without a rep
     browserName !== 'chromium',
     'Chromium DevTools provides real CSS environment overrides.',
   );
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (Linux; Android 10; K)' });
+  });
   await windowMode(page, 'fullscreen', false, 'success', false);
   await page.setViewportSize({ width: 390, height: 844 });
   const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 0 } });
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+    insets: { top: 48, bottom: 0, bottomMax: 0 },
+  });
   await page.goto('./?pwa=fullscreen');
   const app = page.locator('.app');
+  const canvas = page.locator('html');
+  const theme = page.locator('meta[name="theme-color"]');
   await expect(app).toHaveClass(/installed-fullscreen/);
+  await expect(theme).toHaveAttribute('content', '#101114');
+  await expect(canvas).toHaveCSS('background-color', 'rgb(16, 17, 20)');
   await page.getByTestId('file-input').setInputFiles([imageFile(), imageFile('B.png', 1)]);
+  await expect(theme).toHaveAttribute('content', '#141519');
+  await expect(canvas).toHaveCSS('background-color', 'rgb(20, 21, 25)');
+  await expect(app).toHaveCSS('padding-top', '48px');
   await expect(app).toHaveCSS('padding-bottom', '0px');
   expect(
     await app.evaluate(() => innerHeight - visualViewport!.height - visualViewport!.offsetTop),
@@ -304,25 +316,41 @@ test('installed portrait controls use a stable guard both with and without a rep
   await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
 
   // Revealing an overlay of the same size should not move the buttons.
-  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 24, bottomMax: 0 } });
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+    insets: { top: 56, bottom: 24, bottomMax: 0 },
+  });
+  await expect(app).toHaveCSS('padding-top', '56px');
   await expect(app).toHaveCSS('padding-bottom', '24px');
   await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
 
   // The current inset can already reserve some or all of the same area.
   for (const bottom of [12, 24]) {
-    await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom, bottomMax: 24 } });
+    await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+      insets: { top: 56, bottom, bottomMax: 24 },
+    });
     await expect(app).toHaveCSS('padding-bottom', `${bottom}px`);
     await expectPortraitImagePanel(page, { bottom: 24, gap: 12 });
   }
 
-  // Sample the rendered surface on both sides of the panel's boundary with the safe area.
+  // Sample both safe areas and their neighboring surfaces at the viewport edge.
   const screenshot = PNG.sync.read(await page.screenshot({ scale: 'css' }));
   const edgeColor = (y: number) => {
     const offset = (y * screenshot.width + 1) * 4;
     return screenshot.data.subarray(offset, offset + 4);
   };
-  expect(edgeColor(screenshot.height - 25)).toEqual(edgeColor(2));
-  expect(edgeColor(screenshot.height - 2)).toEqual(edgeColor(2));
+  for (const y of [2, 58, screenshot.height - 25, screenshot.height - 2])
+    expect(edgeColor(y)).toEqual(Buffer.from([20, 21, 25, 255]));
+
+  await page.getByRole('button', { name: 'Minimalist mode' }).click();
+  await expect(theme).toHaveAttribute('content', '#101114');
+  await expect(canvas).toHaveCSS('background-color', 'rgb(16, 17, 20)');
+  await page.getByRole('button', { name: 'Show controls' }).click();
+  await expect(theme).toHaveAttribute('content', '#141519');
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(theme).toHaveAttribute('content', '#101114');
+  await expect(canvas).toHaveCSS('background-color', 'rgb(16, 17, 20)');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(theme).toHaveAttribute('content', '#141519');
 
   await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 44 } });
   await expectPortraitImagePanel(page, { bottom: 44, gap: 12 });
@@ -332,6 +360,8 @@ test('installed portrait controls use a stable guard both with and without a rep
   await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, bottomMax: 24 } });
   await page.evaluate(() => (window as any).changeWindowMode('browser'));
   await expect(app).not.toHaveClass(/installed-fullscreen/);
+  await expect(theme).toHaveAttribute('content', '#101114');
+  await expect(canvas).toHaveCSS('background-color', 'rgb(16, 17, 20)');
   await expectPortraitImagePanel(page);
   await cdp.detach();
 });

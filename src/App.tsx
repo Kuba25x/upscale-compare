@@ -102,6 +102,7 @@ interface AppProps {
   onSetMinimalist?: (minimalist: boolean) => Promise<void>;
   renderFullscreenControl?: FullscreenControl;
   className?: string;
+  installedAndroidFullscreen?: boolean;
   minimalistExitLabel?: string;
   displayError?: { message: string };
   desktopImageControls?: boolean;
@@ -113,6 +114,7 @@ export default function App({
   onSetMinimalist,
   renderFullscreenControl,
   className = '',
+  installedAndroidFullscreen = false,
   minimalistExitLabel,
   displayError,
   desktopImageControls = false,
@@ -571,6 +573,20 @@ export default function App({
       return withSelection(previous, images, selected);
     });
   const ready = images.length >= 2;
+  const portraitPanelEdges =
+    phonePortrait && ready && !minimalist && (ANDROID_MODE || installedAndroidFullscreen);
+  useLayoutEffect(() => {
+    if (!portraitPanelEdges || !installedAndroidFullscreen) return;
+    const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!theme) return;
+    const previous = theme.content;
+    theme.content = getComputedStyle(document.documentElement)
+      .getPropertyValue('--panel-background')
+      .trim();
+    return () => {
+      theme.content = previous;
+    };
+  }, [portraitPanelEdges, installedAndroidFullscreen]);
   useLayoutEffect(() => {
     if (phonePortrait && ready && !minimalist && imagePanel.current)
       return observePortraitImagePanel?.(imagePanel.current);
@@ -632,7 +648,7 @@ export default function App({
   );
   return (
     <div
-      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ' web-app'} ${presentationClasses(presentation)}${className ? ` ${className}` : ''}`}
+      className={`app ${ready ? 'has-images' : ''}${ANDROID_MODE ? ' android-app' : ' web-app'} ${presentationClasses(presentation)}${className ? ` ${className}` : ''}${portraitPanelEdges ? ' portrait-panel-edges' : ''}`}
       onKeyDown={(event) => {
         if (
           compactWeb &&

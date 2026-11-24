@@ -14,6 +14,7 @@ export default function WebApp() {
     <App
       desktopImageControls={desktop}
       className={installedFullscreen ? 'installed-fullscreen' : ''}
+      installedAndroidFullscreen={installedFullscreen && /\bAndroid\b/i.test(navigator.userAgent)}
       minimalistExitLabel={installedFullscreen ? 'Show controls' : undefined}
       presentation={{
         ...presentation,
