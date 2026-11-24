@@ -785,7 +785,8 @@ public class DisplayIntegrationTest {
       click("dialog button[aria-label=\"Close dialog\"]");
       eventually(() -> assertEquals("100", js(geometry)));
       eventually(() -> {
-        JSONObject saved = new JSONObject(Files.readString(new File(directory, "comparison.json").toPath()));
+        JSONObject saved = new JSONObject(new String(
+            Files.readAllBytes(new File(directory, "comparison.json").toPath()), StandardCharsets.UTF_8));
         assertEquals("width", saved.getJSONArray("alignmentChoices").getJSONObject(0).getString("mode"));
       });
       scenario.recreate();
