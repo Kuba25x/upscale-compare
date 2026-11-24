@@ -4,6 +4,7 @@ import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { expectImageChoiceCount, renameSelectedImage, selectImage } from '../shared/phone-controls';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { applyAlignment } from '../shared/image-alignment';
 
 const unexpectedRequests = new WeakMap<Page, string[]>();
 test.beforeEach(async ({ page, baseURL }) => {
@@ -81,7 +82,7 @@ test('keeps labels, metadata, four-image selection, addition, and replacement', 
   await page.getByRole('button', { name: 'Replace', exact: true }).nth(2).click();
   await (await replacement).setFiles(imageFile('Small.png', 0, 320, 240));
   await page.getByRole('button', { name: 'Close dialog' }).click();
-  await expect(page.locator('.alignment-warning')).toContainText('Different dimensions');
+  await applyAlignment(page, 'Original Size');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await expect(page.getByLabel('Game title')).toHaveValue('Demo game');
   await expect(page.getByLabel('GPU / hardware')).toHaveValue('Test GPU');

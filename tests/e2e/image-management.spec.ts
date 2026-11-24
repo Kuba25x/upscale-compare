@@ -37,6 +37,8 @@ for (const count of [2, 3, 4]) {
     const removeA = dialog.getByRole('button', { name: 'Remove image A.png' });
     await expect(dialog.getByRole('button', { name: 'Close dialog' })).toBeFocused();
     await page.keyboard.press('Tab');
+    await expect(dialog.getByRole('radio', { name: 'Original Size' })).toBeFocused();
+    await page.keyboard.press('Tab');
     await expect(
       dialog.getByRole('button', { name: 'Replace', exact: true }).first(),
     ).toBeFocused();

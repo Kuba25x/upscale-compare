@@ -5,6 +5,12 @@ import { open as openComparison, snapshot, unchanged } from '../shared/mobile-mi
 import { installWebDisplay } from '../shared/web-display';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscreen';
+import {
+  applyAlignment,
+  expectAligned,
+  mismatch,
+  storedComparison,
+} from '../shared/image-alignment';
 import { cacheSnapshot, control, serve } from './helpers';
 import {
   expectPhonePortraitHeader,
@@ -243,6 +249,42 @@ test('installed phone portrait fills the safe width and updates icons when inset
   await expectPhonePortraitHeader(page, { icons: true });
   await insets(page, 48, 22, 24, 22);
   await expectSplitRange(page);
+});
+
+test('installed phone restores scaled geometry with safe alignment controls after rotation', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await windowMode(page, 'fullscreen');
+  await page.setViewportSize({ width: 320, height: 820 });
+  const launch = new URL('?pwa=fullscreen', baseURL).href;
+  await page.goto(launch);
+  await control(page);
+  await insets(page, 48, 0, 28, 0);
+  await page
+    .getByTestId('file-input')
+    .setInputFiles([imageFile('A.png'), imageFile('B.png', 1, 320, 300)]);
+  await safe(page, mismatch(page), { top: 48, right: 0, bottom: 28, left: 0 });
+  await applyAlignment(page, 'Match Width');
+  await expectAligned(page, 2);
+  await expect
+    .poll(async () => (await storedComparison(page, baseURL)).session?.alignmentChoices?.[0]?.mode)
+    .toBe('width');
+  await context.setOffline(true);
+  await page.setViewportSize({ width: 820, height: 320 });
+  await page.reload();
+  await insets(page, 0, 56, 24, 0);
+  await expectAligned(page, 2);
+  await expect(mismatch(page)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+  await safe(page, page.getByRole('radio', { name: 'Match Width' }), {
+    top: 0,
+    right: 56,
+    bottom: 24,
+    left: 0,
+  });
+  await expect(page.getByRole('radio', { name: 'Match Width' })).toBeChecked();
 });
 
 test('installed portrait panel uses the usable bottom without adding overlapping insets', async ({

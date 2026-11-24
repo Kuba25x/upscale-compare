@@ -100,7 +100,9 @@ for (const { count, from, to } of [
       })
       .toBe(true);
     await expect(fresh.locator('script[type="module"][src]')).not.toHaveAttribute('src', scriptA!);
-    await expect(fresh.getByTestId('stage')).toHaveCount(0);
+    await expectSelectedImageLabel(fresh, 'A', 'Keep my comparison');
+    await expect(fresh.getByTestId('stage')).toHaveAttribute('data-zoom', '2');
+    expect(await originalBytes(fresh)).toEqual(Array.from(file.buffer));
     expect(
       await fresh.evaluate(
         async ({ foreign }) => ({

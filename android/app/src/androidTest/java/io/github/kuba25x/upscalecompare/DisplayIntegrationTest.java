@@ -284,20 +284,27 @@ public class DisplayIntegrationTest {
   }
 
   private void seedIsolatedSession() throws Exception {
+    seedIsolatedSession(false);
+  }
+
+  private void seedIsolatedSession(boolean mismatch) throws Exception {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     assertTrue(
         "Refusing to change normal app data", context.getPackageName().endsWith(".systemuitest"));
     File root = new File(context.getNoBackupFilesDir(), "originals");
     assertTrue(root.isDirectory() || root.mkdirs());
-    Bitmap bitmap = Bitmap.createBitmap(2, 3, Bitmap.Config.ARGB_8888);
-    bitmap.eraseColor(Color.GREEN);
     JSONArray images = new JSONArray();
     for (int i = 1; i <= 2; i++) {
+      int width = mismatch ? (i == 1 ? 320 : 160) : 2;
+      int height = mismatch ? 240 : 3;
+      Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+      bitmap.eraseColor(mismatch && i == 2 ? Color.BLUE : Color.GREEN);
       String id = "00000000-0000-4000-8000-00000000000" + i;
       File file = new File(root, id);
       try (var out = new FileOutputStream(file)) {
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
       }
+      bitmap.recycle();
       StringBuilder hash = new StringBuilder();
       for (byte b : MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file.toPath())))
         hash.append(String.format(java.util.Locale.ROOT, "%02x", b & 255));
@@ -306,22 +313,22 @@ public class DisplayIntegrationTest {
               .put("id", id)
               .put("name", i + ".png")
               .put("label", "Image " + i)
-              .put("width", 2)
-              .put("height", 3)
+              .put("width", width)
+              .put("height", height)
               .put("size", file.length())
               .put("type", "image/png")
               .put("sha256", hash.toString())
               .put("metadata", new JSONObject()));
     }
-    bitmap.recycle();
+    JSONObject center = new JSONObject().put("x", mismatch ? 160 : 1).put("y", mismatch ? 120 : 1.5);
     JSONObject session =
         new JSONObject()
             .put("images", images)
             .put("metadata", new JSONObject())
             .put(
                 "config",
-                new JSONObject(
-                    "{\"mode\":\"split\",\"selected\":[0,1],\"divider\":0.5,\"view\":{\"zoom\":null,\"center\":{\"x\":1,\"y\":1.5}}}"));
+                new JSONObject().put("mode", "split").put("selected", new JSONArray("[0,1]"))
+                    .put("divider", 0.5).put("view", new JSONObject().put("zoom", JSONObject.NULL).put("center", center)));
     Files.write(
         new File(context.getNoBackupFilesDir(), "comparison.json").toPath(),
         session.toString().getBytes(StandardCharsets.UTF_8));
@@ -754,6 +761,40 @@ public class DisplayIntegrationTest {
       shell(enable + "gestural");
     }
     eventually(() -> assertEquals(0, tappableBottom()));
+  }
+
+  @Test
+  public void alignmentAndOriginalsSurviveActivityRecreation() throws Exception {
+    seedIsolatedSession(true);
+    File directory = InstrumentationRegistry.getInstrumentation().getTargetContext().getNoBackupFilesDir();
+    File original = new File(directory, "originals/00000000-0000-4000-8000-000000000002");
+    byte[] originalBytes = Files.readAllBytes(original.toPath());
+    String geometry = "(() => { const a=document.querySelector('[data-testid=image-A]');"
+        + " const b=document.querySelector('[data-testid=image-B]');"
+        + " if(a?.naturalWidth!==320 || b?.naturalWidth!==160) return -1;"
+        + " const ra=a.getBoundingClientRect(), rb=b.getBoundingClientRect();"
+        + " return ra.x===rb.x && ra.y===rb.y ? Math.round(rb.width / ra.width * 100) : -1; })()";
+    try (ActivityScenario<MainActivity> active = ActivityScenario.launch(MainActivity.class)) {
+      scenario = active;
+      rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, false);
+      eventually(() -> assertEquals("50", js(geometry)));
+      assertEquals("false", js("!!document.querySelector('dialog[open]')"));
+      click("button[aria-label=\"Manage Images\"]");
+      eventually(() -> assertEquals("true", js("!!document.querySelector('dialog[open] .image-alignment')")));
+      click(".image-alignment input[aria-label=\"Match Width\"]");
+      click("dialog button[aria-label=\"Close dialog\"]");
+      eventually(() -> assertEquals("100", js(geometry)));
+      eventually(() -> {
+        JSONObject saved = new JSONObject(Files.readString(new File(directory, "comparison.json").toPath()));
+        assertEquals("width", saved.getJSONArray("alignmentChoices").getJSONObject(0).getString("mode"));
+      });
+      scenario.recreate();
+      eventually(() -> assertEquals("100", js(geometry)));
+      assertEquals("false", js("!!document.querySelector('dialog[open]')"));
+      rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, true);
+      eventually(() -> assertEquals("100", js(geometry)));
+      assertArrayEquals(originalBytes, Files.readAllBytes(original.toPath()));
+    }
   }
 
   @Test

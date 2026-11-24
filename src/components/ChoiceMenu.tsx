@@ -8,6 +8,7 @@ export function ChoiceMenu({
   label,
   menuLabel,
   value,
+  valueDescription,
   valueRef,
   badge,
   choices,
@@ -21,6 +22,7 @@ export function ChoiceMenu({
   label: string;
   menuLabel: string;
   value: ReactNode;
+  valueDescription?: string;
   valueRef?: Ref<HTMLSpanElement>;
   badge?: ReactNode;
   choices: { value: number; label: string }[];
@@ -44,7 +46,8 @@ export function ChoiceMenu({
         type="button"
         className={triggerClass}
         aria-label={label}
-        aria-describedby={valueId}
+        aria-describedby={valueDescription ? `${valueId} ${valueId}-description` : valueId}
+        title={valueDescription}
         aria-haspopup="menu"
         onClick={(event) => {
           if ((focusOnPointer || event.detail === 0) && !isOpen())
@@ -62,6 +65,11 @@ export function ChoiceMenu({
         <span ref={valueRef} id={valueId} className="choice-menu-value">
           {value}
         </span>
+        {valueDescription && (
+          <span id={`${valueId}-description`} className="sr-only">
+            {valueDescription}
+          </span>
+        )}
         <ChevronDown size={14} aria-hidden="true" />
       </button>
       <div

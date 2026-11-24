@@ -5,8 +5,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { imageFile } from '../e2e/fixtures';
 import { control, originalBytes, serve } from './helpers';
+import {
+  applyAlignment,
+  expectAligned,
+  mismatch,
+  storedComparison,
+} from '../shared/image-alignment';
 
-test('a full browser/profile restart starts offline with an empty local session', async ({
+test('a full browser/profile restart restores the local session offline', async ({
   request,
   baseURL,
   browserName,
@@ -48,23 +54,26 @@ test('a full browser/profile restart starts offline with an empty local session'
       '512x512',
     ]);
     await session.detach();
-    const file = imageFile('Do not restore this name.png');
-    await first.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1)]);
-    await renameSelectedImage(first, 'A', file.name, 'Do not restore this label');
+    const file = imageFile('Original.png');
+    await first.getByTestId('file-input').setInputFiles([file, imageFile('B.png', 1, 320, 240)]);
+    await applyAlignment(first, 'Match Width');
+    await renameSelectedImage(first, 'A', file.name, 'Saved label');
     await first.getByRole('button', { name: 'Comparison details', exact: true }).click();
-    await first.getByLabel('Game title').fill('Do not restore metadata');
+    await first.getByLabel('Game title').fill('Saved game');
     await first.getByRole('button', { name: 'Save details', exact: true }).click();
+    await expect
+      .poll(async () => (await storedComparison(first, baseURL)).session?.metadata.game)
+      .toBe('Saved game');
     await browser.close();
     browser = await chromium.launchPersistentContext(directory, { ...options, offline: true });
     const second = browser.pages()[0];
     await second.goto(baseURL!);
-    await expect(second.getByTestId('stage')).toHaveCount(0);
-    await second.getByTestId('file-input').setInputFiles([file, imageFile('New B.png', 1)]);
-    await expect(second.getByTestId('stage')).toBeVisible();
+    await expectAligned(second, 2);
+    await expect(mismatch(second)).toHaveCount(0);
     expect(await originalBytes(second)).toEqual(Array.from(file.buffer));
-    await expectSelectedImageLabel(second, 'A', 'Do not restore this name');
+    await expectSelectedImageLabel(second, 'A', 'Saved label');
     await second.getByRole('button', { name: 'Comparison details', exact: true }).click();
-    await expect(second.getByLabel('Game title')).toHaveValue('');
+    await expect(second.getByLabel('Game title')).toHaveValue('Saved game');
   } finally {
     await browser?.close();
     await rm(directory, { recursive: true, force: true });

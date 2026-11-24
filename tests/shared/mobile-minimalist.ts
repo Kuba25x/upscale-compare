@@ -100,7 +100,6 @@ async function minimal(page: Page, mode = 'Split Screen') {
     '.app-header',
     '.image-selection-bar',
     '.image-badge',
-    '.alignment-warning',
     '.inspection-toolbar',
     '.published-notice',
   ])

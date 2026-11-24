@@ -66,6 +66,11 @@ test('recovers after reload from the landing page and keeps owner deletion avail
   await expect(page.getByRole('alert')).toContainText('unavailable');
   const [record] = await pending(page);
   expect(record.deleteToken).toMatch(/^[a-f0-9]{64}$/);
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+  const manage = page.getByRole('dialog', { name: 'Your images' });
+  await manage.getByRole('button', { name: 'Clear comparison' }).click();
+  await expect(manage).toContainText('No images in this comparison.');
   await page.reload();
   blockRecovery = false;
   await expect(page.getByTestId('stage')).toHaveCount(0);

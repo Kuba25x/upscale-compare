@@ -42,9 +42,9 @@ export async function update(page: Page) {
     });
   });
 }
-export async function originalBytes(page: Page) {
+export async function originalBytes(page: Page, slot: 'A' | 'B' = 'A') {
   return page
-    .getByTestId('image-A')
+    .getByTestId(`image-${slot}`)
     .evaluate(async (image: HTMLImageElement) =>
       Array.from(new Uint8Array(await (await fetch(image.src)).arrayBuffer())),
     );

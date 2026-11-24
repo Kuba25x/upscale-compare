@@ -36,14 +36,25 @@ export const viewSchema = z
       .strict(),
   })
   .strict();
+export const alignmentModeSchema = z.enum(['original', 'width', 'height']);
+export type AlignmentMode = z.infer<typeof alignmentModeSchema>;
 export const configSchema = z
   .object({
     mode: z.enum(['split', 'side']),
     selected: z.tuple([z.number().int().min(0).max(3), z.number().int().min(0).max(3)]),
     divider: z.number().min(0).max(1),
     view: viewSchema,
+    alignment: alignmentModeSchema.optional(),
   })
   .strict();
+// Local views can pan through proportionally scaled images larger than the public view bounds.
+export const localConfigSchema = configSchema.omit({ alignment: true }).extend({
+  view: viewSchema.extend({ center: z.object({ x: z.number(), y: z.number() }).strict() }),
+});
+export const alignmentChoicesSchema = z
+  .array(z.object({ pair: z.tuple([z.string(), z.string()]), mode: alignmentModeSchema }).strict())
+  .max((MAX_IMAGES * (MAX_IMAGES - 1)) / 2);
+export type AlignmentChoices = z.infer<typeof alignmentChoicesSchema>;
 export const manifestSchema = z
   .object({
     metadata: metadataSchema,
@@ -89,6 +100,7 @@ export interface PublicComparison {
   images: StoredImage[];
 }
 export interface LocalImage extends StoredImage {
+  id?: string;
   url: string;
   file?: File;
 }

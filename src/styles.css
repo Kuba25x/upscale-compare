@@ -494,22 +494,6 @@ input[type='checkbox'] {
   background: #b9c9ff20;
   color: #c1ceff;
 }
-.alignment-warning {
-  position: absolute;
-  left: 50%;
-  top: 14px;
-  transform: translateX(-50%);
-  z-index: 1;
-  font-size: 10px;
-  background: #262015eb;
-  border: 1px solid #75633f;
-  color: #e7cf91;
-  border-radius: 5px;
-  padding: 6px 10px;
-  max-width: 50%;
-  text-align: center;
-  pointer-events: none;
-}
 .inspection-toolbar {
   position: absolute;
   bottom: 14px;
@@ -708,6 +692,56 @@ input[type='checkbox'] {
 }
 .modal.wide {
   width: 760px;
+}
+.image-alignment {
+  margin-block: 10px;
+}
+.image-alignment legend {
+  color: #bfc3cb;
+  font-size: 12px;
+  font-weight: 600;
+}
+.alignment-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.alignment-options.detailed {
+  flex-direction: column;
+}
+.alignment-options label {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.alignment-options.detailed label {
+  padding: 4px 8px;
+  border: 1px solid #383c45;
+  border-radius: 5px;
+  min-height: 44px;
+}
+.alignment-options.detailed label:has(:checked) {
+  border-color: var(--accent);
+}
+.alignment-options label span span {
+  display: block;
+}
+.modal .alignment-options input[type='radio'] {
+  flex: none;
+  vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  accent-color: var(--accent);
+}
+.image-alignment-dimensions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: #bfc3cb;
+  font-size: 13px;
 }
 .modal::backdrop {
   background: #050609b3;
@@ -1219,13 +1253,6 @@ input[type='checkbox'] {
   .toolbar-separator {
     margin: 0 1px;
   }
-  .alignment-warning {
-    top: 47px;
-    font-size: 8px;
-    max-width: 85%;
-    width: max-content;
-    padding: 5px 8px;
-  }
   .published-notice {
     font-size: 8px;
     height: 20px;
@@ -1673,7 +1700,6 @@ input[type='checkbox'] {
 .app.comparison-minimalist > :not(.comparison-layout),
 .app.comparison-minimalist .comparison-layout > :not(.viewer-content),
 .app.comparison-minimalist .image-badge,
-.app.comparison-minimalist .alignment-warning,
 .app.comparison-minimalist .inspection-toolbar,
 .app.comparison-minimalist.comparison-compact .image-selection-bar.image-panel-open {
   display: none;
@@ -2218,9 +2244,6 @@ input[type='checkbox'] {
   margin-block: 0;
 }
 
-.web-app.installed-fullscreen .alignment-warning {
-  max-width: calc(100% - 2 * var(--installed-side-safe) - 16px);
-}
 .web-app.installed-fullscreen .stage {
   container-type: size;
 }

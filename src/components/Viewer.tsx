@@ -22,7 +22,7 @@ import {
   Plus,
   Shrink,
 } from 'lucide-react';
-import type { Config, LocalImage, View } from '../../shared/model';
+import type { AlignmentMode, Config, LocalImage, View } from '../../shared/model';
 import {
   gestureDiagnostics,
   observeGestureEvents,
@@ -30,8 +30,17 @@ import {
   type DiagnosticData,
 } from '../lib/gesture-diagnostics';
 import { WEB_PRESENTATION, type ComparisonPresentation } from '../lib/comparison-presentation';
-import { clamp, originFor, panBy, pinchAt, scaleFor, zoomAt } from '../lib/geometry';
+import {
+  clamp,
+  comparisonGeometry,
+  originFor,
+  panBy,
+  pinchAt,
+  scaleFor,
+  zoomAt,
+} from '../lib/geometry';
 import { PhoneZoomMenu } from './PhoneZoomMenu';
+import { ViewportImage } from './ViewportImage';
 import type { PopoverChange } from './useAnchoredPopover';
 
 /** The platform may decorate this control without changing viewer geometry. */
@@ -39,10 +48,16 @@ export type FullscreenControl = (
   button: ReactElement<ComponentPropsWithRef<'button'>>,
 ) => ReactNode;
 
+const formatPhysicalZoom = (zoom: number) =>
+  `${(zoom * 100).toLocaleString('en', { maximumSignificantDigits: 4 })}%`;
+
 interface Props {
   images: LocalImage[];
   config: Config;
+  alignment: AlignmentMode;
   onChange: (update: (previous: Config) => Config) => void;
+  onSwap: () => void;
+  onCycleImage: (direction: 'previous' | 'next') => void;
   onMetadata: () => void;
   onHelp: () => void;
   onPhonePopoverChange?: PopoverChange;
@@ -56,7 +71,10 @@ interface Props {
 export function Viewer({
   images,
   config,
+  alignment,
   onChange,
+  onSwap,
+  onCycleImage,
   onMetadata,
   onHelp,
   onPhonePopoverChange,
@@ -134,12 +152,15 @@ export function Viewer({
     };
   }, [cancelPanning]);
   const [a, b] = config.selected.map((index) => images[index]);
-  const bounds = { width: Math.max(a.width, b.width), height: Math.max(a.height, b.height) };
+  const { bounds, alignedB, relativeScale } = comparisonGeometry(a, b, alignment);
   const panel = {
     width: config.mode === 'side' ? (size.width - 1) / 2 : size.width,
     height: size.height,
   };
   const scale = scaleFor(config.view, panel, bounds, dpr);
+  const scaledZoom = (zoom: number) =>
+    `Image A: ${formatPhysicalZoom(zoom)}. Image B: ${formatPhysicalZoom(zoom * relativeScale)}.`;
+  const zoomDescription = relativeScale === 1 ? undefined : scaledZoom(scale * dpr);
   const latest = useRef({ config, panel, bounds, dpr });
   latest.current = { config, panel, bounds, dpr };
   const diagnosticFrame = useRef<DiagnosticData>({});
@@ -428,11 +449,7 @@ export function Viewer({
         }));
       if (event.key === 's' || event.key === 'v')
         onChange((previous) => ({ ...previous, mode: event.key === 's' ? 'split' : 'side' }));
-      if (event.key === 'x')
-        onChange((previous) => ({
-          ...previous,
-          selected: [previous.selected[1], previous.selected[0]],
-        }));
+      if (event.key === 'x') onSwap();
       if (event.key === 'f') void toggleFullscreen();
       if (event.key === '?' && !comparisonFullscreen) onHelp();
       if (event.key.startsWith('Arrow')) {
@@ -450,21 +467,11 @@ export function Viewer({
         }));
       }
       if (event.key === '[' || event.key === ']')
-        onChange((previous) => {
-          const next =
-            (previous.selected[0] + (event.key === '[' ? -1 : 1) + images.length) % images.length;
-          return {
-            ...previous,
-            selected:
-              next === previous.selected[1]
-                ? [next, previous.selected[0]]
-                : [next, previous.selected[1]],
-          };
-        });
+        onCycleImage(event.key === '[' ? 'previous' : 'next');
     };
     window.addEventListener('keydown', keyboard);
     return () => window.removeEventListener('keydown', keyboard);
-  }, [onChange, images.length, onHelp, onToggleFullscreen, comparisonFullscreen]);
+  }, [onChange, onSwap, onCycleImage, onHelp, onToggleFullscreen, comparisonFullscreen]);
   const dividerPosition = (clientX: number, edgeTolerance = 0) => {
     const rect = stage.current!.getBoundingClientRect();
     if (clientX <= rect.left + edgeTolerance) return 0;
@@ -638,6 +645,24 @@ export function Viewer({
       x: size.x + panelOffset,
       y: size.y,
     });
+    const rendered = side === 'A' ? a : alignedB;
+    const width = rendered.width * scale;
+    const height = rendered.height * scale;
+    const pixelated = config.view.zoom !== null && config.view.zoom >= 1;
+    if (side === 'B' && relativeScale !== 1 && Math.max(width, height) > 1_000_000) {
+      return (
+        <ViewportImage
+          image={image}
+          origin={origin}
+          scale={scale * relativeScale}
+          panel={panel}
+          panelOffset={panelOffset}
+          dpr={dpr}
+          pixelated={pixelated}
+          onError={onImageError}
+        />
+      );
+    }
     return (
       <img
         className="comparison-image"
@@ -652,9 +677,9 @@ export function Viewer({
           left: 0,
           top: 0,
           transform: `translate(${origin.x + panelOffset}px, ${origin.y}px)`,
-          width: image.width * scale,
-          height: image.height * scale,
-          imageRendering: config.view.zoom !== null && config.view.zoom >= 1 ? 'pixelated' : 'auto',
+          width,
+          height,
+          imageRendering: pixelated ? 'pixelated' : 'auto',
         }}
       />
     );
@@ -923,11 +948,6 @@ export function Viewer({
           <b>B</b>
           {b.label}
         </span>
-        {(a.width !== b.width || a.height !== b.height) && (
-          <div className="alignment-warning" role="status">
-            Different dimensions · aligned at the top left, without resizing
-          </div>
-        )}
         <div className="inspection-toolbar" onDoubleClick={(event) => event.stopPropagation()}>
           <button
             className={config.view.zoom === null ? 'selected' : ''}
@@ -943,9 +963,11 @@ export function Viewer({
                 className={config.view.zoom === zoom ? 'selected' : undefined}
                 onClick={() => setZoom(zoom)}
                 title={
-                  zoom === 1
-                    ? 'One source pixel per physical screen pixel (1)'
-                    : `${zoom * 100}% source-pixel zoom (${zoom})`
+                  relativeScale !== 1
+                    ? `${scaledZoom(zoom)} (${zoom})`
+                    : zoom === 1
+                      ? 'One source pixel per physical screen pixel (1)'
+                      : `${zoom * 100}% source-pixel zoom (${zoom})`
                 }
               >
                 {zoom * 100}%
@@ -954,6 +976,7 @@ export function Viewer({
           {presentation.phone && !comparisonFullscreen && (
             <PhoneZoomMenu
               zoom={config.view.zoom}
+              description={zoomDescription}
               onZoom={setZoom}
               onOpenChange={onPhonePopoverChange}
             />
@@ -962,6 +985,8 @@ export function Viewer({
             <select
               className="compact-zoom-select"
               aria-label="Zoom preset"
+              aria-describedby={zoomDescription ? 'comparison-zoom-description' : undefined}
+              title={zoomDescription}
               onPointerDown={(event) => event.stopPropagation()}
               onTouchStart={(event) => event.stopPropagation()}
               value={
@@ -989,11 +1014,21 @@ export function Viewer({
             <Minus size={15} />
           </button>
           {!compactZoom && (
-            <output className="zoom-readout" aria-label="Current zoom">
+            <output
+              className="zoom-readout"
+              aria-label="Current zoom"
+              title={zoomDescription}
+              aria-describedby={zoomDescription ? 'comparison-zoom-description' : undefined}
+            >
               {config.view.zoom === null
-                ? `${Math.round(scale * dpr * 100)}% fit`
-                : `${Math.round(config.view.zoom * 100)}%${config.view.zoom === 1 ? ' · 1:1' : ''}`}
+                ? `${Math.round(scale * dpr * 100)}% fit${zoomDescription ? ' · A' : ''}`
+                : `${Math.round(config.view.zoom * 100)}%${zoomDescription ? ' · A' : config.view.zoom === 1 ? ' · 1:1' : ''}`}
             </output>
+          )}
+          {zoomDescription && (
+            <span id="comparison-zoom-description" className="sr-only">
+              {zoomDescription}
+            </span>
           )}
           <button
             className="icon-button"

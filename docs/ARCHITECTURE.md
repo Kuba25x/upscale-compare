@@ -19,14 +19,14 @@
 
 ## View coordinates
 
-Every screenshot uses source coordinates measured from its top-left pixel. The view stores a shared source center and physical magnification. For explicit zoom:
+The view stores a shared center in image A pixels measured from the top-left origin. Both images start at that origin. Image B has a uniform scale of 1 in Original Size, `A.width / B.width` in Match Width, or `A.height / B.height` in Match Height.
 
 ```text
 CSS scale = magnification / devicePixelRatio
 CSS image position = panel center - source center × CSS scale
 ```
 
-At 100%, a source pixel occupies one physical display pixel. At integer magnifications the image origin is rounded to a physical pixel. At Fit, both selected images share a scale computed from their union dimensions and the available panel rectangle. No resolution normalization is performed. Side-by-Side uses equal panel sizes; split mode uses two fully overlapping panels clipped at the same divider position. The divider never changes the image transform.
+At 100%, one pixel of A occupies one physical display pixel. B's physical magnification includes its relative scale. At integer magnifications the shared origin is rounded to a physical pixel. Fit uses the union of the aligned rectangles and the available panel size. Side-by-Side uses equal panel sizes. Split Screen uses overlapping panels clipped at the divider position. Very large display rectangles use a viewport-sized canvas to draw the visible fragment directly from the original image and avoid browser layout limits.
 
 The position is applied using a translation, with image dimensions set separately. This avoids Chromium rounding fractional CSS layout positions before physical-pixel rasterization, particularly in Side-by-Side mode on HiDPI displays. Both panels snap against the global physical screen grid, including fractional display densities such as 125%.
 
@@ -36,9 +36,9 @@ Touch pointers are tracked through pointer capture. One pointer pans; two pointe
 
 ## File lifecycle
 
-Selected files become browser object URLs and are decoded locally. Failed batches revoke every object URL already created. Replacing files revokes previous local URLs. No file is uploaded on selection, editing, zooming, or panning. Unpublished state is intentionally not persisted to IndexedDB; refresh loses it.
+Selected files are decoded locally and displayed through object URLs. The browser stores the last complete local comparison in scope-specific IndexedDB, with the original files stored separately from the view and metadata. Updating the file set and clearing the comparison are atomic. A revision check prevents stale tabs from restoring cleared data. Android saves the same alignment choices for local image IDs in its private session journal. Both formats accept sessions that lack alignment choices and use Original Size for the restored pair.
 
-The publish dialog snapshots labels, metadata, mode, selection, divider, source center and zoom. Original file data is sent as multipart form data. The Worker ignores original filenames and serves generated safe filenames. It does not transcode image data.
+The publish dialog snapshots labels, metadata, mode, selection, divider, source center and zoom. Its manifest can include the active pair's non-default alignment mode. Original file data is sent as multipart form data. The Worker ignores original filenames and serves generated safe filenames. It does not transcode image data.
 
 The [original-fidelity matrix](ORIGINAL_FIDELITY.md) verifies source/R2/HTTP byte
 identity and reconstruction from the production bundle, including mixed formats,

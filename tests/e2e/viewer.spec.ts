@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { imageFile, openComparison } from './fixtures';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { applyAlignment, expectAligned, mismatch } from '../shared/image-alignment';
 import { renameSelectedImage, selectImage } from '../shared/phone-controls';
 import {
   expectCenteredBrand,
@@ -269,16 +270,15 @@ test('selects any of four images, renames labels, and saves metadata', async ({ 
   await page.getByRole('button', { name: 'Comparison details' }).click();
   await expect(page.getByLabel('Game title')).toHaveValue('Cyberpunk 2077');
 });
-test('replaces an image and warns about different dimensions without stretching', async ({
-  page,
-}) => {
+test('replaces an image and offers Original Size without stretching', async ({ page }) => {
   await openComparison(page);
   await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Replace', exact: true }).first().click();
   await (await chooser).setFiles(imageFile('Small.png', 1, 320, 240));
   await page.getByRole('button', { name: 'Close dialog' }).click();
-  await expect(page.locator('.alignment-warning')).toContainText('Different dimensions');
+  await expect(mismatch(page)).toContainText('320 × 240');
+  await applyAlignment(page, 'Original Size');
   const a = await page.getByTestId('image-A').boundingBox(),
     b = await page.getByTestId('image-B').boundingBox();
   expect(b!.width / a!.width).toBeCloseTo(2, 5);
@@ -304,7 +304,11 @@ test.describe('local publication fixture', () => {
   test('publishes only after confirmation and restores the public URL on refresh', async ({
     page,
   }) => {
-    await openComparison(page);
+    await page.goto('/');
+    await page
+      .getByTestId('file-input')
+      .setInputFiles([imageFile(), imageFile('Reference.png', 1, 320, 240)]);
+    await applyAlignment(page, 'Match Width');
     await renameSelectedImage(page, 'A', 'DLSS Quality.png', 'Custom DLSS');
     await page.getByRole('button', { name: 'Side-by-Side', exact: true }).click();
     await page.getByRole('button', { name: '200%', exact: true }).click();
@@ -326,7 +330,8 @@ test.describe('local publication fixture', () => {
     await expect(page.locator('.badge-a')).toContainText('Custom DLSS');
     await expect(page.getByRole('button', { name: 'Edit label for image A' })).toHaveCount(0);
     await page.reload();
-    await expect(page.getByTestId('stage')).toBeVisible();
+    await expectAligned(page, 2, true, 2);
+    await expect(mismatch(page)).toHaveCount(0);
   });
   test('handles unavailable sharing service and invalid public links', async ({ page }) => {
     await openComparison(page);
