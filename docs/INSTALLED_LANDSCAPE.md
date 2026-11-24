@@ -61,6 +61,13 @@ manifest preference updates remain browser-controlled.
 whether cutout or system-bar areas are available. Manifest fullscreen alone is not
 proof that a particular device grants cutout coverage.
 
+In an installed Android phone's portrait comparison, the document paints the
+exposed safe areas with the header and image panel color and supplies the same
+page theme color to the browser. Android and the browser control pixels outside
+the document, including transient system-bar scrims and areas the browser
+withholds around a cutout. Those pixels can retain a system color even in
+fullscreen. [Chromium Android web app architecture](https://chromium.googlesource.com/chromium/src/+/main/components/webapps/docs/android_architecture.md)
+
 Installed-only CSS uses `env(safe-area-inset-*)` through the existing viewport
 adapter. Header/title, upload, image controls, toolbar, dialogs, and notices stay
 inside reported safe bounds. Horizontal control gutters use the larger

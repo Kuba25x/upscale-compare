@@ -236,7 +236,8 @@ public class DisplayIntegrationTest {
                   .getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars())
                   .top);
         });
-    int panelGapX = name.equals("portrait-normal") ? portraitControlGapX() : 0;
+    boolean portraitControls = name.equals("portrait-normal") || name.equals("portrait-three-button");
+    int panelGapX = portraitControls ? portraitControlGapX() : 0;
     // Native visibility/DOM callbacks can precede presentation. The synthetic fixture
     // leaves a known background at these sample points, independently of layout flags.
     eventually(
@@ -265,9 +266,9 @@ public class DisplayIntegrationTest {
                       + y,
                   minimalist ? colorNear(pixel, 23, 25, 30) : colorNear(pixel, 20, 21, 25));
             }
-            if (name.equals("portrait-normal")) {
+            if (portraitControls) {
               int x = frame.getWidth() / 4;
-              assertTrue("Status bar background changed", colorNear(frame.getPixel(x, 2), 16, 17, 20));
+              assertTrue("Status bar matches the portrait header", colorNear(frame.getPixel(x, 2), 20, 21, 25));
               int panelBottom = frame.getHeight() - state.get().getInteger("layoutBottom");
               assertTrue(
                   "The gap between controls shows the panel surface",
@@ -733,6 +734,28 @@ public class DisplayIntegrationTest {
     assertPortraitComparisonLayout();
   }
 
+  private int tappableBottom() {
+    AtomicReference<Integer> result = new AtomicReference<>();
+    scenario.onActivity(
+        a -> result.set(a.displayLayout.snapshot().optJSONObject("bottomInsets").optInt("tappable")));
+    return result.get();
+  }
+
+  private void assertPortraitThreeButtonSurface() throws Exception {
+    assertEquals(0, tappableBottom());
+    String enable = "cmd overlay enable-exclusive --user 0 --category com.android.internal.systemui.navbar.";
+    try {
+      shell(enable + "threebutton");
+      eventually(() -> assertTrue(tappableBottom() > 0));
+      bars(true, true);
+      assertPortraitComparisonLayout();
+      screenshot("portrait-three-button");
+    } finally {
+      shell(enable + "gestural");
+    }
+    eventually(() -> assertEquals(0, tappableBottom()));
+  }
+
   @Test
   public void realWindowBarsCutoutsPickerResumeBackAndRecreation() throws Exception {
     seedIsolatedSession();
@@ -744,6 +767,7 @@ public class DisplayIntegrationTest {
       assertPortraitComparisonLayout();
       screenshot("portrait-normal");
       exercisePortraitGestures();
+      assertPortraitThreeButtonSurface();
       editPortraitLabel();
       assertPortraitZoomMenu();
       click(".fullscreen-button");

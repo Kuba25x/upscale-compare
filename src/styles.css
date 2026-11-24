@@ -14,6 +14,7 @@
   -webkit-font-smoothing: antialiased;
   color-scheme: dark;
   font-size: 13px;
+  --panel-background: #141519;
   --surface: #191b20;
   --border: #2c2f36;
   --muted: #91959f;
@@ -187,7 +188,7 @@ input[type='checkbox'] {
   align-items: center;
   padding: 0 20px;
   gap: 20px;
-  background: #141519;
+  background: var(--panel-background);
   z-index: 3;
 }
 .app-header h1 {
@@ -1999,11 +2000,14 @@ input[type='checkbox'] {
   white-space: nowrap;
 }
 .app.comparison-phone-portrait.has-images:not(.comparison-minimalist) {
-  --phone-panel-background: #141519; /* Same surface as .app-header. */
-  background-image: linear-gradient(var(--phone-panel-background), var(--phone-panel-background));
+  background-image: linear-gradient(var(--panel-background), var(--panel-background));
   background-position: bottom;
   background-repeat: no-repeat;
   background-size: 100% var(--phone-panel-reserved-bottom, var(--comparison-layout-bottom, 0px));
+}
+:root:has(.portrait-panel-edges),
+.app.portrait-panel-edges {
+  background-color: var(--panel-background);
 }
 .app.web-app.comparison-phone-portrait {
   --phone-panel-reserved-bottom: var(--comparison-safe-bottom, 0px);
@@ -2023,7 +2027,7 @@ input[type='checkbox'] {
   margin: 0;
   border: 0;
   border-radius: 0;
-  background: var(--phone-panel-background);
+  background: var(--panel-background);
   padding-block: 4px var(--phone-panel-bottom-gap, 13px);
   padding-inline: calc(var(--comparison-gutter) + 9px + var(--comparison-safe-left, 0px))
     calc(var(--comparison-gutter) + 9px + var(--comparison-safe-right, 0px));
