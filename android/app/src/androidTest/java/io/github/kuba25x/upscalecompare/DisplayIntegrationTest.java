@@ -12,6 +12,8 @@ import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.Surface;
+import android.view.Window;
+import androidx.appcompat.view.WindowCallbackWrapper;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -764,33 +766,51 @@ public class DisplayIntegrationTest {
   }
 
   private void swipeBack(int endX, int y) throws Exception {
+    CountDownLatch cancelled = new CountDownLatch(1);
+    AtomicReference<Window> window = new AtomicReference<>();
+    AtomicReference<Window.Callback> previous = new AtomicReference<>();
+    scenario.onActivity(
+        a -> {
+          window.set(a.getWindow());
+          previous.set(window.get().getCallback());
+          window.get().setCallback(new WindowCallbackWrapper(previous.get()) {
+            @Override
+            public boolean dispatchTouchEvent(MotionEvent event) {
+              boolean handled = super.dispatchTouchEvent(event);
+              if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) cancelled.countDown();
+              return handled;
+            }
+          });
+        });
     int edgeX = 2;
-    long downTime = SystemClock.uptimeMillis();
-    injectTouch(downTime, MotionEvent.ACTION_DOWN, edgeX, y);
-    float x = edgeX;
-    boolean captured = false;
     try {
-      int steps = 8;
-      for (int step = 1; step <= steps; step++) {
-        SystemClock.sleep(32);
-        x = edgeX + (endX - edgeX) * step / (float) steps;
-        injectTouch(downTime, MotionEvent.ACTION_MOVE, x, y);
+      long downTime = SystemClock.uptimeMillis();
+      injectTouch(downTime, MotionEvent.ACTION_DOWN, edgeX, y);
+      float x = edgeX;
+      boolean captured = false;
+      try {
+        int steps = 8;
+        for (int step = 1; step <= steps; step++) {
+          SystemClock.sleep(32);
+          x = edgeX + (endX - edgeX) * step / (float) steps;
+          injectTouch(downTime, MotionEvent.ACTION_MOVE, x, y);
+        }
+        // Android cancels the app's input stream when it takes over an edge swipe. Keep the
+        // pointer down until this happens so the WebView cannot complete a light dismiss.
+        captured = cancelled.await(5, TimeUnit.SECONDS);
+        if (!captured) {
+          String input = shell("dumpsys input");
+          System.err.println("Edge-swipe input routing: "
+              + input.lines().filter(line -> line.contains("edge-swipe")
+                  || line.contains("pilferingPointerIds")).limit(20).toList());
+          fail("Android did not cancel the comparison window's touch stream");
+        }
+      } finally {
+        injectTouch(downTime, captured ? MotionEvent.ACTION_UP : MotionEvent.ACTION_CANCEL, x, y);
       }
-      // Keep the pointer down until Android's edge-swipe monitor takes over pointer ID 0.
-      // Releasing earlier can give WebView the entire swipe and close the popover by light dismiss.
-      eventually(
-          () ->
-              assertTrue(
-                  "The edge-swipe monitor did not take over the active touch",
-                  shell("dumpsys input")
-                      .lines()
-                      .anyMatch(
-                          line ->
-                              line.contains("edge-swipe")
-                                  && line.matches(".*pilferingPointerIds=0*1\\].*"))));
-      captured = true;
     } finally {
-      injectTouch(downTime, captured ? MotionEvent.ACTION_UP : MotionEvent.ACTION_CANCEL, x, y);
+      InstrumentationRegistry.getInstrumentation()
+          .runOnMainSync(() -> window.get().setCallback(previous.get()));
     }
   }
 
