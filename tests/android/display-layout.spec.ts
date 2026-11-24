@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
+import type { AndroidDisplayState } from '../../src/lib/android-display';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import {
   chooseZoomPreset,
@@ -85,7 +86,13 @@ async function open(page: Page) {
   await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
   await expect(page.getByTestId('image-A')).toBeVisible();
 }
-async function insets(page: Page, values: Record<string, number | boolean>) {
+async function insets(
+  page: Page,
+  values: Record<
+    string,
+    number | boolean | NonNullable<AndroidDisplayState['panelRoundedCorners']>
+  >,
+) {
   await page.evaluate((values) => {
     (window as any).displayInsets = values;
     (window as any).emitDisplayState();
@@ -287,6 +294,86 @@ test('portrait controls clear both navigation modes, rounded edges and the keybo
   await expect(page.locator('.phone-image-controls')).toHaveCount(0);
   await page.getByRole('button', { name: 'Exit fullscreen', exact: true }).tap();
   await expectPortraitImagePanel(page, { bottom: 48, gap: 12 });
+});
+
+test.describe('portrait device with rounded corners and a full-width gesture area', () => {
+  test.use({ viewport: { width: 394, height: 853 }, deviceScaleFactor: 3.25 });
+
+  test('the reported device lowers its buttons from the PR #52 setback to the gesture edge', async ({
+    page,
+  }) => {
+    await open(page);
+    const dpr = 3.25;
+    const windowWidth = 1280 / dpr;
+    const windowHeight = 2772 / dpr;
+    // Playwright viewports use integer CSS widths. Reproduce the WebView's fractional width.
+    await page.addStyleTag({ content: `.app { width: ${windowWidth}px; }` });
+    const fixture = {
+      windowWidth,
+      windowHeight,
+      navigationBottom: 52 / dpr,
+      mandatoryGestureBottom: (2772 - 2616) / dpr,
+      roundedBottom: 156 / dpr,
+    };
+    const panel = page.locator('.phone-image-controls');
+    const buttons = () =>
+      panel
+        .locator('.phone-image-trigger, .swap-button')
+        .evaluateAll((nodes) =>
+          nodes
+            .map((node) => node.getBoundingClientRect().toJSON())
+            .sort((a, b) => a.left - b.left),
+        );
+    const setback = async () =>
+      windowHeight - Math.max(...(await buttons()).map((box) => box.bottom));
+
+    // The fallback samples at the window sides, matching the PR #52 rule on these inputs.
+    await insets(page, fixture);
+    const pr52Setback = Math.max(fixture.roundedBottom + 12, fixture.mandatoryGestureBottom);
+    await expect.poll(setback).toBeCloseTo(pr52Setback, 1);
+    const baseline = await buttons();
+
+    const measured = {
+      ...fixture,
+      panelRoundedCorners: {
+        left: { x: 156, y: 2616, radius: 156 },
+        right: { x: 1124, y: 2616, radius: 156 },
+      },
+    };
+    await insets(page, measured);
+    await expect.poll(setback).toBeCloseTo(48, 1);
+    const roundedBottom = await panel.evaluate((node) =>
+      parseFloat(getComputedStyle(node).getPropertyValue('--phone-panel-rounded-bottom')),
+    );
+    expect(roundedBottom * dpr).toBeCloseTo(49.24, 1);
+    const after = await buttons();
+    expect(after).toHaveLength(3);
+    for (const [index, [left, right]] of [
+      [13, 170.92308139801025],
+      [174.92308044433594, 218.92308044433594],
+      [222.92308044433594, 380.8461608886719],
+    ].entries()) {
+      expect(after[index].left).toBeCloseTo(left, 1);
+      expect(after[index].right).toBeCloseTo(right, 1);
+      expect(after[index].height).toBeCloseTo(44, 1);
+      expect(after[index].bottom - baseline[index].bottom).toBeCloseTo(12, 1);
+      expect(after[index].bottom * dpr).toBeLessThanOrEqual(2616.1);
+    }
+
+    // An obstruction can still require extra clearance while rounded-corner data is available.
+    await insets(page, {
+      ...measured,
+      navigationBottom: 48,
+      panelObstructionBottom: 48,
+    });
+    await expect.poll(setback).toBeCloseTo(60, 1);
+    await insets(page, { ...measured, cutoutBottom: 64, panelObstructionBottom: 64 });
+    await expect.poll(setback).toBeCloseTo(76, 1);
+    await insets(page, { ...measured, imeBottom: 250, panelObstructionBottom: 250 });
+    await expect.poll(setback).toBeCloseTo(262, 1);
+    await insets(page, measured);
+    await expect.poll(setback).toBeCloseTo(48, 1);
+  });
 });
 
 test('Android tablet keeps the inline labels and keyboard button in both orientations', async ({

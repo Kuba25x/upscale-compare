@@ -625,6 +625,7 @@ public class DisplayIntegrationTest {
                           bottom: Math.max(...buttons.map(button => button.getBoundingClientRect().bottom)),
                           appBottom: appBox.bottom,
                           dpr: devicePixelRatio,
+                          roundedBottom: parseFloat(style.getPropertyValue('--phone-panel-rounded-bottom')),
                           connected: close(stage.top, header.getBoundingClientRect().bottom)
                             && close(stage.bottom, panelBox.top)
                             && [stage, panelBox].every(box => close(box.left, appBox.left) && close(box.right, appBox.right))
@@ -644,7 +645,11 @@ public class DisplayIntegrationTest {
           double dpr = panel.getDouble("dpr");
           double reserved = display.get().getInteger("layoutBottom") / dpr;
           double guard = display.get().getInteger("panelGuardBottom") / dpr;
-          double obstruction = display.get().getInteger("panelClearanceBottom") / dpr;
+          double obstruction =
+              Math.max(
+                  display.get().getInteger("panelObstructionBottom") / dpr,
+                  panel.optDouble(
+                      "roundedBottom", display.get().getInteger("panelClearanceBottom") / dpr));
           double clearance = display.get().getInteger("height") / dpr - panel.getDouble("bottom");
           assertEquals(
               "Controls clear the native navigation area",

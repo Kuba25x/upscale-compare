@@ -65,6 +65,9 @@ The script reads only viewport, safe-area, display-state, and control geometry. 
         appliedSafeBottom: appStyle.getPropertyValue('--comparison-safe-bottom').trim(),
         appPaddingBottom: appStyle.paddingBottom,
         panelPaddingBottom: panelStyle.paddingBottom,
+        measuredRoundedBottom: parseFloat(
+          panelStyle.getPropertyValue('--phone-panel-rounded-bottom'),
+        ),
         native: native
           ? {
               navigationVisible: native.navigationVisible,
@@ -76,6 +79,8 @@ The script reads only viewport, safe-area, display-state, and control geometry. 
               mandatoryGestureBottom: native.mandatoryGestureBottom,
               panelGuardBottom: native.panelGuardBottom,
               panelClearanceBottom: native.panelClearanceBottom,
+              panelObstructionBottom: native.panelObstructionBottom,
+              panelRoundedCorners: native.panelRoundedCorners,
             }
           : null,
         root: rect(document.documentElement),
@@ -95,7 +100,7 @@ The script reads only viewport, safe-area, display-state, and control geometry. 
 })();
 ```
 
-Native values are in physical pixels. Divide by `pixelRatio` before comparing them with the CSS geometry. In CSS pixels the setback from the native window bottom is at least `max(layoutBottom, panelGuardBottom, panelClearanceBottom + 12)`. The guard covers current and stable navigation insets and mandatory gestures. The 12 CSS pixels apply above the IME, the reported display edge, and the area reserved for system taps. When the control insets are unavailable the full navigation inset still determines the visual gap. The app already reserves `layoutBottom`, so only the remainder becomes panel padding. If CSS rounds `100dvh` above `windowHeight / pixelRatio`, the panel also accounts for that difference.
+Native values are in physical pixels. Divide by `pixelRatio` before comparing them with the CSS geometry. In CSS pixels the setback from the native window bottom is at least the largest of `layoutBottom`, `panelGuardBottom`, and the measured obstruction plus 12. The guard covers current and stable navigation insets and mandatory gestures. The obstruction is the greater of `panelObstructionBottom` (IME, cutout and the area reserved for system taps) and `measuredRoundedBottom`. The latter uses the native corner arcs at the horizontal edges of the rendered buttons. `panelClearanceBottom` supplies a conservative fallback until the buttons and corners can be measured. When the control insets are unavailable the full navigation inset still determines the visual gap. The app already reserves `layoutBottom`, so only the remainder becomes panel padding. If CSS rounds `100dvh` above `windowHeight / pixelRatio`, the panel also accounts for that difference.
 
 If the APK still sits higher on a physical phone, compare `bottomInsets.navigation`, `stableNavigation`, `tappable`, `stableTappable`, `mandatoryGestures`, `systemGestures`, `ime`, `cutout`, and `roundedCorners` with the two panel bounds and `gapToAppBottom`. A PR #52 build also reports its effective root and panel padding. The newer debug build adds the raw per-type insets. In each app, measure the distance from the physical screen bottom to the lowest button in a system screenshot using synthetic images. If the gesture handle is visible, also measure the distance to its upper edge. The distances in physical pixels are enough to share.
 

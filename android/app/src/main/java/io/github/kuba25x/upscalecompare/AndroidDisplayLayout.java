@@ -133,7 +133,14 @@ final class AndroidDisplayLayout {
     int visibleTappable = insets.getInsets(tappable).bottom;
     int stableTappable = insets.getInsetsIgnoringVisibility(tappable).bottom;
     int tappableBottom = Math.max(visibleTappable, stableTappable);
-    int roundedBottom = roundedBottom(safeLeft, safeRight);
+    RoundedCornerCompat leftCorner =
+        insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_LEFT);
+    RoundedCornerCompat rightCorner =
+        insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_RIGHT);
+    int roundedBottom =
+        Math.max(
+            cornerBottom(leftCorner, safeLeft, true),
+            cornerBottom(rightCorner, windowView.getWidth() - safeRight, false));
     int panelSafeBottom = Math.max(cutout.bottom, roundedBottom);
     int navigationGuard = Math.max(navigation.bottom, visibleNavigation);
     // A gesture-only bar needs clearance for the handle and mandatory swipes. The extra visual
@@ -142,6 +149,7 @@ final class AndroidDisplayLayout {
         Build.VERSION.SDK_INT >= 30 && (tappableBottom > 0 || mandatoryBottom > 0);
     int navigationObstruction =
         reportsControlInsets ? tappableBottom : Math.max(navigationGuard, tappableBottom);
+    int panelObstructionBottom = Math.max(navigationObstruction, Math.max(ime.bottom, cutout.bottom));
     JSArray bounds = new JSArray();
     if (insets.getDisplayCutout() != null) {
       for (android.graphics.Rect rect : insets.getDisplayCutout().getBoundingRects())
@@ -172,9 +180,9 @@ final class AndroidDisplayLayout {
         .put("panelSafeBottom", panelSafeBottom)
         .put("mandatoryGestureBottom", mandatoryBottom)
         .put("panelGuardBottom", Math.max(navigationGuard, mandatoryBottom))
-        .put(
-            "panelClearanceBottom",
-            Math.max(navigationObstruction, Math.max(ime.bottom, panelSafeBottom)))
+        .put("panelClearanceBottom", Math.max(panelObstructionBottom, panelSafeBottom))
+        .put("panelObstructionBottom", panelObstructionBottom)
+        .put("panelRoundedCorners", panelRoundedCorners(leftCorner, rightCorner))
         .put(
             "bottomInsets",
             new JSObject()
@@ -190,18 +198,24 @@ final class AndroidDisplayLayout {
         .put("cutouts", bounds);
   }
 
-  private int roundedBottom(int safeLeft, int safeRight) {
-    // The portrait controls already sit inside the side insets. Use the circle at those
-    // edges instead of reserving the full height of the rounded corners across the panel.
-    return Math.max(
-        cornerBottom(
-            insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_LEFT), safeLeft, true),
-        cornerBottom(
-            insets.getRoundedCorner(RoundedCornerCompat.POSITION_BOTTOM_RIGHT),
-            windowView.getWidth() - safeRight,
-            false));
+  private JSObject panelRoundedCorners(RoundedCornerCompat left, RoundedCornerCompat right) {
+    JSObject corners = new JSObject();
+    if (left == null && right == null) return corners;
+    int[] viewOrigin = new int[2];
+    view.getLocationInWindow(viewOrigin);
+    if (left != null) corners.put("left", viewCorner(left, viewOrigin));
+    if (right != null) corners.put("right", viewCorner(right, viewOrigin));
+    return corners;
   }
 
+  private JSObject viewCorner(RoundedCornerCompat corner, int[] viewOrigin) {
+    return new JSObject()
+        .put("x", corner.getCenterX() - viewOrigin[0])
+        .put("y", corner.getCenterY() - viewOrigin[1])
+        .put("radius", corner.getRadius());
+  }
+
+  // Keep the side-inset estimate until the WebView can measure the actual controls.
   private int cornerBottom(RoundedCornerCompat corner, int x, boolean left) {
     if (corner == null) return 0;
     double distance = left ? corner.getCenterX() - x : x - corner.getCenterX();

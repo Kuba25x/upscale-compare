@@ -7,13 +7,14 @@ export default function AndroidApp() {
   const [displayError, setDisplayError] = useState<{ message: string }>();
   // Forward each failure, including a repeated message after the toast was dismissed.
   const reportError = useCallback((message: string) => setDisplayError({ message }), []);
-  const { presentation, setMinimalist } = useAndroidDisplay(reportError);
+  const { presentation, setMinimalist, observePortraitImagePanel } = useAndroidDisplay(reportError);
   return (
     <App
       android={androidServices}
       presentation={presentation}
       onSetMinimalist={setMinimalist}
       displayError={displayError}
+      observePortraitImagePanel={observePortraitImagePanel}
     />
   );
 }

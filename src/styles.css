@@ -2034,7 +2034,14 @@ input[type='checkbox'] {
     max(
         0px,
         var(--comparison-panel-guard-bottom, 0px) - var(--comparison-layout-bottom, 0px),
-        12px + var(--comparison-panel-clearance-bottom, var(--comparison-layout-bottom, 0px)) -
+        12px +
+          max(
+            var(--comparison-panel-obstruction-bottom, 0px),
+            var(
+              --phone-panel-rounded-bottom,
+              var(--comparison-panel-clearance-bottom, var(--comparison-layout-bottom, 0px))
+            )
+          ) -
           var(--comparison-layout-bottom, 0px)
       ) +
       /* WebView can round 100dvh above the physical viewport height. */

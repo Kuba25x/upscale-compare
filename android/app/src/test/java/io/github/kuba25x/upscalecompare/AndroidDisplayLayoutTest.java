@@ -96,6 +96,18 @@ public class AndroidDisplayLayoutTest {
       assertEquals(34, state.getInteger("panelSafeBottom").intValue());
       assertEquals(30, state.getInteger("panelGuardBottom").intValue());
       assertEquals(34, state.getInteger("panelClearanceBottom").intValue());
+      assertEquals(0, state.getInteger("panelObstructionBottom").intValue());
+      int[] origin = new int[2];
+      view.getLocationInWindow(origin);
+      var corners = state.optJSONObject("panelRoundedCorners");
+      var leftCorner = corners.optJSONObject("left");
+      var rightCorner = corners.optJSONObject("right");
+      assertEquals(80, leftCorner.optInt("radius"));
+      assertEquals(80 - origin[0], leftCorner.optInt("x"));
+      assertEquals(520 - origin[1], leftCorner.optInt("y"));
+      assertEquals(100, rightCorner.optInt("radius"));
+      assertEquals(200 - origin[0], rightCorner.optInt("x"));
+      assertEquals(500 - origin[1], rightCorner.optInt("y"));
     }
     layout.destroy();
     controller.pause().stop().destroy();
@@ -129,10 +141,12 @@ public class AndroidDisplayLayoutTest {
         assertEquals(60, state.getInteger("layoutBottom").intValue());
         assertEquals(60, state.getInteger("panelGuardBottom").intValue());
         assertEquals(buttonInset, state.getInteger("panelClearanceBottom").intValue());
+        assertEquals(buttonInset, state.getInteger("panelObstructionBottom").intValue());
 
         ViewCompat.dispatchApplyWindowInsets(
             decor, builder.setInsets(ime, Insets.of(0, 0, 0, 300)).build());
         assertEquals(300, layout.snapshot().getInteger("panelClearanceBottom").intValue());
+        assertEquals(300, layout.snapshot().getInteger("panelObstructionBottom").intValue());
         ViewCompat.dispatchApplyWindowInsets(decor, withoutIme);
         assertEquals(buttonInset, layout.snapshot().getInteger("panelClearanceBottom").intValue());
       }

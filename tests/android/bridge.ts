@@ -43,7 +43,7 @@ export async function installAndroidBridge(
           revision: ++revision,
           minimalist,
           landscape,
-          width: px(innerWidth),
+          width: px(i.windowWidth ?? innerWidth),
           height: px(i.windowHeight ?? innerHeight),
           statusVisible: !landscape && !minimalist,
           navigationVisible: i.navigationVisible ?? !landscape,
@@ -65,6 +65,8 @@ export async function installAndroidBridge(
           panelClearanceBottom: px(
             i.panelClearanceBottom ?? Math.max(layoutBottom, panelSafeBottom),
           ),
+          panelObstructionBottom: px(i.panelObstructionBottom),
+          panelRoundedCorners: i.panelRoundedCorners,
           cutouts: [],
         };
         win.barsHidden = landscape;
