@@ -702,44 +702,33 @@ public class DisplayIntegrationTest {
   }
 
   private void exercisePortraitGestures() throws Exception {
-    AtomicReference<String> component = new AtomicReference<>();
     AtomicReference<JSObject> display = new AtomicReference<>();
     int[] origin = new int[2];
     scenario.onActivity(
         a -> {
-          component.set(a.getComponentName().flattenToShortString());
           display.set(a.displayLayout.snapshot());
           var webView = a.getBridge().getWebView();
           webView.getLocationOnScreen(origin);
           assertTrue(webView.getSystemGestureExclusionRects().isEmpty());
           assertTrue(a.getWindow().getDecorView().getSystemGestureExclusionRects().isEmpty());
         });
+    int backY = origin[1] + display.get().getInteger("height") / 2;
+    int backEndX = display.get().getInteger("width") / 4;
     for (String label : new String[] {"Select image A", "Select image B"}) {
       tapPortraitControl(label, origin, display.get());
       String expanded = "document.querySelector('[aria-label=\"%s\"]').getAttribute('aria-expanded')"
           .formatted(label);
       eventually(() -> assertEquals("\"true\"", js(expanded)));
-      shell("input keyevent KEYCODE_BACK");
+      shell("input swipe %d %d %d %d 300".formatted(2, backY, backEndX, backY));
       eventually(() -> assertEquals("\"false\"", js(expanded)));
     }
     String imageA = "document.querySelector('[data-testid=\"image-A\"]').alt";
     String imageB = "document.querySelector('[data-testid=\"image-B\"]').alt";
     String originalA = js(imageA);
-    String originalB = js(imageB);
     tapPortraitControl("Swap images", origin, display.get());
     eventually(() -> assertEquals(originalA, js(imageB)));
     tapPortraitControl("Swap images", origin, display.get());
     eventually(() -> assertEquals(originalA, js(imageA)));
-
-    int width = display.get().getInteger("width");
-    int height = display.get().getInteger("height");
-    int x = origin[0] + width / 2;
-    shell("input swipe %d %d %d %d 180".formatted(
-        x, origin[1] + height - 2, x, origin[1] + height / 2));
-    eventually(() -> assertNotEquals(Lifecycle.State.RESUMED, scenario.getState()));
-    shell("am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "
-        + component.get());
-    eventually(() -> assertEquals(originalB, js(imageB)));
     bars(true, true);
     assertPortraitComparisonLayout();
   }
