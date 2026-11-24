@@ -28,6 +28,7 @@ export async function loadImage(file: File): Promise<LocalImage> {
     )
       throw new Error('Images must be at most 36 megapixels and 16,384 pixels per side.');
     return {
+      id: Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-'),
       url,
       file,
       name: file.name,

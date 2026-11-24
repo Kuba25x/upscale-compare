@@ -2,6 +2,12 @@ import { test, expect, type Page } from '@playwright/test';
 import { imageFile } from '../e2e/fixtures';
 import { installAndroidBridge } from './bridge';
 import { chooseZoomPreset, selectImage } from '../shared/phone-controls';
+import {
+  applyAlignment,
+  changeAlignment,
+  expectAligned,
+  mismatch,
+} from '../shared/image-alignment';
 
 const files = [imageFile(), imageFile('B.png', 1, 512, 384), imageFile('C.png', 0, 320, 256)];
 async function openComparison(page: Page, mode: string) {
@@ -23,13 +29,15 @@ async function openComparison(page: Page, mode: string) {
   );
   await page.goto('/');
   await page.getByRole('button', { name: 'Upload Images', exact: true }).click();
+  await applyAlignment(page, 'Original Size');
   await selectImage(page, 'A', 2);
+  await applyAlignment(page, 'Original Size');
   await selectImage(page, 'B', 0);
+  await applyAlignment(page, 'Original Size');
   await page.getByRole('button', { name: mode, exact: true }).click();
   await expect
     .poll(() => page.getByTestId('image-A').evaluate((node: HTMLImageElement) => node.naturalWidth))
     .toBe(320);
-  await expect(page.locator('.alignment-warning')).toBeVisible();
   await expect
     .poll(() => savedConfig(page))
     .toMatchObject({
@@ -41,6 +49,31 @@ async function openComparison(page: Page, mode: string) {
 async function savedConfig(page: Page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('test-session')!).config);
 }
+
+test('restores alignment and original bytes through the Android session bridge', async ({
+  page,
+}) => {
+  await openComparison(page, 'Split Screen');
+  await changeAlignment(page, 'Match Height');
+  await expectAligned(page, 256 / 480);
+  await expect
+    .poll(() =>
+      page.evaluate(() => JSON.parse(localStorage.getItem('test-session')!).alignmentChoices),
+    )
+    .toContainEqual({
+      pair: ['00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000003'],
+      mode: 'height',
+    });
+  await page.reload();
+  await expectAligned(page, 256 / 480);
+  await expect(mismatch(page)).toHaveCount(0);
+  const bytes = await page
+    .getByTestId('image-A')
+    .evaluate(async (image: HTMLImageElement) =>
+      Array.from(new Uint8Array(await (await fetch(image.currentSrc)).arrayBuffer())),
+    );
+  expect(bytes).toEqual(Array.from(files[2].buffer));
+});
 async function snapshotImages(page: Page) {
   await expect
     .poll(() =>
@@ -85,7 +118,6 @@ async function assertFullscreen(page: Page, mode: string) {
     '.header-actions',
     '.image-selection-bar',
     '.image-badge',
-    '.alignment-warning',
     '.inspection-toolbar',
     '.landing-footer',
   ])

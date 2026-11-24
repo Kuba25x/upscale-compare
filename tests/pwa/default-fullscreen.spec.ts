@@ -5,6 +5,12 @@ import { open as openComparison, snapshot, unchanged } from '../shared/mobile-mi
 import { installWebDisplay } from '../shared/web-display';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
 import { installFullscreen, type FullscreenOutcome } from '../shared/web-fullscreen';
+import {
+  applyAlignment,
+  expectAligned,
+  mismatch,
+  storedComparison,
+} from '../shared/image-alignment';
 import { cacheSnapshot, control, serve } from './helpers';
 import {
   expectPhonePortraitHeader,
@@ -245,6 +251,42 @@ test('installed phone portrait fills the safe width and updates icons when inset
   await expectSplitRange(page);
 });
 
+test('installed phone restores scaled geometry with safe alignment controls after rotation', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  await windowMode(page, 'fullscreen');
+  await page.setViewportSize({ width: 320, height: 820 });
+  const launch = new URL('?pwa=fullscreen', baseURL).href;
+  await page.goto(launch);
+  await control(page);
+  await insets(page, 48, 0, 28, 0);
+  await page
+    .getByTestId('file-input')
+    .setInputFiles([imageFile('A.png'), imageFile('B.png', 1, 320, 300)]);
+  await safe(page, mismatch(page), { top: 48, right: 0, bottom: 28, left: 0 });
+  await applyAlignment(page, 'Match Width');
+  await expectAligned(page, 2);
+  await expect
+    .poll(async () => (await storedComparison(page, baseURL)).session?.alignmentChoices?.[0]?.mode)
+    .toBe('width');
+  await context.setOffline(true);
+  await page.setViewportSize({ width: 820, height: 320 });
+  await page.reload();
+  await insets(page, 0, 56, 24, 0);
+  await expectAligned(page, 2);
+  await expect(mismatch(page)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Manage Images', exact: true }).click();
+  await safe(page, page.getByRole('radio', { name: 'Match Width' }), {
+    top: 0,
+    right: 56,
+    bottom: 24,
+    left: 0,
+  });
+  await expect(page.getByRole('radio', { name: 'Match Width' })).toBeChecked();
+});
+
 test('installed portrait panel uses the usable bottom without adding overlapping insets', async ({
   page,
 }) => {
@@ -481,9 +523,10 @@ test('the portrait label editor stays within the reported visual and safe viewpo
   await expect(label).toBeFocused();
 });
 
-test('the marked launch URL reopens offline without persisting local images or metadata', async ({
+test('the marked launch URL restores private images and metadata outside Cache Storage', async ({
   page,
   context,
+  baseURL,
 }) => {
   await windowMode(page, 'fullscreen');
   await page.setViewportSize({ width: 412, height: 900 });
@@ -493,20 +536,19 @@ test('the marked launch URL reopens offline without persisting local images or m
     .getByTestId('file-input')
     .setInputFiles([imageFile('Private.png'), imageFile('B.png', 1)]);
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
-  await page.getByLabel('Game title').fill('Private metadata must not survive');
+  await page.getByLabel('Game title').fill('Private metadata');
   await page.getByRole('button', { name: 'Save details', exact: true }).click();
+  await expect
+    .poll(async () => (await storedComparison(page, baseURL)).session?.metadata.game)
+    .toBe('Private metadata');
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator('.app')).toHaveClass(/installed-fullscreen/);
-  await expect(page.getByTestId('stage')).toHaveCount(0);
-  await page
-    .getByTestId('file-input')
-    .setInputFiles([imageFile('Fresh.png'), imageFile('Fresh B.png', 1)]);
-  await expect(page.getByTestId('stage')).toBeVisible();
+  await expect(page.getByTestId('image-A')).toHaveAttribute('alt', 'Private');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
-  await expect(page.getByLabel('Game title')).toHaveValue('');
+  await expect(page.getByLabel('Game title')).toHaveValue('Private metadata');
   expect(JSON.stringify(await cacheSnapshot(page))).not.toMatch(
-    /Private\.png|Fresh\.png|Private metadata|blob:|pwa=fullscreen/,
+    /Private\.png|Private metadata|blob:|pwa=fullscreen/,
   );
 });
 

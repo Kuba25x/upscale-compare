@@ -4,6 +4,7 @@ import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { expectImageChoiceCount, renameSelectedImage, selectImage } from '../shared/phone-controls';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import { applyAlignment } from '../shared/image-alignment';
 
 const unexpectedRequests = new WeakMap<Page, string[]>();
 test.beforeEach(async ({ page, baseURL }) => {
@@ -81,7 +82,7 @@ test('keeps labels, metadata, four-image selection, addition, and replacement', 
   await page.getByRole('button', { name: 'Replace', exact: true }).nth(2).click();
   await (await replacement).setFiles(imageFile('Small.png', 0, 320, 240));
   await page.getByRole('button', { name: 'Close dialog' }).click();
-  await expect(page.locator('.alignment-warning')).toContainText('Different dimensions');
+  await applyAlignment(page, 'Original Size');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await expect(page.getByLabel('Game title')).toHaveValue('Demo game');
   await expect(page.getByLabel('GPU / hardware')).toHaveValue('Test GPU');
@@ -157,7 +158,11 @@ test('keeps privacy information, pixel controls, keyboard shortcuts, and fullscr
   await help.getByRole('button', { name: 'Privacy', exact: true }).click();
   const privacy = page.getByRole('dialog', { name: 'Your images, your choice' });
   await expect(privacy).toContainText(
-    'Original images, labels, and comparison details stay in your browser and are never uploaded automatically.',
+    'Original images, labels, and comparison details are saved in this browser to reopen the last comparison.',
+  );
+  await expect(privacy).toContainText('They are never uploaded automatically.');
+  await expect(privacy).toContainText(
+    'Use Clear comparison to remove the saved files and session.',
   );
   await expect(privacy).not.toContainText(/Demo|sharing is (?:not |un)available/i);
   await privacy.getByRole('button', { name: 'Close', exact: true }).click();

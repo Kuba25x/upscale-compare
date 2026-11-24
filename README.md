@@ -54,7 +54,7 @@ or UI mockups. [Capture instructions and provenance](docs/SCREENSHOTS.md).
 | Local comparison        | Yes; no image upload                                   | Yes; bundled app works offline                        |
 | Offline start           | After app resources are cached; browser may evict them | App resources are bundled                             |
 | Image selection         | Browser file input                                     | System Photo Picker; Browse files / Files alternative |
-| Session storage         | Browser memory; refresh loses the local comparison     | Original copies and session in private app storage    |
+| Session storage         | Last comparison and originals in browser storage       | Original copies and session in private app storage    |
 | File ceiling            | 20 MiB per file                                        | Provisional 256 MiB per file                          |
 | Image bounds            | 36 million pixels; 16,384 pixels per side              | Same pixel/dimension bounds                           |
 | Public Share Comparison | Unavailable                                            | Unavailable                                           |
@@ -81,14 +81,14 @@ either version can import them offline.
 3. In Android Chrome's menu, choose **Install app** or **Add to Home screen** and
    confirm installation. Open the app from its icon. Menu wording varies by browser.
 
-Offline works in a regular tab too. Refreshing or reopening starts an empty
-comparison: select local files again. Browser storage can be evicted; reconnect
-if the app cannot open offline. Updates wait until all existing tabs and app
-windows close and never automatically reload an active comparison.
+Offline works in a regular tab too. Refreshing or reopening restores the last
+local comparison. Browsers can evict saved data. Reconnect if the app cannot
+open offline. Updates wait until all existing tabs and app windows close.
 
 On the web, installed PWAs, and Android, open **Manage Images** to add, replace,
-or remove screenshots. **Clear comparison** empties the list so you can add new
-screenshots in the same dialog. Closing the dialog returns to the comparison
+or remove screenshots. **Image Alignment** can keep original pixel sizes or
+scale B proportionally to match the width or height of A. **Clear comparison**
+removes the saved session and its local copies. Closing the dialog returns to the comparison
 with two to four images, or to **Upload Images** with fewer than two.
 On phones, edit any screenshot label in **Manage Images** in either orientation.
 The landscape **Images** panel provides quick A/B selection and swapping. Both

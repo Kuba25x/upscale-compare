@@ -1,7 +1,8 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { z } from 'zod';
 import {
-  configSchema,
+  alignmentChoicesSchema,
+  localConfigSchema,
   metadataSchema,
   imageMetadataSchema,
   type LocalImage,
@@ -29,7 +30,8 @@ const sessionSchema = z
   .object({
     images: z.array(imageSchema).max(4),
     metadata: metadataSchema,
-    config: configSchema,
+    config: localConfigSchema,
+    alignmentChoices: alignmentChoicesSchema.optional(),
   })
   .refine(
     (s) =>
@@ -109,6 +111,7 @@ export async function saveAndroidSession(
     images: LocalImage[];
     config: AndroidSession['config'];
     metadata: AndroidSession['metadata'];
+    alignmentChoices?: AndroidSession['alignmentChoices'];
   },
   draft?: LocalImage,
 ) {

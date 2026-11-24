@@ -4,6 +4,7 @@ import { PNG } from 'pngjs';
 import { imageFile } from '../e2e/fixtures';
 import { installWebDisplay } from './web-display';
 import { installFullscreen, type FullscreenOutcome } from './web-fullscreen';
+import { applyAlignment } from './image-alignment';
 
 const files = [
   imageFile('A.png'),
@@ -13,8 +14,11 @@ const files = [
 export async function open(page: Page, mode = 'Split Screen', url = './') {
   await page.goto(url);
   await page.getByTestId('file-input').setInputFiles(files);
+  await applyAlignment(page, 'Original Size');
   await selectImage(page, 'A', 2);
+  await applyAlignment(page, 'Original Size');
   await selectImage(page, 'B', 0);
+  await applyAlignment(page, 'Original Size');
   await renameSelectedImage(page, 'A', 'C.png', 'Native original');
   await page.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await page.getByLabel('Game title').fill('Minimalist regression');
@@ -100,7 +104,6 @@ async function minimal(page: Page, mode = 'Split Screen') {
     '.app-header',
     '.image-selection-bar',
     '.image-badge',
-    '.alignment-warning',
     '.inspection-toolbar',
     '.published-notice',
   ])

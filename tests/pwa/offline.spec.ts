@@ -9,10 +9,17 @@ import { imageFile } from '../e2e/fixtures';
 import { readFile } from 'node:fs/promises';
 import { cacheSnapshot, control, originalBytes, serve } from './helpers';
 import { expectLocalComparisonUI } from '../shared/local-comparison';
+import {
+  applyAlignment,
+  expectAligned,
+  geometry,
+  mismatch,
+  storedComparison,
+} from '../shared/image-alignment';
 
 test.beforeEach(async ({ request }) => serve(request));
 
-test('offline shell restarts empty and keeps local originals, metadata, zoom and modes private', async ({
+test('offline shell restores originals, metadata, zoom and alignment from private storage', async ({
   page,
   context,
   baseURL,
@@ -49,14 +56,24 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   };
   await offline.getByTestId('file-input').setInputFiles([file, jpeg, webp]);
   await expect(offline.getByTestId('stage')).toBeVisible();
+  await applyAlignment(offline, 'Original Size');
   expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
   await selectImage(offline, 'A', 2);
+  await expect(offline.getByTestId('image-A')).toHaveAttribute('alt', 'Private WebP');
+  const sizes = await geometry(offline);
+  if (
+    sizes.a.naturalWidth !== sizes.b.naturalWidth ||
+    sizes.a.naturalHeight !== sizes.b.naturalHeight
+  )
+    await applyAlignment(offline, 'Original Size');
   expect(await originalBytes(offline)).toEqual(Array.from(webp.buffer));
   await selectImage(offline, 'B', 0);
+  await applyAlignment(offline, 'Match Width');
   await selectImage(offline, 'A', 1);
   expect(await originalBytes(offline)).toEqual(Array.from(jpeg.buffer));
   await selectImage(offline, 'B', 2);
   await selectImage(offline, 'A', 0);
+  await expect(mismatch(offline)).toHaveCount(0);
   await renameSelectedImage(offline, 'A', file.name, 'Private label');
   await offline.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await offline.getByLabel('Game title').fill('Private game');
@@ -106,14 +123,21 @@ test('offline shell restarts empty and keeps local originals, metadata, zoom and
   await offline.getByRole('button', { name: 'Comparison details', exact: true }).click();
   await expect(offline.getByLabel('Game title')).toHaveValue('Private game');
   await offline.getByRole('button', { name: 'Save details', exact: true }).click();
+  const zoom = browserName === 'chromium' ? 2 : 1;
+  const factor = 640 / (await geometry(offline)).b.naturalWidth;
+  await expect
+    .poll(async () => (await storedComparison(offline, baseURL)).session?.config.view.zoom)
+    .toBe(zoom);
   await offline.close();
   const restarted = await context.newPage();
   await restarted.goto(baseURL!);
-  await expect(restarted.getByTestId('stage')).toHaveCount(0);
-  await restarted.getByTestId('file-input').setInputFiles([file, imageFile('Fresh B.png', 1)]);
-  await expectSelectedImageLabel(restarted, 'A', 'Private Original');
+  await expectAligned(restarted, factor, true, zoom);
+  await expect(mismatch(restarted)).toHaveCount(0);
+  expect(await originalBytes(restarted)).toEqual(Array.from(file.buffer));
+  expect(await originalBytes(restarted, 'B')).toEqual(Array.from(webp.buffer));
+  await expectSelectedImageLabel(restarted, 'A', 'Private label');
   await restarted.getByRole('button', { name: 'Comparison details', exact: true }).click();
-  await expect(restarted.getByLabel('Game title')).toHaveValue('');
+  await expect(restarted.getByLabel('Game title')).toHaveValue('Private game');
 });
 
 test('only the shell entry points work offline; API, tokens, share paths and foreign cache stay outside it', async ({

@@ -10,6 +10,12 @@ import {
   expectSplitRange,
 } from '../shared/layout-alignment';
 import { control, originalBytes, serve } from './helpers';
+import {
+  applyAlignment,
+  expectAligned,
+  mismatch,
+  storedComparison,
+} from '../shared/image-alignment';
 
 test('installed Linux Chromium window uses the manifest launch URL and reopens offline', async ({
   request,
@@ -72,9 +78,11 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
     });
     const app = await launch(browser);
     await expectCenteredBrand(app);
+    const installedOriginal = imageFile('Private.png');
     await app
       .getByTestId('file-input')
-      .setInputFiles([imageFile('Private.png'), imageFile('B.png', 1)]);
+      .setInputFiles([installedOriginal, imageFile('B.png', 1, 320, 240)]);
+    await applyAlignment(app, 'Match Height');
     await expect(app.getByTestId('stage')).toBeVisible();
     await expectCenteredBrand(app);
     for (const name of ['100%', '200%', '400%'])
@@ -84,6 +92,9 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
     await expectCenteredDividerArrows(app);
     await expectSplitRange(app);
     await expectLocalComparisonUI(app);
+    await expect
+      .poll(async () => (await storedComparison(app, baseURL)).session?.alignmentChoices?.[0]?.mode)
+      .toBe('height');
     await app.screenshot({ path: testInfo.outputPath('installed-online.png') });
     await browser.close();
     browser = await chromium.launchPersistentContext(join(directory, 'profile'), {
@@ -91,12 +102,15 @@ test('installed Linux Chromium window uses the manifest launch URL and reopens o
       offline: true,
     });
     const offline = await launch(browser);
-    await expect(offline.getByTestId('stage')).toHaveCount(0);
+    await expectAligned(offline, 2);
+    await expect(mismatch(offline)).toHaveCount(0);
+    expect(await originalBytes(offline)).toEqual(Array.from(installedOriginal.buffer));
     await expectCenteredBrand(offline);
     const fullLabel = 'W'.repeat(58);
     const file = imageFile(`${fullLabel}.png`);
     const other = imageFile('Fresh B.png', 1);
     await offline.getByTestId('file-input').setInputFiles([file, other]);
+    await expect(offline.getByTestId('image-A')).toHaveAttribute('alt', fullLabel);
     expect(await originalBytes(offline)).toEqual(Array.from(file.buffer));
     await expectCenteredBrand(offline);
     await expectLocalComparisonUI(offline);

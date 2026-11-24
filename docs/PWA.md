@@ -50,8 +50,9 @@ on computer and tablet layouts, and external keyboard shortcuts work on phones.
 - Only the HTML, JavaScript, CSS, manifest, icons and license notices are cached.
   Help verifies the complete resource list for the displayed version before
   reporting offline readiness. Reopening Help or returning focus checks it again.
-- Screenshots, filenames, labels and comparison metadata remain in memory. Refresh,
-  closing or restarting begins an empty session. Original files on disk are untouched.
+- IndexedDB stores original copies, filenames, labels, metadata and view settings for
+  the last comparison. Refreshing or reopening restores it. **Clear comparison**
+  removes the saved session and copies. Original files on disk are untouched.
 - Browser storage may be cleared or evicted, including after installation. Reconnect
   and open the app online if offline startup fails. If readiness remains unavailable,
   use the [scoped repair procedure](DEPLOYMENT.md#repair-only-this-pwas-cache).
@@ -79,8 +80,8 @@ Use the [fresh-install instructions and physical-device checklist](INSTALLED_LAN
 The browser checks for the next release during normal app use. A new worker installs
 resources in the background and waits while old tabs or app windows remain open.
 There is no forced reload or update prompt. Finish the comparison, close all its
-tabs/windows and reopen to use the available release; unsaved labels and metadata
-will not be restored. A failed download leaves the previous cached version usable.
+tabs/windows and reopen to use the available release. The saved comparison carries
+over to the new version. A failed download leaves the previous cached version usable.
 The version shown in Help is the app version plus a short source commit.
 
 ## Limits and the Android APK
