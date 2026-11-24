@@ -123,6 +123,7 @@ final class AndroidDisplayLayout {
     int bottom = Math.max(landscape ? 0 : navigation.bottom, ime.bottom);
     int safeLeft = Math.max(cutout.left, Math.max(navigation.left, gestures.left));
     int safeRight = Math.max(cutout.right, Math.max(navigation.right, gestures.right));
+    boolean navigationVisible = insets.isVisible(WindowInsetsCompat.Type.navigationBars());
     int visibleNavigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
     int mandatoryBottom =
         Math.max(
@@ -142,13 +143,25 @@ final class AndroidDisplayLayout {
             cornerBottom(leftCorner, safeLeft, true),
             cornerBottom(rightCorner, windowView.getWidth() - safeRight, false));
     int panelSafeBottom = Math.max(cutout.bottom, roundedBottom);
-    int navigationGuard = Math.max(navigation.bottom, visibleNavigation);
-    // A gesture-only bar needs clearance for the handle and mandatory swipes. The extra visual
-    // gap belongs above obstructions, including button navigation, the IME and display edges.
+    int systemBars = WindowInsetsCompat.Type.systemBars();
+    int systemBarGuard =
+        Math.max(
+            insets.getInsets(systemBars).bottom,
+            insets.getInsetsIgnoringVisibility(systemBars).bottom);
+    // Simple taps can use the gesture area outside the reported system bar. Require a measured
+    // navigation bar, gesture inset and rounded-corner API for this tap-only panel.
+    boolean gestureNavigation =
+        Build.VERSION.SDK_INT >= 31
+            && navigation.bottom > 0
+            && (!navigationVisible || visibleNavigation > 0)
+            && mandatoryBottom > 0
+            && tappableBottom == 0;
+    int panelGuardBottom =
+        gestureNavigation ? systemBarGuard : Math.max(systemBarGuard, mandatoryBottom);
     boolean reportsControlInsets =
         Build.VERSION.SDK_INT >= 30 && (tappableBottom > 0 || mandatoryBottom > 0);
     int navigationObstruction =
-        reportsControlInsets ? tappableBottom : Math.max(navigationGuard, tappableBottom);
+        reportsControlInsets ? tappableBottom : Math.max(systemBarGuard, tappableBottom);
     int panelObstructionBottom = Math.max(navigationObstruction, Math.max(ime.bottom, cutout.bottom));
     JSArray bounds = new JSArray();
     if (insets.getDisplayCutout() != null) {
@@ -167,7 +180,7 @@ final class AndroidDisplayLayout {
         .put("width", view.getWidth())
         .put("height", view.getHeight())
         .put("statusVisible", insets.isVisible(WindowInsetsCompat.Type.statusBars()))
-        .put("navigationVisible", insets.isVisible(WindowInsetsCompat.Type.navigationBars()))
+        .put("navigationVisible", navigationVisible)
         .put("layoutTop", top)
         .put("layoutBottom", bottom)
         // Hidden status bars retain a mandatory swipe-start inset. Reserving it for
@@ -179,7 +192,7 @@ final class AndroidDisplayLayout {
         .put("safeLeft", safeLeft)
         .put("panelSafeBottom", panelSafeBottom)
         .put("mandatoryGestureBottom", mandatoryBottom)
-        .put("panelGuardBottom", Math.max(navigationGuard, mandatoryBottom))
+        .put("panelGuardBottom", panelGuardBottom)
         .put("panelClearanceBottom", Math.max(panelObstructionBottom, panelSafeBottom))
         .put("panelObstructionBottom", panelObstructionBottom)
         .put("panelRoundedCorners", panelRoundedCorners(leftCorner, rightCorner))

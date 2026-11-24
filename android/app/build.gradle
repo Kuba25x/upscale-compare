@@ -10,6 +10,25 @@ if (!(releaseCode ==~ /[1-9][0-9]{0,9}/) ||
     throw new GradleException('Invalid android/release.properties')
 }
 
+// Resolve the SDKs used by @Config with Gradle's Maven Central cache. Each SDK
+// needs its own configuration because both versions use the same module name.
+def robolectricSdkJars = [
+    robolectricSdk28: '9-robolectric-4913185-2-i7',
+    robolectricSdk33: '13-robolectric-9030017-i7',
+].collect { configurationName, version ->
+    def sdk = configurations.create(configurationName) {
+        canBeConsumed = false
+        transitive = false
+    }
+    dependencies.add(sdk.name, "org.robolectric:android-all-instrumented:${version}")
+    sdk
+}
+def robolectricSdkDirectory = layout.buildDirectory.dir('robolectric-sdks')
+def prepareRobolectricSdks = tasks.register('prepareRobolectricSdks', Sync) {
+    from(robolectricSdkJars)
+    into(robolectricSdkDirectory)
+}
+
 android {
     namespace = "io.github.kuba25x.upscalecompare"
     buildToolsVersion '35.0.0'
@@ -27,7 +46,14 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    testOptions { unitTests.includeAndroidResources = true }
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            dependsOn prepareRobolectricSdks
+            inputs.dir robolectricSdkDirectory
+            systemProperty 'robolectric.dependency.dir', robolectricSdkDirectory.get().asFile.absolutePath
+        }
+    }
     // Instrumentation uses isolated app data and cannot overwrite a user's comparison.
     testBuildType 'systemUi'
     buildTypes {

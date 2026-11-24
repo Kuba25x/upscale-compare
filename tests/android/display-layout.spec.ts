@@ -261,10 +261,11 @@ test('portrait controls clear both navigation modes, rounded edges and the keybo
       visibleNavigationBottom: navigationVisible ? 24 : 0,
       gestureBottom: navigationVisible ? 60 : 24,
       mandatoryGestureBottom: 32,
+      panelGuardBottom: 24,
       panelClearanceBottom: 0,
       navigationVisible,
     });
-    await expectPortraitImagePanel(page, { bottom: 32, gap: 0 });
+    await expectPortraitImagePanel(page, { bottom: 24, gap: 0 });
   }
 
   for (const navigationVisible of [true, false, true]) {
@@ -284,10 +285,11 @@ test('portrait controls clear both navigation modes, rounded edges and the keybo
   await insets(page, {
     navigationBottom: 24,
     mandatoryGestureBottom: 32,
+    panelGuardBottom: 24,
     panelClearanceBottom: 0,
     windowHeight: 639,
   });
-  await expectPortraitImagePanel(page, { bottom: 33, gap: 0 });
+  await expectPortraitImagePanel(page, { bottom: 25, gap: 0 });
   await insets(page, { navigationBottom: 24, roundedBottom: 48, cutoutBottom: 30 });
   await expectPortraitImagePanel(page, { bottom: 48, gap: 12 });
   await page.getByRole('button', { name: 'Enter fullscreen', exact: true }).tap();
@@ -299,7 +301,7 @@ test('portrait controls clear both navigation modes, rounded edges and the keybo
 test.describe('portrait device with rounded corners and a full-width gesture area', () => {
   test.use({ viewport: { width: 394, height: 853 }, deviceScaleFactor: 3.25 });
 
-  test('the reported device lowers its buttons from the PR #52 setback to the gesture edge', async ({
+  test('the reported device keeps tappable controls inside the gesture region and above the navigation bar', async ({
     page,
   }) => {
     await open(page);
@@ -313,6 +315,7 @@ test.describe('portrait device with rounded corners and a full-width gesture are
       windowHeight,
       navigationBottom: 52 / dpr,
       mandatoryGestureBottom: (2772 - 2616) / dpr,
+      gestureBottom: (2772 - 2616) / dpr,
       roundedBottom: 156 / dpr,
     };
     const panel = page.locator('.phone-image-controls');
@@ -327,12 +330,6 @@ test.describe('portrait device with rounded corners and a full-width gesture are
     const setback = async () =>
       windowHeight - Math.max(...(await buttons()).map((box) => box.bottom));
 
-    // The fallback samples at the window sides, matching the PR #52 rule on these inputs.
-    await insets(page, fixture);
-    const pr52Setback = Math.max(fixture.roundedBottom + 12, fixture.mandatoryGestureBottom);
-    await expect.poll(setback).toBeCloseTo(pr52Setback, 1);
-    const baseline = await buttons();
-
     const measured = {
       ...fixture,
       panelRoundedCorners: {
@@ -340,8 +337,15 @@ test.describe('portrait device with rounded corners and a full-width gesture are
         right: { x: 1124, y: 2616, radius: 156 },
       },
     };
+    // PR #55 used the full mandatory gesture inset as its guard, even with measured corners.
     await insets(page, measured);
     await expect.poll(setback).toBeCloseTo(48, 1);
+    const baseline = await buttons();
+
+    const gestureNavigation = { ...measured, panelGuardBottom: fixture.navigationBottom };
+    await insets(page, gestureNavigation);
+    const expectedSetback = (156 - Math.sqrt(156 ** 2 - (156 - 42.25) ** 2)) / dpr + 12;
+    await expect.poll(setback).toBeCloseTo(expectedSetback, 1);
     const roundedBottom = await panel.evaluate((node) =>
       parseFloat(getComputedStyle(node).getPropertyValue('--phone-panel-rounded-bottom')),
     );
@@ -356,23 +360,54 @@ test.describe('portrait device with rounded corners and a full-width gesture are
       expect(after[index].left).toBeCloseTo(left, 1);
       expect(after[index].right).toBeCloseTo(right, 1);
       expect(after[index].height).toBeCloseTo(44, 1);
-      expect(after[index].bottom - baseline[index].bottom).toBeCloseTo(12, 1);
-      expect(after[index].bottom * dpr).toBeLessThanOrEqual(2616.1);
+      expect((after[index].bottom - baseline[index].bottom) * dpr).toBeCloseTo(67.76, 0);
+      expect(after[index].bottom * dpr).toBeGreaterThan(2616);
+      expect(after[index].bottom * dpr).toBeLessThan(2720);
     }
 
-    // An obstruction can still require extra clearance while rounded-corner data is available.
-    await insets(page, {
-      ...measured,
-      navigationBottom: 48,
-      panelObstructionBottom: 48,
-    });
+    for (const [slot, index] of [
+      ['A', 2],
+      ['B', 0],
+    ] as const) {
+      const trigger = phoneImageTrigger(page, slot);
+      const bounds = (await trigger.boundingBox())!;
+      expect((bounds.y + bounds.height - 4) * dpr).toBeGreaterThan(2616);
+      await trigger.tap({ position: { x: bounds.width / 2, y: bounds.height - 4 } });
+      await imageChoices(page, slot).nth(index).tap();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.getByTestId(`image-${slot}`)).toHaveAttribute(
+        'alt',
+        index === 2 ? /C/ : /A/,
+      );
+    }
+    const swap = panel.getByRole('button', { name: 'Swap images' });
+    const swapBounds = (await swap.boundingBox())!;
+    expect((swapBounds.y + swapBounds.height - 4) * dpr).toBeGreaterThan(2616);
+    await swap.tap({ position: { x: swapBounds.width / 2, y: swapBounds.height - 4 } });
+    await expect(page.getByTestId('image-B')).toHaveAttribute('alt', /C/);
+
+    await insets(page, { ...measured, navigationBottom: 48, panelObstructionBottom: 48 });
     await expect.poll(setback).toBeCloseTo(60, 1);
-    await insets(page, { ...measured, cutoutBottom: 64, panelObstructionBottom: 64 });
+    await insets(page, gestureNavigation);
+    await expect.poll(setback).toBeCloseTo(expectedSetback, 1);
+    await insets(page, { ...gestureNavigation, cutoutBottom: 64, panelObstructionBottom: 64 });
     await expect.poll(setback).toBeCloseTo(76, 1);
-    await insets(page, { ...measured, imeBottom: 250, panelObstructionBottom: 250 });
+    await insets(page, { ...gestureNavigation, imeBottom: 250, panelObstructionBottom: 250 });
     await expect.poll(setback).toBeCloseTo(262, 1);
-    await insets(page, measured);
-    await expect.poll(setback).toBeCloseTo(48, 1);
+    await insets(page, gestureNavigation);
+    await expect.poll(setback).toBeCloseTo(expectedSetback, 1);
+
+    await insets(page, {
+      ...gestureNavigation,
+      panelRoundedCorners: {
+        left: { x: 64, y: 2708, radius: 64 },
+        right: { x: 1216, y: 2708, radius: 64 },
+      },
+    });
+    await expect.poll(setback).toBeCloseTo(16, 1);
+    // With layout measurement unavailable, retain the conservative corner estimate.
+    await insets(page, { ...fixture, panelGuardBottom: fixture.navigationBottom });
+    await expect.poll(setback).toBeCloseTo(60, 1);
   });
 });
 
