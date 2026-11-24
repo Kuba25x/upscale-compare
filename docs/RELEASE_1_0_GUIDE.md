@@ -4,7 +4,7 @@ Use one interactive Windows Terminal PowerShell session on your trusted computer
 
 ## 1. Merge the reviewed changes
 
-Open the preparation PR titled **Prepare Android v1.0.0 stable release**. Review its diff, approvals and required checks, including Android release preparation on Linux and Windows. Use the repository's normal protected merge button once checks pass. Confirm PRs #58 and #59 have also merged before dispatching the final build. A PR artifact is only a rehearsal.
+Open [preparation PR #60](https://github.com/Kuba25x/upscale-compare/pull/60). Review its diff, approvals and required checks, including Android release preparation on Linux and Windows. Use the repository's normal protected merge button once checks pass. Confirm PRs #58 and #59 have also merged before dispatching the final build. A PR artifact is only a rehearsal.
 
 ## 2. Pin the final main commit
 
@@ -18,7 +18,7 @@ $work = 'D:\UpscaleRelease-1.0.0'
 if (Test-Path $work) { throw 'Choose a fresh work directory.' }
 New-Item -ItemType Directory $work | Out-Null
 $src = Join-Path $work 'source'
-git -c core.autocrlf=false clone "https://github.com/$repo.git" $src
+git clone --config core.autocrlf=false "https://github.com/$repo.git" $src
 Check 'clone'
 Set-Location -LiteralPath $src
 git fetch origin main --tags
@@ -26,9 +26,7 @@ Check 'fetch main'
 $sha = git rev-parse origin/main
 Check 'read main SHA'
 if ($sha -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid commit' }
-$prep = Read-Host 'Merged release preparation PR number'
-if ($prep -notmatch '^\d+$') { throw 'Enter a PR number' }
-foreach ($pr in @(58,59,$prep)) {
+foreach ($pr in @(58,59,60)) {
   $merge = gh pr view $pr --repo $repo --json mergeCommit --jq '.mergeCommit.oid'
   Check "read PR $pr"
   if (!$merge) { throw "PR $pr has not merged" }
