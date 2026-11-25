@@ -14,8 +14,10 @@ jobs:
       RUN_WEBKIT: 'true'
       WRANGLER_SEND_METRICS: 'false'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
@@ -30,10 +32,10 @@ jobs:
         run: xvfb-run -a npm run test:pwa:install
       - name: Verify production sharing with an active worker
         run: npm run test:pwa:sharing
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: pwa-test-results
+          name: pwa-test-results-${{ github.run_attempt }}
           path: |
             playwright-report/pwa*/
             test-results/pwa*/
@@ -46,12 +48,15 @@ jobs:
       RUN_FIREFOX: 'true'
       RUN_WEBKIT: 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run format:check
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Select Playwright Chromium
         run: node scripts/set-playwright-browser.mjs
@@ -68,10 +73,10 @@ jobs:
         run: npm run audit:dependencies
       - name: Verify GitHub Pages repository subpath
         run: VITE_BASE_PATH=/upscale-compare/ npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: browser-test-results
+          name: browser-test-results-${{ github.run_attempt }}
           include-hidden-files: true
           path: |
             playwright-report/

@@ -8,9 +8,15 @@ on:
       - 'tests/**'
       - 'package*.json'
       - '*config.ts'
+      - 'index.html'
+      - 'public/**'
+      - '.env.demo'
+      - 'assets/pwa/**'
       - 'scripts/android-*'
       - 'scripts/AndroidReleaseArchive.java'
       - 'scripts/capture-readme.mjs'
+      - 'scripts/generate-notices.*'
+      - 'scripts/pwa-build.ts'
       - '.github/workflows/android-release.yml'
   workflow_dispatch:
     inputs:
@@ -29,10 +35,12 @@ jobs:
     timeout-minutes: 35
     outputs:
       source_commit: ${{ steps.source.outputs.commit }}
+      artifact_id: ${{ steps.unsigned-artifact.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Select the exact reviewed main commit for a manual candidate
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -63,6 +71,10 @@ jobs:
       - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
       - run: npm ci
+      - name: Check release preparation formatting and whitespace
+        run: |
+          npx prettier --check scripts/android-*.mjs scripts/capture-readme.mjs tests/release/*.mjs README.md docs/ANDROID*.md docs/DEVELOPMENT.md docs/SCREENSHOTS.md .github/workflows/android-release.yml package.json PROGRESS.md android/upstream-sources.json tests/shared/web-presentation.ts
+          git diff --check
       - name: Test release validation policy
         run: node --test tests/release/*.test.mjs
       - run: npm run android:sync
@@ -80,24 +92,21 @@ jobs:
           npx playwright install --with-deps chromium
           node scripts/capture-readme.mjs
       - name: Publish preparation artifact (not an installable signed release)
+        id: unsigned-artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: upscale-compare-UNSIGNED-${{ env.SOURCE_COMMIT }}
+          name: upscale-compare-UNSIGNED-${{ env.SOURCE_COMMIT }}-${{ github.run_attempt }}
           path: release-artifacts/unsigned/
+          if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: android-release-reports-${{ github.sha }}
+          name: android-release-reports-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             android/app/build/reports/
             release-artifacts/screenshots/
           retention-days: 14
-
-      - name: Check release preparation formatting and whitespace
-        run: |
-          npx prettier --check scripts/android-*.mjs scripts/capture-readme.mjs tests/release/*.mjs README.md docs/ANDROID*.md docs/DEVELOPMENT.md docs/SCREENSHOTS.md .github/workflows/android-release.yml package.json PROGRESS.md android/upstream-sources.json tests/shared/web-presentation.ts
-          git diff --check
 
   windows-signing:
     needs: unsigned-release
@@ -109,6 +118,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.unsigned-release.outputs.source_commit }}
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24.19.0'
@@ -119,10 +129,19 @@ jobs:
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
         with:
           packages: 'build-tools;35.0.0'
+      - name: Require the artifact ID from the Linux job
+        shell: pwsh
+        env:
+          ARTIFACT_ID: ${{ needs.unsigned-release.outputs.artifact_id }}
+        run: |
+          if ($env:ARTIFACT_ID -cnotmatch '^[1-9][0-9]*$') {
+            throw 'The Linux job did not return an unsigned artifact ID.'
+          }
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: upscale-compare-UNSIGNED-${{ needs.unsigned-release.outputs.source_commit }}
+          artifact-ids: ${{ needs.unsigned-release.outputs.artifact_id }}
           path: release-artifacts/unsigned
+          merge-multiple: true
       - name: Test Windows tool execution, bounded ZIP reading and terminal policy
         shell: pwsh
         run: node --test tests/release/*.test.mjs

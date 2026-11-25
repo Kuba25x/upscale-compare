@@ -18,6 +18,15 @@ React + TypeScript + Vite frontend for GitHub Pages. Separate Cloudflare Worker 
 4. Complete contributor, security, privacy and deployment documentation and guarded manual deployment workflows.
 5. Commit verified milestones and prepare a reviewable PR if GitHub access permits.
 
+## CI reliability follow-up
+
+The Android system UI test waits for the emulator's input routing to settle after
+bottom-inset taps, then verifies that Android cancels the same edge-swipe touch
+stream that reached the app. Release preparation retries transient upstream
+source downloads within a bounded budget. Android artifacts carry the producing
+attempt number, and Windows verifies the unsigned artifact selected by the Linux
+job's upload ID. Validation checks formatting on documentation-only changes.
+
 ## Android Preview release preparation — 2026-11-16
 
 Published on 2026-11-17: [v0.1.0-android-preview.1](https://github.com/Kuba25x/upscale-compare/releases/tag/v0.1.0-android-preview.1)

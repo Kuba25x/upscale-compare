@@ -125,8 +125,10 @@ They pin package/Gradle inputs and record source/signing identity; they do not
 promise byte-identical ZIPs across OS/JDK patches, source-server archive metadata
 or signing implementations.
 
-Download upscale-compare-UNSIGNED-<commit> from the successful run (14-day
-retention). It includes:
+Download `upscale-compare-UNSIGNED-<commit>-<attempt>` from the successful
+`unsigned-release` job (14-day retention). Older runs omit the attempt suffix.
+If only `windows-signing` was rerun, use the attempt of the Linux job that
+uploaded the artifact. It includes:
 
 | File                                       | Purpose                                                                      |
 | ------------------------------------------ | ---------------------------------------------------------------------------- |

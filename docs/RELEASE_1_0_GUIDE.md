@@ -58,10 +58,15 @@ Use **Android release preparation**. Both jobs must succeed, including the sourc
 
 ## 4. Download and extract the exact artifact
 
+Find the exact artifact name in the upload log of the successful `unsigned-release`
+job. Current runs append the Linux job's attempt number. Older runs omit it.
+
 ```powershell
 $bundle = Join-Path $work 'unsigned'
 $output = Join-Path $work 'signed'
-gh run download $run --repo $repo --name "upscale-compare-UNSIGNED-$sha" --dir $bundle
+$artifactName = Read-Host 'Exact unsigned artifact name from the Linux upload log'
+if ($artifactName -cnotmatch "^upscale-compare-UNSIGNED-$sha(-[1-9][0-9]*)?$") { throw 'Wrong artifact name' }
+gh run download $run --repo $repo --name $artifactName --dir $bundle
 Check 'download and extract unsigned artifact'
 $m = Get-Content -Raw (Join-Path $bundle 'release-manifest.json') | ConvertFrom-Json
 if ($m.kind -ne 'unsigned' -or $m.commit -cne $sha -or $m.versionName -cne '1.0.0' -or $m.versionCode -ne 5 -or $m.workflowRun -ne "https://github.com/$repo/actions/runs/$run") { throw 'Wrong release candidate' }

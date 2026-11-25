@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { readSource } from './android-source-download.mjs';
 
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 if (!/^[a-f0-9]{40}$/.test(commit)) throw new Error('Expected exact source commit');
@@ -12,14 +13,9 @@ const variant = process.argv[3] || 'release';
 if (!['debug', 'release'].includes(variant)) throw new Error('Invalid Android runtime variant');
 await mkdir(output, { recursive: true });
 const temporary = await mkdtemp(join(tmpdir(), 'upscale-source-'));
-async function get(url) {
-  const response = await fetch(url, { headers: { 'User-Agent': 'Upscale-Compare-source-bundle' } });
-  if (!response.ok) throw new Error('Source download failed (' + response.status + '): ' + url);
-  return response;
-}
 const hashes = [];
 async function download(url, file) {
-  const bytes = Buffer.from(await (await get(url)).arrayBuffer());
+  const bytes = Buffer.from(await readSource(url, (response) => response.arrayBuffer()));
   if (!bytes.length) throw new Error('Empty source archive: ' + url);
   await writeFile(join(temporary, 'dependencies', file), bytes);
   hashes.push({ file, url, sha256: createHash('sha256').update(bytes).digest('hex') });
@@ -36,7 +32,7 @@ try {
   );
   async function auditPom(url, depth = 0) {
     if (depth > 5) throw new Error('Maven license inheritance exceeded: ' + url);
-    const xml = await (await get(url)).text();
+    const xml = await readSource(url, (response) => response.text());
     const licenses = [...xml.matchAll(/<license>([\s\S]*?)<\/license>/g)].map((match) => match[1]);
     if (licenses.length) {
       if (licenses.some((license) => !/apache.org\/licenses\/LICENSE-2.0/i.test(license))) {
