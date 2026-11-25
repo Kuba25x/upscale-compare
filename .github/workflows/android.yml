@@ -20,7 +20,11 @@ on:
         'tests/**',
         'package*.json',
         '*config.ts',
+        'index.html',
+        'public/**',
         'scripts/android-*',
+        'scripts/generate-notices.*',
+        'scripts/pwa-build.ts',
         '.github/workflows/android.yml',
         '.github/workflows/android-preview.yml',
       ]
@@ -34,7 +38,11 @@ on:
         'tests/**',
         'package*.json',
         '*config.ts',
+        'index.html',
+        'public/**',
         'scripts/android-*',
+        'scripts/generate-notices.*',
+        'scripts/pwa-build.ts',
         '.github/workflows/android.yml',
         '.github/workflows/android-preview.yml',
       ]
@@ -86,7 +94,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: android-system-ui-reports-${{ github.sha }}
+          name: android-system-ui-reports-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             android/app/build/reports/androidTests/
             android/app/build/outputs/androidTest-results/
@@ -157,13 +165,14 @@ jobs:
           printf '%s\n' 'Debug build; device qualification pending. See docs/ANDROID.md.' 'The disposable CI debug key may require uninstalling a previous build (which deletes its local session).' > artifacts/README.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: upscale-compare-debug-${{ github.sha }}
+          name: upscale-compare-debug-${{ github.sha }}-${{ github.run_attempt }}
           path: artifacts/
+          if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: android-test-reports-${{ github.sha }}
+          name: android-test-reports-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             android/app/build/reports/
             test-results/

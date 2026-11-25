@@ -31,7 +31,10 @@ import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -711,13 +714,14 @@ public class DisplayIntegrationTest {
     awaitVisualFrame();
     AtomicReference<JSObject> display = new AtomicReference<>();
     int[] origin = new int[2];
-    scenario.onActivity(
-        a -> {
-          assertTrue(
-              "The comparison window must have focus before tapping " + label, a.hasWindowFocus());
-          display.set(a.displayLayout.snapshot());
-          a.getBridge().getWebView().getLocationOnScreen(origin);
-        });
+    eventually(
+        () -> scenario.onActivity(
+            a -> {
+              assertTrue(
+                  "The comparison window must have focus before tapping " + label, a.hasWindowFocus());
+              display.set(a.displayLayout.snapshot());
+              a.getBridge().getWebView().getLocationOnScreen(origin);
+            }));
     JSONObject point =
         new JSONObject(js("""
             (() => {
@@ -764,33 +768,93 @@ public class DisplayIntegrationTest {
     }
   }
 
-  private void swipeBack(int endX, int y) throws Exception {
+  private boolean isTouchableInputWindow(String row) {
+    int start = row.indexOf(", inputConfig=");
+    int end = row.indexOf(", alpha=", start);
+    if (start < 0 || end < 0) return false;
+    String config = row.substring(start, end);
+    return !config.contains("NOT_VISIBLE")
+        && !config.contains("NOT_TOUCHABLE")
+        && !config.contains("NO_INPUT_CHANNEL");
+  }
+
+  private String inputRouting(String component) throws Exception {
+    return shell("dumpsys input").lines()
+        .filter(line -> line.contains(component)
+            || line.contains("recents_animation_input_consumer")
+            || line.contains("[Gesture Monitor] edge-swipe"))
+        .collect(Collectors.joining("\n"));
+  }
+
+  private void awaitBackInputRouting(String component, String label) throws Exception {
+    long deadline = SystemClock.uptimeMillis() + 20_000;
+    long readySince = -1;
+    AtomicBoolean focused = new AtomicBoolean();
+    String routing;
+    do {
+      scenario.onActivity(a -> focused.set(a.hasWindowFocus()));
+      routing = inputRouting(component);
+      boolean appWindow = routing.lines().anyMatch(line ->
+          line.contains(component + ", id=") && isTouchableInputWindow(line));
+      boolean recents = routing.lines().anyMatch(line ->
+          line.contains("name=recents_animation_input_consumer, id=")
+              && isTouchableInputWindow(line));
+      long now = SystemClock.uptimeMillis();
+      // A tap inside the bottom gesture inset can start a transient Recents animation. It can
+      // install its input consumer even after the WebView opens the menu and reports focus.
+      if (focused.get() && appWindow && !recents) {
+        if (readySince < 0) readySince = now;
+        if (now - readySince >= 1_000) return;
+      } else {
+        readySince = -1;
+      }
+      SystemClock.sleep(100);
+    } while (SystemClock.uptimeMillis() < deadline);
+    fail("Input routing did not settle before swiping Back for " + label + "\n" + routing);
+  }
+
+  private void swipeBack(int endX, int y, String label) throws Exception {
+    int edgeX = 2;
     CountDownLatch cancelled = new CountDownLatch(1);
+    AtomicLong gestureDownTime = new AtomicLong(-1);
+    AtomicReference<String> component = new AtomicReference<>();
     AtomicReference<Window> window = new AtomicReference<>();
     AtomicReference<Window.Callback> previous = new AtomicReference<>();
     scenario.onActivity(
         a -> {
+          component.set(a.getComponentName().flattenToShortString());
           window.set(a.getWindow());
           previous.set(window.get().getCallback());
           window.get().setCallback(new WindowCallbackWrapper(previous.get()) {
             @Override
             public boolean dispatchTouchEvent(MotionEvent event) {
+              if (event.getActionMasked() == MotionEvent.ACTION_DOWN
+                  && Math.abs(event.getRawX() - edgeX) <= 1
+                  && Math.abs(event.getRawY() - y) <= 1) {
+                gestureDownTime.set(event.getDownTime());
+              }
               boolean handled = super.dispatchTouchEvent(event);
-              if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) cancelled.countDown();
+              if (event.getActionMasked() == MotionEvent.ACTION_CANCEL
+                  && gestureDownTime.get() == event.getDownTime()) {
+                cancelled.countDown();
+              }
               return handled;
             }
           });
         });
     try {
+      awaitBackInputRouting(component.get(), label);
       // Allow System UI to take over the touch before release on a busy emulator. A longer
       // horizontal path still crosses Android's initial motion threshold promptly.
-      shell("input swipe %d %d %d %d 1200".formatted(2, y, endX, y));
+      shell("input swipe %d %d %d %d 1200".formatted(edgeX, y, endX, y));
       if (!cancelled.await(5, TimeUnit.SECONDS)) {
         String systemUi = shell("dumpsys activity service com.android.systemui/.SystemUIService");
         System.err.println("System UI edge gesture diagnostics: "
             + systemUi.lines().filter(line -> line.contains("Gesture [")
                 || line.contains("Cancel back") || line.contains("mTouchSlop")).limit(30).toList());
-        fail("Android did not cancel the comparison window's touch stream");
+        fail("Android did not cancel the comparison window's touch stream for " + label
+            + " (received gesture down: " + (gestureDownTime.get() >= 0) + ")\n"
+            + inputRouting(component.get()));
       }
     } finally {
       InstrumentationRegistry.getInstrumentation()
@@ -829,7 +893,7 @@ public class DisplayIntegrationTest {
                 });
           });
       awaitVisualFrame();
-      swipeBack(backEndX, backY);
+      swipeBack(backEndX, backY, label);
       eventually(() -> assertEquals("\"false\"", js(expanded)));
     }
     String imageA = "document.querySelector('[data-testid=\"image-A\"]').alt";

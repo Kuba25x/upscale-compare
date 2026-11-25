@@ -117,7 +117,8 @@ corresponding source and notices distributed together on GitHub Releases.
 The separate **Android debug APK** workflow runs on relevant PR/branch changes
 and workflow_dispatch. It has read-only repository permission, no backend secrets
 and no deployment steps. Open the successful run, download
-`upscale-compare-debug-<commit>`, unzip it and install `upscale-compare-debug.apk`.
+`upscale-compare-debug-<commit>-<attempt>` from the successful `apk` job, unzip it
+and install `upscale-compare-debug.apk`. Older runs omit the attempt suffix.
 The artifact includes SHA256SUMS and COMMIT and is retained for 14 days.
 
 CI uses a disposable debug signing key. Builds from different runners may not
