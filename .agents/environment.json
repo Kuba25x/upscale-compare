@@ -1,0 +1,3 @@
+{
+  "install": "npm ci --no-audit --no-fund && DEBIAN_FRONTEND=noninteractive npx playwright install --with-deps chromium && (sed -i '/case \\$- in/,/esac/d' ~/.bashrc 2>/dev/null || true) && CHROMIUM_BIN=\"$(node scripts/set-playwright-browser.mjs)\" && (grep -qxF \"export CHROMIUM_PATH=\\\"$CHROMIUM_BIN\\\"\" ~/.bashrc || echo \"export CHROMIUM_PATH=\\\"$CHROMIUM_BIN\\\"\" >> ~/.bashrc) && (grep -qxF 'export WRANGLER_SEND_METRICS=\"false\"' ~/.bashrc || echo 'export WRANGLER_SEND_METRICS=\"false\"' >> ~/.bashrc)"
+}
