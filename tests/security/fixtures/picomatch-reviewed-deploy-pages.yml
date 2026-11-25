@@ -1,0 +1,92 @@
+name: Deploy frontend to GitHub Pages
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_mode:
+        description: 'Demo works without Cloudflare; production requires the sharing backend'
+        required: true
+        type: choice
+        default: demo
+        options:
+          - demo
+          - production
+      confirmation:
+        description: 'Type DEPLOY to authorize publishing the selected frontend'
+        required: true
+        type: string
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'DEPLOY' && (inputs.deployment_mode == 'demo' || inputs.deployment_mode == 'production')
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Enforce Free-only readiness for production sharing frontend
+        if: inputs.deployment_mode == 'production'
+        run: node scripts/production-readiness.mjs
+      - run: npm ci
+      - name: Audit dependencies before publishing
+        run: npm run audit:dependencies
+      - name: Retain complete dependency audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-dependency-audit
+          include-hidden-files: true
+          path: .wrangler/security-audit/
+          retention-days: 7
+      - run: npx playwright install --with-deps chromium
+      - name: Select Playwright Chromium
+        run: node scripts/set-playwright-browser.mjs
+      - name: Verify PWA before publishing the demo
+        if: inputs.deployment_mode == 'demo'
+        run: npm run test:pwa:build && npm run test:pwa && xvfb-run -a npm run test:pwa:install
+      - name: Build and verify frontend-only demo
+        if: inputs.deployment_mode == 'demo'
+        run: npm run test:demo
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_API_URL: ''
+          VITE_TURNSTILE_SITE_KEY: ''
+      - name: Verify sharing backend locally
+        if: inputs.deployment_mode == 'production'
+        run: npm test && npm run test:e2e && npm run test:sharing:local
+      - name: Validate production configuration
+        if: inputs.deployment_mode == 'production'
+        env:
+          API_URL: ${{ vars.VITE_API_URL }}
+          SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+        run: |
+          test -n "$SITE_KEY"
+          node -e 'const u = new URL(process.env.API_URL); if (u.protocol !== "https:") process.exit(1)'
+      - name: Build production frontend for repository subpath
+        if: inputs.deployment_mode == 'production'
+        run: npm run build
+        env:
+          VITE_DEMO_MODE: 'false'
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Publish GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

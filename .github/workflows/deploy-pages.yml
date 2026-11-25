@@ -15,6 +15,7 @@ on:
         required: true
         type: string
 permissions:
+  actions: read # Read the current run's artifact metadata before publishing.
   contents: read
   pages: write
   id-token: write
@@ -30,10 +31,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      PAGES_ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
       WRANGLER_SEND_METRICS: 'false'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -45,9 +49,9 @@ jobs:
         run: npm run audit:dependencies
       - name: Retain complete dependency audit reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: pages-dependency-audit
+          name: pages-dependency-audit-${{ github.run_id }}-${{ github.run_attempt }}
           include-hidden-files: true
           path: .wrangler/security-audit/
           retention-days: 7
@@ -83,10 +87,22 @@ jobs:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - name: Upload GitHub Pages artifact
+        id: pages_artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
+          name: ${{ env.PAGES_ARTIFACT_NAME }}
           path: dist
+          include-hidden-files: true
+      - name: Wait for the uploaded Pages artifact
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_ARTIFACT_ID: ${{ steps.pages_artifact.outputs.artifact_id }}
+        run: node scripts/wait-for-pages-artifact.mjs
       - name: Publish GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: ${{ env.PAGES_ARTIFACT_NAME }}

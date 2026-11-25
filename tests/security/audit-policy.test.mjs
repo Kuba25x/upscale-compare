@@ -16,10 +16,19 @@ import {
 const recorded = JSON.parse(
   await readFile(new URL('./fixtures/picomatch-audit.json', import.meta.url), 'utf8'),
 );
+const pagesWorkflow = '.github/workflows/deploy-pages.yml';
+// The recorded report is evaluated during the historical review window.
+const reviewedPagesWorkflow = await readFile(
+  new URL('./fixtures/picomatch-reviewed-deploy-pages.yml', import.meta.url),
+  'utf8',
+);
 const lockText = await readFile('package-lock.json', 'utf8');
 const inputs = Object.fromEntries(
   await Promise.all(
-    Object.keys(exception.inputs).map(async (file) => [file, await readFile(file, 'utf8')]),
+    Object.keys(exception.inputs).map(async (file) => [
+      file,
+      file === pagesWorkflow ? reviewedPagesWorkflow : await readFile(file, 'utf8'),
+    ]),
   ),
 );
 function report(findings = {}) {
@@ -143,6 +152,11 @@ test('changed lock, installed version and configuration require a new review', (
   assert.equal(evaluate({ lockText: lockText + ' ' }).ok, false);
   const changed = { ...inputs, 'vite.config.ts': inputs['vite.config.ts'] + '\n// changed input' };
   assert.equal(evaluate({ inputs: changed }).ok, false);
+  const changedWorkflow = {
+    ...inputs,
+    [pagesWorkflow]: reviewedPagesWorkflow + '\n# changed input',
+  };
+  assert.equal(evaluate({ inputs: changedWorkflow }).ok, false);
 });
 test('a missing/unknown node or no proven development scope cannot be accepted', () => {
   for (const node of ['node_modules/other-picomatch', 'node_modules/zod']) {

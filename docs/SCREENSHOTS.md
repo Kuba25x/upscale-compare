@@ -5,11 +5,11 @@ The three Split Screen views show the web demo at commit
 The mobile captures use touch-enabled browser emulation. All three use a device
 pixel ratio of 1 and the app's Fit setting.
 
-| View | Viewport (CSS pixels) | Comparison images (pixels) |
-| --- | --- | --- |
-| Desktop | 1360 × 820 | 1342 × 669 |
-| Mobile portrait | 390 × 844 | 390 × 698 |
-| Mobile landscape | 844 × 390 | 844 × 338 |
+| View             | Viewport (CSS pixels) | Comparison images (pixels) |
+| ---------------- | --------------------- | -------------------------- |
+| Desktop          | 1360 × 820            | 1342 × 669                 |
+| Mobile portrait  | 390 × 844             | 390 × 698                  |
+| Mobile landscape | 844 × 390             | 844 × 338                  |
 
 The source is the Galactic Center composite from Hubble, Spitzer and Chandra.
 Credit: NASA, ESA, SSC, CXC and STScI. [NASA image PIA12348](https://images.nasa.gov/details/PIA12348).
