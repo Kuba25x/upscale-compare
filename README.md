@@ -14,8 +14,6 @@ pair, and inspect the originals locally.
 [Android downloads](https://github.com/Kuba25x/upscale-compare/releases) ·
 [Report an issue](https://github.com/Kuba25x/upscale-compare/issues)**
 
-
-
 ## Made for close inspection
 
 - **Split Screen** with a draggable divider, or synchronized **Side-by-Side**.
