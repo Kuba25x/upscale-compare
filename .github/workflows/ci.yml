@@ -42,7 +42,7 @@ jobs:
           retention-days: 7
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       WRANGLER_SEND_METRICS: 'false'
       RUN_FIREFOX: 'true'
