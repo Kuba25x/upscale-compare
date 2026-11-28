@@ -7,7 +7,7 @@ use crate::model::{
 };
 use crate::renderer::{ComparisonPaintCallback, GpuImageStore, ImageLayerDraw};
 use crate::session::{
-    clear_session_at, default_session_path, load_session_from, save_session_to, SavedSession,
+    default_session_path, load_session_from, BackgroundSessionWriter, SavedSession,
 };
 use crate::state::ComparisonState;
 use eframe::egui::{
@@ -139,6 +139,7 @@ pub struct UpscaleCompareApp {
     fullscreen: bool,
     last_stage_rect: Rect,
     session_path: Option<PathBuf>,
+    session_writer: Option<BackgroundSessionWriter>,
     last_session_dirty: Option<Instant>,
     pending_restore_session: Option<SavedSession>,
 }
@@ -158,6 +159,7 @@ impl UpscaleCompareApp {
         });
         let (picker_tx, picker_rx) = mpsc::channel();
         let session_path = default_session_path();
+        let session_writer = session_path.clone().map(BackgroundSessionWriter::spawn);
 
         let mut app = Self {
             state: ComparisonState::default(),
@@ -177,6 +179,7 @@ impl UpscaleCompareApp {
             fullscreen: false,
             last_stage_rect: Rect::from_min_size(Pos2::ZERO, Vec2::new(1000.0, 600.0)),
             session_path,
+            session_writer,
             last_session_dirty: None,
             pending_restore_session: None,
         };
@@ -357,8 +360,8 @@ impl UpscaleCompareApp {
                         } else {
                             // Fewer than 2 restored files still exist on disk; clear stale session.
                             self.sync_gpu_cache();
-                            if let Some(path) = &self.session_path {
-                                let _ = clear_session_at(path);
+                            if let Some(writer) = &self.session_writer {
+                                writer.clear();
                             }
                         }
                     }
@@ -403,19 +406,32 @@ impl UpscaleCompareApp {
             let current = self.state.active_alignment();
             self.modal = Some(ActiveModal::AlignmentMismatch(current));
         }
+    }
 
-        // Handle debounced session persistence (250 ms after pan/zoom/divider changes).
-        if self.state.dirty_session {
-            match self.last_session_dirty {
-                None => {
-                    self.last_session_dirty = Some(Instant::now());
-                    ctx.request_repaint_after(Duration::from_millis(260));
-                }
-                Some(since) if since.elapsed() >= Duration::from_millis(250) => {
+    /// Trailing-edge debounce for view/divider persistence: never writes during an active drag,
+    /// schedules a single wake after 400 ms of quiet, and executes disk I/O off the UI thread.
+    fn maybe_debounce_session_save(&mut self, ctx: &egui::Context) {
+        if !self.state.dirty_session {
+            return;
+        }
+        let debounce = Duration::from_millis(400);
+        let actively_dragging =
+            self.divider_drag.is_some() || ctx.input(|i| i.pointer.primary_down());
+        if actively_dragging {
+            self.last_session_dirty = Some(Instant::now());
+            return;
+        }
+        match self.last_session_dirty {
+            None => {
+                self.last_session_dirty = Some(Instant::now());
+                ctx.request_repaint_after(debounce);
+            }
+            Some(since) => {
+                let elapsed = since.elapsed();
+                if elapsed >= debounce {
                     self.save_session_now();
-                }
-                _ => {
-                    ctx.request_repaint_after(Duration::from_millis(100));
+                } else {
+                    ctx.request_repaint_after(debounce - elapsed);
                 }
             }
         }
@@ -424,11 +440,11 @@ impl UpscaleCompareApp {
     fn save_session_now(&mut self) {
         self.state.dirty_session = false;
         self.last_session_dirty = None;
-        let Some(path) = &self.session_path else {
+        let Some(writer) = &self.session_writer else {
             return;
         };
         if self.state.images.len() < 2 {
-            let _ = clear_session_at(path);
+            writer.clear();
             return;
         }
         let saved = SavedSession::new(
@@ -437,7 +453,7 @@ impl UpscaleCompareApp {
             self.state.metadata.clone(),
             self.state.alignment_choices.clone(),
         );
-        let _ = save_session_to(path, &saved);
+        writer.save(saved);
     }
 
     fn close_manage_images(&mut self) {
@@ -925,7 +941,6 @@ impl UpscaleCompareApp {
         let stage_size = Size::new(stage_rect.width() as f64, stage_rect.height() as f64);
         let mode = self.state.config.mode;
         let panel = panel_size_for(stage_size, mode);
-        let scale = scale_for(self.state.config.view, panel, geom.bounds, dpr);
 
         // Compute floating toolbar rect ahead of time so pointer interactions avoid stealing toolbar clicks.
         let toolbar_width = 468.0f32.min(stage_rect.width() - 16.0);
@@ -938,13 +953,156 @@ impl UpscaleCompareApp {
             Vec2::new(toolbar_width, toolbar_height),
         );
 
-        let split_x = stage_rect.left() + stage_rect.width() * (self.state.config.divider as f32);
+        let initial_split_x =
+            stage_rect.left() + stage_rect.width() * (self.state.config.divider as f32);
         let divider_hit_rect = Rect::from_min_max(
-            Pos2::new(split_x - 15.0, stage_rect.top()),
-            Pos2::new(split_x + 15.0, stage_rect.bottom()),
+            Pos2::new(initial_split_x - 15.0, stage_rect.top()),
+            Pos2::new(initial_split_x + 15.0, stage_rect.bottom()),
         );
-        let handle_center = Pos2::new(split_x, stage_rect.center().y);
+        let initial_handle_center = Pos2::new(initial_split_x, stage_rect.center().y);
         let handle_radius = 20.0f32;
+
+        // Handle ALL stage pointer input BEFORE building transforms & queueing GPU draws so
+        // panning, zooming, and divider dragging render on the exact same frame (zero 1-frame lag).
+        let modal_open = self.modal.is_some();
+        let stage_resp = ui.interact(
+            stage_rect,
+            Id::new("comparison_stage_interact"),
+            Sense::click_and_drag(),
+        );
+
+        let pointer_pos = ui.ctx().input(|i| i.pointer.hover_pos());
+        let over_toolbar = pointer_pos.is_some_and(|p| toolbar_rect.contains(p));
+        let over_divider = mode == CompareMode::Split
+            && !over_toolbar
+            && pointer_pos.is_some_and(|p| {
+                divider_hit_rect.contains(p)
+                    || p.distance(initial_handle_center) <= handle_radius + 2.0
+            });
+
+        if !modal_open {
+            // Divider drag start / move / end
+            if mode == CompareMode::Split {
+                let primary_down = ui.ctx().input(|i| i.pointer.primary_down());
+                let primary_pressed = ui.ctx().input(|i| i.pointer.primary_pressed());
+                let press_pos = ui.ctx().input(|i| i.pointer.press_origin());
+
+                if primary_pressed && over_divider {
+                    if let Some(p) = press_pos {
+                        let grab = ((p.x - stage_rect.left()) / stage_rect.width().max(1.0)) as f64;
+                        let on_handle = p.distance(initial_handle_center) <= handle_radius + 2.0;
+                        let initial_split = if on_handle {
+                            self.state.config.divider
+                        } else {
+                            grab.clamp(0.0, 1.0)
+                        };
+                        self.divider_drag = Some(DividerDrag {
+                            grab: grab.clamp(0.0, 1.0),
+                            initial_split,
+                        });
+                        if !on_handle {
+                            self.state.set_divider(initial_split);
+                            self.last_session_dirty = Some(Instant::now());
+                        }
+                    }
+                } else if !primary_down {
+                    self.divider_drag = None;
+                }
+
+                if let Some(drag) = &self.divider_drag {
+                    if let Some(p) = ui.ctx().input(|i| i.pointer.interact_pos()) {
+                        let pos = ((p.x - stage_rect.left()) / stage_rect.width().max(1.0)) as f64;
+                        let next = interpolate_divider(pos, drag.grab, drag.initial_split);
+                        self.state.set_divider(next);
+                        self.last_session_dirty = Some(Instant::now());
+                    }
+                }
+            } else {
+                self.divider_drag = None;
+            }
+
+            // Stage pan & double-click (when not dragging divider or clicking toolbar)
+            if self.divider_drag.is_none() && !over_toolbar {
+                if stage_resp.dragged_by(egui::PointerButton::Primary) {
+                    let press_on_toolbar = ui.ctx().input(|i| {
+                        i.pointer
+                            .press_origin()
+                            .is_some_and(|p| toolbar_rect.contains(p))
+                    });
+                    if !press_on_toolbar {
+                        let delta = stage_resp.drag_delta();
+                        if delta != Vec2::ZERO {
+                            self.state
+                                .pan(Point::new(delta.x as f64, delta.y as f64), panel, dpr);
+                            self.last_session_dirty = Some(Instant::now());
+                        }
+                        ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
+                    }
+                } else if over_divider {
+                    ui.ctx().set_cursor_icon(CursorIcon::ResizeHorizontal);
+                } else if stage_resp.hovered() {
+                    ui.ctx().set_cursor_icon(CursorIcon::Grab);
+                }
+
+                if stage_resp.double_clicked() && !over_divider {
+                    let next = if self
+                        .state
+                        .config
+                        .view
+                        .zoom
+                        .is_some_and(|z| (z - 1.0).abs() < 1e-6)
+                    {
+                        None
+                    } else {
+                        Some(1.0)
+                    };
+                    self.state.set_zoom(next);
+                    self.last_session_dirty = Some(Instant::now());
+                }
+
+                // Smooth cursor-anchored mouse wheel & trackpad pinch zoom
+                if let Some(pos) = pointer_pos {
+                    if stage_rect.contains(pos) {
+                        let (scroll_y, pinch_zoom) = ui
+                            .ctx()
+                            .input(|i| (i.raw_scroll_delta.y as f64, i.zoom_delta() as f64));
+                        let zoom_mul = if (pinch_zoom - 1.0).abs() > 1e-4 {
+                            pinch_zoom
+                        } else if scroll_y.abs() > 1e-4 {
+                            (scroll_y * 0.0028).exp()
+                        } else {
+                            1.0
+                        };
+                        if (zoom_mul - 1.0).abs() > 1e-4 {
+                            let mut local_x = (pos.x - stage_rect.left()) as f64;
+                            let right_panel = mode == CompareMode::Side && local_x > panel.width;
+                            if right_panel {
+                                local_x -= panel.width + 1.0;
+                            }
+                            let offset = Point::new(
+                                local_x - panel.width / 2.0,
+                                (pos.y - stage_rect.top()) as f64 - panel.height / 2.0,
+                            );
+                            let panel_pos = Point::new(
+                                stage_rect.left() as f64
+                                    + if right_panel { panel.width + 1.0 } else { 0.0 },
+                                stage_rect.top() as f64,
+                            );
+                            self.state
+                                .wheel_zoom(zoom_mul, offset, panel, panel_pos, dpr);
+                            self.last_session_dirty = Some(Instant::now());
+                        }
+                    }
+                }
+            } else if self.divider_drag.is_some() {
+                ui.ctx().set_cursor_icon(CursorIcon::ResizeHorizontal);
+            }
+        }
+
+        // Compute freshly updated scale, split position, and GPU transforms for this frame.
+        let scale = scale_for(self.state.config.view, panel, geom.bounds, dpr);
+        let split_x = (stage_rect.left() + stage_rect.width() * (self.state.config.divider as f32))
+            .clamp(stage_rect.left(), stage_rect.right());
 
         // Paint GPU image layers via custom wgpu callback!
         let layers = match mode {
@@ -966,20 +1124,10 @@ impl UpscaleCompareApp {
                     panel_pos,
                     geom.relative_scale,
                 );
-                let left_clip = Rect::from_min_max(
-                    stage_rect.min,
-                    Pos2::new(
-                        split_x.clamp(stage_rect.left(), stage_rect.right()),
-                        stage_rect.bottom(),
-                    ),
-                );
-                let right_clip = Rect::from_min_max(
-                    Pos2::new(
-                        split_x.clamp(stage_rect.left(), stage_rect.right()),
-                        stage_rect.top(),
-                    ),
-                    stage_rect.max,
-                );
+                let left_clip =
+                    Rect::from_min_max(stage_rect.min, Pos2::new(split_x, stage_rect.bottom()));
+                let right_clip =
+                    Rect::from_min_max(Pos2::new(split_x, stage_rect.top()), stage_rect.max);
                 vec![
                     ImageLayerDraw {
                         image_id: img_a.id.clone(),
@@ -1043,141 +1191,9 @@ impl UpscaleCompareApp {
             ComparisonPaintCallback { layers },
         ));
 
-        // Handle stage pointer input (only when no modal is blocking)
-        let modal_open = self.modal.is_some();
-        let stage_resp = ui.interact(
-            stage_rect,
-            Id::new("comparison_stage_interact"),
-            Sense::click_and_drag(),
-        );
-
-        let pointer_pos = ui.ctx().input(|i| i.pointer.hover_pos());
-        let over_toolbar = pointer_pos.is_some_and(|p| toolbar_rect.contains(p));
-        let over_divider = mode == CompareMode::Split
-            && !over_toolbar
-            && pointer_pos.is_some_and(|p| {
-                divider_hit_rect.contains(p) || p.distance(handle_center) <= handle_radius + 2.0
-            });
-
-        if !modal_open {
-            // Divider drag start / move / end
-            if mode == CompareMode::Split {
-                let primary_down = ui.ctx().input(|i| i.pointer.primary_down());
-                let primary_pressed = ui.ctx().input(|i| i.pointer.primary_pressed());
-                let press_pos = ui.ctx().input(|i| i.pointer.press_origin());
-
-                if primary_pressed && over_divider {
-                    if let Some(p) = press_pos {
-                        let grab = ((p.x - stage_rect.left()) / stage_rect.width().max(1.0)) as f64;
-                        let on_handle = p.distance(handle_center) <= handle_radius + 2.0;
-                        let initial_split = if on_handle {
-                            self.state.config.divider
-                        } else {
-                            grab.clamp(0.0, 1.0)
-                        };
-                        self.divider_drag = Some(DividerDrag {
-                            grab: grab.clamp(0.0, 1.0),
-                            initial_split,
-                        });
-                        if !on_handle {
-                            self.state.set_divider(initial_split);
-                        }
-                    }
-                } else if !primary_down {
-                    self.divider_drag = None;
-                }
-
-                if let Some(drag) = &self.divider_drag {
-                    if let Some(p) = ui.ctx().input(|i| i.pointer.interact_pos()) {
-                        let pos = ((p.x - stage_rect.left()) / stage_rect.width().max(1.0)) as f64;
-                        let next = interpolate_divider(pos, drag.grab, drag.initial_split);
-                        self.state.set_divider(next);
-                    }
-                }
-            } else {
-                self.divider_drag = None;
-            }
-
-            // Stage pan & double-click (when not dragging divider or clicking toolbar)
-            if self.divider_drag.is_none() && !over_toolbar {
-                if stage_resp.dragged_by(egui::PointerButton::Primary) {
-                    let press_on_toolbar = ui.ctx().input(|i| {
-                        i.pointer
-                            .press_origin()
-                            .is_some_and(|p| toolbar_rect.contains(p))
-                    });
-                    if !press_on_toolbar {
-                        let delta = stage_resp.drag_delta();
-                        if delta != Vec2::ZERO {
-                            self.state
-                                .pan(Point::new(delta.x as f64, delta.y as f64), panel, dpr);
-                        }
-                        ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
-                    }
-                } else if over_divider {
-                    ui.ctx().set_cursor_icon(CursorIcon::ResizeHorizontal);
-                } else if stage_resp.hovered() {
-                    ui.ctx().set_cursor_icon(CursorIcon::Grab);
-                }
-
-                if stage_resp.double_clicked() && !over_divider {
-                    let next = if self
-                        .state
-                        .config
-                        .view
-                        .zoom
-                        .is_some_and(|z| (z - 1.0).abs() < 1e-6)
-                    {
-                        None
-                    } else {
-                        Some(1.0)
-                    };
-                    self.state.set_zoom(next);
-                }
-
-                // Smooth cursor-anchored mouse wheel & trackpad pinch zoom
-                if let Some(pos) = pointer_pos {
-                    if stage_rect.contains(pos) {
-                        let (scroll_y, pinch_zoom) = ui
-                            .ctx()
-                            .input(|i| (i.raw_scroll_delta.y as f64, i.zoom_delta() as f64));
-                        let zoom_mul = if (pinch_zoom - 1.0).abs() > 1e-4 {
-                            pinch_zoom
-                        } else if scroll_y.abs() > 1e-4 {
-                            (scroll_y * 0.0028).exp()
-                        } else {
-                            1.0
-                        };
-                        if (zoom_mul - 1.0).abs() > 1e-4 {
-                            let mut local_x = (pos.x - stage_rect.left()) as f64;
-                            let right_panel = mode == CompareMode::Side && local_x > panel.width;
-                            if right_panel {
-                                local_x -= panel.width + 1.0;
-                            }
-                            let offset = Point::new(
-                                local_x - panel.width / 2.0,
-                                (pos.y - stage_rect.top()) as f64 - panel.height / 2.0,
-                            );
-                            let panel_pos = Point::new(
-                                stage_rect.left() as f64
-                                    + if right_panel { panel.width + 1.0 } else { 0.0 },
-                                stage_rect.top() as f64,
-                            );
-                            self.state
-                                .wheel_zoom(zoom_mul, offset, panel, panel_pos, dpr);
-                        }
-                    }
-                }
-            } else if self.divider_drag.is_some() {
-                ui.ctx().set_cursor_icon(CursorIcon::ResizeHorizontal);
-            }
-        }
-
-        // Draw Split Divider line & circular handle on top of images
+        // Draw Split Divider line & circular handle on top of images using the exact same split_x
         if mode == CompareMode::Split {
-            let line_x = (stage_rect.left()
-                + stage_rect.width() * (self.state.config.divider as f32))
-                .clamp(stage_rect.left(), stage_rect.right());
+            let line_x = split_x;
             let painter = ui.painter_at(stage_rect);
             // Subtle dark halo behind 1px divider line for contrast on bright screenshots
             painter.line_segment(
@@ -2473,10 +2489,14 @@ impl eframe::App for UpscaleCompareApp {
 
         self.render_modals(ctx);
         self.render_overlays(ctx);
+        self.maybe_debounce_session_save(ctx);
     }
 
     fn on_exit(&mut self) {
         self.save_session_now();
+        if let Some(writer) = &self.session_writer {
+            writer.flush();
+        }
     }
 }
 

@@ -245,3 +245,31 @@ fn wgsl_image_shader_parses_and_validates() {
         .validate(&module)
         .expect("WGSL shader must pass full naga validation");
 }
+
+#[test]
+fn wgpu_presentation_config_selects_low_latency_dx12_mailbox_on_windows() {
+    use eframe::wgpu;
+    use upscale_compare::renderer::select_wgpu_presentation_config;
+
+    let win_default = select_wgpu_presentation_config(true, None);
+    assert_eq!(win_default.backends, wgpu::Backends::DX12);
+    assert_eq!(win_default.present_mode, wgpu::PresentMode::Mailbox);
+    assert_eq!(win_default.desired_maximum_frame_latency, Some(1));
+
+    // Manual WGPU_BACKEND override falls back to AutoVsync for safety on non-DX12 drivers.
+    let win_vulkan_override = select_wgpu_presentation_config(true, Some(wgpu::Backends::VULKAN));
+    assert_eq!(win_vulkan_override.backends, wgpu::Backends::VULKAN);
+    assert_eq!(
+        win_vulkan_override.present_mode,
+        wgpu::PresentMode::AutoVsync
+    );
+    assert_eq!(win_vulkan_override.desired_maximum_frame_latency, Some(1));
+
+    let non_win = select_wgpu_presentation_config(false, None);
+    assert_eq!(
+        non_win.backends,
+        wgpu::Backends::PRIMARY | wgpu::Backends::GL
+    );
+    assert_eq!(non_win.present_mode, wgpu::PresentMode::AutoVsync);
+    assert_eq!(non_win.desired_maximum_frame_latency, Some(1));
+}

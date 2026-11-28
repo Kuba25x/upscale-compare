@@ -6,14 +6,25 @@ use eframe::wgpu;
 use std::sync::Arc;
 use upscale_compare::loader::generate_brand_icon_rgba;
 use upscale_compare::parse_cli_paths;
+use upscale_compare::renderer::select_wgpu_presentation_config;
 use upscale_compare::ui::UpscaleCompareApp;
 
 fn main() -> eframe::Result {
     let cli_paths = parse_cli_paths(std::env::args_os());
     let (icon_rgba, icon_w, icon_h) = generate_brand_icon_rgba();
 
+    let presentation =
+        select_wgpu_presentation_config(cfg!(target_os = "windows"), wgpu::Backends::from_env());
+
     let wgpu_options = WgpuConfiguration {
+        present_mode: presentation.present_mode,
+        desired_maximum_frame_latency: presentation.desired_maximum_frame_latency,
         wgpu_setup: WgpuSetup::CreateNew(WgpuSetupCreateNew {
+            instance_descriptor: wgpu::InstanceDescriptor {
+                backends: presentation.backends,
+                flags: wgpu::InstanceFlags::from_build_config().with_env(),
+                backend_options: wgpu::BackendOptions::from_env_or_default(),
+            },
             device_descriptor: Arc::new(|adapter| {
                 let adapter_limits = adapter.limits();
                 let base = if adapter.get_info().backend == wgpu::Backend::Gl {

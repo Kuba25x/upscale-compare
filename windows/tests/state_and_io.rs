@@ -259,3 +259,42 @@ fn cli_path_parser_handles_files_flags_and_double_dash() {
         ]
     );
 }
+
+#[test]
+fn background_session_writer_coalesces_and_flushes() {
+    use upscale_compare::session::BackgroundSessionWriter;
+
+    let tmp_dir =
+        std::env::temp_dir().join(format!("upscale-compare-bg-session-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+    let session_file = tmp_dir.join("session.json");
+
+    let writer = BackgroundSessionWriter::spawn(session_file.clone());
+    let mut state = ComparisonState::default();
+    state
+        .replace_all(vec![
+            make_entry("a", "a.png", 3840, 2160),
+            make_entry("b", "b.png", 3840, 2160),
+        ])
+        .unwrap();
+
+    for i in 1..=10 {
+        state.set_divider(i as f64 / 10.0);
+        writer.save(SavedSession::new(
+            state.images.clone(),
+            state.config.clone(),
+            state.metadata.clone(),
+            state.alignment_choices.clone(),
+        ));
+    }
+    writer.flush();
+
+    let restored = load_session_from(&session_file).unwrap().unwrap();
+    assert!((restored.config.divider - 1.0).abs() < 1e-12);
+
+    writer.clear();
+    writer.flush();
+    assert_eq!(load_session_from(&session_file).unwrap(), None);
+
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+}

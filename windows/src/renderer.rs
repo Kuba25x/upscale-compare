@@ -332,8 +332,13 @@ impl GpuImageStore {
         }
     }
 
-    fn ensure_uniform_slot(&mut self, device: &wgpu::Device, index: usize) {
-        while self.uniform_pool.len() <= index {
+    fn ensure_uniform_slot(
+        uniform_pool: &mut Vec<UniformSlot>,
+        uniform_bgl: &wgpu::BindGroupLayout,
+        device: &wgpu::Device,
+        index: usize,
+    ) {
+        while uniform_pool.len() <= index {
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("tile-uniform-buffer"),
                 size: std::mem::size_of::<TileUniforms>() as u64,
@@ -342,14 +347,61 @@ impl GpuImageStore {
             });
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("tile-uniform-bg"),
-                layout: &self.uniform_bgl,
+                layout: uniform_bgl,
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
                     resource: buffer.as_entire_binding(),
                 }],
             });
-            self.uniform_pool.push(UniformSlot { buffer, bind_group });
+            uniform_pool.push(UniformSlot { buffer, bind_group });
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WgpuPresentationConfig {
+    pub backends: wgpu::Backends,
+    pub present_mode: wgpu::PresentMode,
+    pub desired_maximum_frame_latency: Option<u32>,
+}
+
+/// Selects the optimal wgpu backend and swapchain presentation parameters.
+///
+/// On Windows, `wgpu` 24 initializes Vulkan ahead of DX12 when both are enabled. On NVIDIA
+/// Windows drivers, Vulkan + FIFO (`PresentMode::AutoVsync`) hits severe semaphore-wait pacing
+/// stalls (`gfx-rs/wgpu#8310`, `#8354`) that drop high-refresh-rate monitors (e.g. 180 Hz) well
+/// below native refresh and stall Win32's modal window-move loop.
+///
+/// Selecting native `DX12` with `PresentMode::Mailbox` (`DXGI_SWAP_EFFECT_FLIP_DISCARD` +
+/// `Present(0, 0)`) and `desired_maximum_frame_latency = Some(1)` (waitable swapchain) gives:
+/// - Tear-free 180 Hz+ DWM composition with non-blocking `Present()`
+/// - Minimal 1-frame input latency without uncapped GPU spinning
+/// - Zero idle CPU/GPU usage under `eframe`'s reactive event loop
+pub fn select_wgpu_presentation_config(
+    is_windows: bool,
+    env_backends: Option<wgpu::Backends>,
+) -> WgpuPresentationConfig {
+    let backends = env_backends.unwrap_or_else(|| {
+        if is_windows {
+            wgpu::Backends::DX12
+        } else {
+            wgpu::Backends::PRIMARY | wgpu::Backends::GL
+        }
+    });
+
+    // Every wgpu-hal DX12 adapter unconditionally supports `PresentMode::Mailbox` (FLIP_DISCARD
+    // syncInterval=0). For other backends (e.g. Linux or manual `WGPU_BACKEND` overrides), use
+    // `AutoVsync` so unsupported drivers never fail surface configuration.
+    let present_mode = if is_windows && backends == wgpu::Backends::DX12 {
+        wgpu::PresentMode::Mailbox
+    } else {
+        wgpu::PresentMode::AutoVsync
+    };
+
+    WgpuPresentationConfig {
+        backends,
+        present_mode,
+        desired_maximum_frame_latency: Some(1),
     }
 }
 
@@ -384,6 +436,14 @@ impl CallbackTrait for ComparisonPaintCallback {
         store.screen_size_px = [screen_w, screen_h];
         store.prepared_draws.clear();
 
+        let GpuImageStore {
+            uniform_bgl,
+            images,
+            uniform_pool,
+            prepared_draws,
+            ..
+        } = store;
+
         let mut slot_index = 0usize;
 
         for layer in &self.layers {
@@ -396,24 +456,17 @@ impl CallbackTrait for ComparisonPaintCallback {
             }
             let scissor = [sx0, sy0, sx1 - sx0, sy1 - sy0];
 
-            let tile_meta: Vec<(usize, u32, u32, u32, u32)> =
-                match store.images.get(&layer.image_id) {
-                    Some(img) => img
-                        .tiles
-                        .iter()
-                        .enumerate()
-                        .map(|(i, t)| (i, t.offset_x, t.offset_y, t.width, t.height))
-                        .collect(),
-                    None => continue,
-                };
+            let Some(img) = images.get(&layer.image_id) else {
+                continue;
+            };
 
-            for (tile_index, offset_x, offset_y, tile_w, tile_h) in tile_meta {
-                let tile_origin_x =
-                    layer.transform.origin_phys.x + offset_x as f64 * layer.transform.phys_scale;
-                let tile_origin_y =
-                    layer.transform.origin_phys.y + offset_y as f64 * layer.transform.phys_scale;
-                let tile_end_x = tile_origin_x + tile_w as f64 * layer.transform.phys_scale;
-                let tile_end_y = tile_origin_y + tile_h as f64 * layer.transform.phys_scale;
+            for (tile_index, tile) in img.tiles.iter().enumerate() {
+                let tile_origin_x = layer.transform.origin_phys.x
+                    + tile.offset_x as f64 * layer.transform.phys_scale;
+                let tile_origin_y = layer.transform.origin_phys.y
+                    + tile.offset_y as f64 * layer.transform.phys_scale;
+                let tile_end_x = tile_origin_x + tile.width as f64 * layer.transform.phys_scale;
+                let tile_end_y = tile_origin_y + tile.height as f64 * layer.transform.phys_scale;
 
                 // Frustum cull tiles outside the scissor rect.
                 if tile_end_x <= sx0 as f64
@@ -424,21 +477,21 @@ impl CallbackTrait for ComparisonPaintCallback {
                     continue;
                 }
 
-                store.ensure_uniform_slot(device, slot_index);
+                GpuImageStore::ensure_uniform_slot(uniform_pool, uniform_bgl, device, slot_index);
                 let uniforms = TileUniforms {
                     origin_phys: [tile_origin_x as f32, tile_origin_y as f32],
-                    tile_size: [tile_w as f32, tile_h as f32],
+                    tile_size: [tile.width as f32, tile.height as f32],
                     phys_scale: layer.transform.phys_scale as f32,
                     nearest: u32::from(layer.transform.nearest),
                     _pad0: 0,
                     _pad1: 0,
                 };
                 queue.write_buffer(
-                    &store.uniform_pool[slot_index].buffer,
+                    &uniform_pool[slot_index].buffer,
                     0,
                     bytemuck::bytes_of(&uniforms),
                 );
-                store.prepared_draws.push(PreparedDraw {
+                prepared_draws.push(PreparedDraw {
                     image_id: layer.image_id.clone(),
                     tile_index,
                     uniform_slot: slot_index,
