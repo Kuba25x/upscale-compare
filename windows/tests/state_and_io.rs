@@ -298,3 +298,28 @@ fn background_session_writer_coalesces_and_flushes() {
 
     let _ = std::fs::remove_dir_all(&tmp_dir);
 }
+
+#[test]
+fn crash_log_creates_directory_appends_entries_and_formats_dialog_message() {
+    use upscale_compare::diagnostics::{append_crash_log, format_startup_error_message};
+
+    let tmp_dir =
+        std::env::temp_dir().join(format!("upscale-compare-crash-log-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+    let log_file = tmp_dir.join("UpscaleCompare").join("crash.log");
+
+    append_crash_log(&log_file, "Startup Error", "NoSuitableAdapterFound").unwrap();
+    append_crash_log(&log_file, "Unhandled Panic", "simulated panic detail").unwrap();
+
+    let contents = std::fs::read_to_string(&log_file).unwrap();
+    assert!(contents.contains("event: Startup Error"));
+    assert!(contents.contains("NoSuitableAdapterFound"));
+    assert!(contents.contains("event: Unhandled Panic"));
+    assert!(contents.contains("simulated panic detail"));
+
+    let dialog_text = format_startup_error_message("Adapter init failed", Some(&log_file));
+    assert!(dialog_text.contains("Adapter init failed"));
+    assert!(dialog_text.contains("crash.log"));
+
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+}

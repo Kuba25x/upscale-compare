@@ -1,3 +1,4 @@
+pub mod diagnostics;
 pub mod geometry;
 pub mod icons;
 pub mod loader;

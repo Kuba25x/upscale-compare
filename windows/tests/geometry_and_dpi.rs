@@ -234,36 +234,74 @@ fn divider_interpolation_preserves_off_center_grab_and_reaches_edges() {
 }
 
 #[test]
-fn wgsl_image_shader_parses_and_validates() {
+fn wgsl_image_shader_parses_validates_and_translates_to_hlsl_for_dx12() {
     let module = naga::front::wgsl::parse_str(upscale_compare::renderer::IMAGE_SHADER_WGSL)
         .expect("WGSL shader must parse cleanly");
     let mut validator = naga::valid::Validator::new(
         naga::valid::ValidationFlags::all(),
         naga::valid::Capabilities::empty(),
     );
-    validator
+    let module_info = validator
         .validate(&module)
         .expect("WGSL shader must pass full naga validation");
+
+    // Verify HLSL Shader Model 5.0 codegen (used by wgpu's DX12 FXC backend on Windows).
+    let mut hlsl_output = String::new();
+    let options = naga::back::hlsl::Options {
+        shader_model: naga::back::hlsl::ShaderModel::V5_0,
+        ..Default::default()
+    };
+    let mut writer = naga::back::hlsl::Writer::new(&mut hlsl_output, &options);
+    writer
+        .write(&module, &module_info, None)
+        .expect("WGSL shader must translate cleanly to HLSL SM 5.0 for DX12");
+    assert!(hlsl_output.contains("vs_main"));
+    assert!(hlsl_output.contains("fs_main"));
 }
 
 #[test]
 fn wgpu_presentation_config_selects_low_latency_dx12_mailbox_on_windows() {
     use eframe::wgpu;
-    use upscale_compare::renderer::select_wgpu_presentation_config;
+    use upscale_compare::renderer::{
+        build_wgpu_presentation_fallbacks, select_wgpu_presentation_config,
+    };
 
     let win_default = select_wgpu_presentation_config(true, None);
     assert_eq!(win_default.backends, wgpu::Backends::DX12);
     assert_eq!(win_default.present_mode, wgpu::PresentMode::Mailbox);
     assert_eq!(win_default.desired_maximum_frame_latency, Some(1));
 
-    // Manual WGPU_BACKEND override falls back to AutoVsync for safety on non-DX12 drivers.
-    let win_vulkan_override = select_wgpu_presentation_config(true, Some(wgpu::Backends::VULKAN));
-    assert_eq!(win_vulkan_override.backends, wgpu::Backends::VULKAN);
+    // Windows startup fallback chain: DX12 Mailbox -> DX12 AutoVsync -> Vulkan/GL AutoVsync.
+    let win_chain = build_wgpu_presentation_fallbacks(true, None);
+    assert_eq!(win_chain.len(), 3);
+    assert_eq!(win_chain[0].backends, wgpu::Backends::DX12);
+    assert_eq!(win_chain[0].present_mode, wgpu::PresentMode::Mailbox);
+    assert_eq!(win_chain[0].desired_maximum_frame_latency, Some(1));
+
+    assert_eq!(win_chain[1].backends, wgpu::Backends::DX12);
+    assert_eq!(win_chain[1].present_mode, wgpu::PresentMode::AutoVsync);
+    assert_eq!(win_chain[1].desired_maximum_frame_latency, Some(2));
+
     assert_eq!(
-        win_vulkan_override.present_mode,
+        win_chain[2].backends,
+        wgpu::Backends::VULKAN | wgpu::Backends::GL
+    );
+    assert_eq!(win_chain[2].present_mode, wgpu::PresentMode::AutoVsync);
+    assert_eq!(win_chain[2].desired_maximum_frame_latency, Some(2));
+
+    // Manual WGPU_BACKEND override tries the requested backend first, then falls back safely.
+    let win_vulkan_chain = build_wgpu_presentation_fallbacks(true, Some(wgpu::Backends::VULKAN));
+    assert_eq!(win_vulkan_chain.len(), 2);
+    assert_eq!(win_vulkan_chain[0].backends, wgpu::Backends::VULKAN);
+    assert_eq!(
+        win_vulkan_chain[0].present_mode,
         wgpu::PresentMode::AutoVsync
     );
-    assert_eq!(win_vulkan_override.desired_maximum_frame_latency, Some(1));
+    assert_eq!(win_vulkan_chain[0].desired_maximum_frame_latency, Some(1));
+    assert_eq!(
+        win_vulkan_chain[1].backends,
+        wgpu::Backends::PRIMARY | wgpu::Backends::GL
+    );
 
     let non_win = select_wgpu_presentation_config(false, None);
     assert_eq!(
@@ -272,4 +310,25 @@ fn wgpu_presentation_config_selects_low_latency_dx12_mailbox_on_windows() {
     );
     assert_eq!(non_win.present_mode, wgpu::PresentMode::AutoVsync);
     assert_eq!(non_win.desired_maximum_frame_latency, Some(1));
+}
+
+#[cfg(target_os = "windows")]
+#[test]
+fn windows_build_compiles_and_enumerates_dx12_backend() {
+    use eframe::wgpu;
+
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::DX12,
+        flags: wgpu::InstanceFlags::empty(),
+        backend_options: wgpu::BackendOptions::default(),
+    });
+    let adapters = instance.enumerate_adapters(wgpu::Backends::DX12);
+    assert!(
+        !adapters.is_empty(),
+        "Expected at least one DX12 adapter (hardware GPU or Windows WARP); \
+         ensure wgpu's `dx12` feature is enabled on Windows"
+    );
+    assert!(adapters
+        .iter()
+        .all(|adapter| adapter.get_info().backend == wgpu::Backend::Dx12));
 }

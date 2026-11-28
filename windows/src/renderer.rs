@@ -360,12 +360,13 @@ impl GpuImageStore {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WgpuPresentationConfig {
+    pub label: &'static str,
     pub backends: wgpu::Backends,
     pub present_mode: wgpu::PresentMode,
     pub desired_maximum_frame_latency: Option<u32>,
 }
 
-/// Selects the optimal wgpu backend and swapchain presentation parameters.
+/// Returns an ordered list of wgpu startup configurations from most optimal to safest fallback.
 ///
 /// On Windows, `wgpu` 24 initializes Vulkan ahead of DX12 when both are enabled. On NVIDIA
 /// Windows drivers, Vulkan + FIFO (`PresentMode::AutoVsync`) hits severe semaphore-wait pacing
@@ -377,32 +378,83 @@ pub struct WgpuPresentationConfig {
 /// - Tear-free 180 Hz+ DWM composition with non-blocking `Present()`
 /// - Minimal 1-frame input latency without uncapped GPU spinning
 /// - Zero idle CPU/GPU usage under `eframe`'s reactive event loop
+///
+/// If the preferred configuration fails on an unusual driver, VM, or Wine setup, subsequent
+/// entries safely fall back to DX12 `AutoVsync` and then Vulkan/OpenGL `AutoVsync` instead of
+/// aborting startup.
+pub fn build_wgpu_presentation_fallbacks(
+    is_windows: bool,
+    env_backends: Option<wgpu::Backends>,
+) -> Vec<WgpuPresentationConfig> {
+    if let Some(backends) = env_backends {
+        let present_mode = if is_windows && backends == wgpu::Backends::DX12 {
+            wgpu::PresentMode::Mailbox
+        } else {
+            wgpu::PresentMode::AutoVsync
+        };
+        let mut candidates = vec![WgpuPresentationConfig {
+            label: "WGPU_BACKEND override",
+            backends,
+            present_mode,
+            desired_maximum_frame_latency: Some(1),
+        }];
+        let safe_backends = wgpu::Backends::PRIMARY | wgpu::Backends::GL;
+        if backends != safe_backends || present_mode != wgpu::PresentMode::AutoVsync {
+            candidates.push(WgpuPresentationConfig {
+                label: "Safe multi-backend fallback (AutoVsync, latency=2)",
+                backends: safe_backends,
+                present_mode: wgpu::PresentMode::AutoVsync,
+                desired_maximum_frame_latency: Some(2),
+            });
+        }
+        return candidates;
+    }
+
+    if is_windows {
+        vec![
+            WgpuPresentationConfig {
+                label: "DX12 (Mailbox, latency=1)",
+                backends: wgpu::Backends::DX12,
+                present_mode: wgpu::PresentMode::Mailbox,
+                desired_maximum_frame_latency: Some(1),
+            },
+            WgpuPresentationConfig {
+                label: "DX12 fallback (AutoVsync, latency=2)",
+                backends: wgpu::Backends::DX12,
+                present_mode: wgpu::PresentMode::AutoVsync,
+                desired_maximum_frame_latency: Some(2),
+            },
+            WgpuPresentationConfig {
+                label: "Vulkan/GL fallback (AutoVsync, latency=2)",
+                backends: wgpu::Backends::VULKAN | wgpu::Backends::GL,
+                present_mode: wgpu::PresentMode::AutoVsync,
+                desired_maximum_frame_latency: Some(2),
+            },
+        ]
+    } else {
+        vec![
+            WgpuPresentationConfig {
+                label: "Primary/GL (AutoVsync, latency=1)",
+                backends: wgpu::Backends::PRIMARY | wgpu::Backends::GL,
+                present_mode: wgpu::PresentMode::AutoVsync,
+                desired_maximum_frame_latency: Some(1),
+            },
+            WgpuPresentationConfig {
+                label: "Primary/GL fallback (AutoVsync, latency=2)",
+                backends: wgpu::Backends::PRIMARY | wgpu::Backends::GL,
+                present_mode: wgpu::PresentMode::AutoVsync,
+                desired_maximum_frame_latency: Some(2),
+            },
+        ]
+    }
+}
+
+/// Selects the primary (preferred) wgpu backend and swapchain presentation parameters.
 pub fn select_wgpu_presentation_config(
     is_windows: bool,
     env_backends: Option<wgpu::Backends>,
 ) -> WgpuPresentationConfig {
-    let backends = env_backends.unwrap_or_else(|| {
-        if is_windows {
-            wgpu::Backends::DX12
-        } else {
-            wgpu::Backends::PRIMARY | wgpu::Backends::GL
-        }
-    });
-
-    // Every wgpu-hal DX12 adapter unconditionally supports `PresentMode::Mailbox` (FLIP_DISCARD
-    // syncInterval=0). For other backends (e.g. Linux or manual `WGPU_BACKEND` overrides), use
-    // `AutoVsync` so unsupported drivers never fail surface configuration.
-    let present_mode = if is_windows && backends == wgpu::Backends::DX12 {
-        wgpu::PresentMode::Mailbox
-    } else {
-        wgpu::PresentMode::AutoVsync
-    };
-
-    WgpuPresentationConfig {
-        backends,
-        present_mode,
-        desired_maximum_frame_latency: Some(1),
-    }
+    build_wgpu_presentation_fallbacks(is_windows, env_backends)[0]
 }
 
 #[derive(Clone)]
