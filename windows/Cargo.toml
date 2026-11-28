@@ -1,0 +1,37 @@
+[package]
+name = "upscale-compare"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+description = "Native Windows desktop image comparison tool for game screenshots"
+publish = false
+
+[lib]
+name = "upscale_compare"
+path = "src/lib.rs"
+
+[[bin]]
+name = "upscale-compare"
+path = "src/main.rs"
+
+[dependencies]
+bytemuck = { version = "1.22", features = ["derive"] }
+dirs = "6.0"
+eframe = { version = "0.31", default-features = false, features = ["wgpu", "default_fonts"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "bmp"] }
+rfd = { version = "0.15", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[target.'cfg(unix)'.dependencies]
+eframe = { version = "0.31", default-features = false, features = ["wgpu", "default_fonts", "x11", "wayland"] }
+rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "async-std"] }
+
+[dev-dependencies]
+naga = { version = "24.0", features = ["wgsl-in"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+opt-level = 3
